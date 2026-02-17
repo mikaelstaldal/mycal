@@ -7,6 +7,7 @@ A personal calendar application with a Go backend, SQLite storage, and a Preact 
 - Monthly calendar grid with event display
 - Create, view, edit, and delete events
 - Color-coded events
+- iCalendar (RFC 5545) feed for subscribing from other calendar apps
 - JSON REST API for future native clients
 - Single binary with embedded frontend — no JS build step
 
@@ -37,6 +38,16 @@ All endpoints are under `/api/v1`. Datetimes use RFC 3339 format. Errors return 
 | GET | `/api/v1/events/{id}` | Get a single event |
 | PUT | `/api/v1/events/{id}` | Update an event (partial) |
 | DELETE | `/api/v1/events/{id}` | Delete an event |
+| GET | `/api/v1/events.ics` | iCalendar feed (all events) |
+| GET | `/calendar.ics` | iCalendar feed (convenience URL) |
+
+### iCalendar Feed
+
+Subscribe to your calendar from any app that supports iCalendar (Google Calendar, Apple Calendar, Thunderbird, etc.) using:
+
+```
+http://localhost:8080/calendar.ics
+```
 
 ### Example
 

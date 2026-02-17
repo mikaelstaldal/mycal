@@ -23,6 +23,17 @@ func NewEventService(repo repository.EventRepository) *EventService {
 	return &EventService{repo: repo}
 }
 
+func (s *EventService) ListAll() ([]model.Event, error) {
+	events, err := s.repo.ListAll()
+	if err != nil {
+		return nil, err
+	}
+	if events == nil {
+		events = []model.Event{}
+	}
+	return events, nil
+}
+
 func (s *EventService) List(from, to string) ([]model.Event, error) {
 	events, err := s.repo.List(from, to)
 	if err != nil {

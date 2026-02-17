@@ -59,6 +59,27 @@ func (r *SQLiteRepository) List(from, to string) ([]model.Event, error) {
 	return events, rows.Err()
 }
 
+func (r *SQLiteRepository) ListAll() ([]model.Event, error) {
+	rows, err := r.db.Query(
+		`SELECT id, title, description, start_time, end_time, color, created_at, updated_at
+		 FROM events ORDER BY start_time`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var events []model.Event
+	for rows.Next() {
+		var e model.Event
+		if err := rows.Scan(&e.ID, &e.Title, &e.Description, &e.StartTime, &e.EndTime, &e.Color, &e.CreatedAt, &e.UpdatedAt); err != nil {
+			return nil, err
+		}
+		events = append(events, e)
+	}
+	return events, rows.Err()
+}
+
 func (r *SQLiteRepository) GetByID(id int64) (*model.Event, error) {
 	var e model.Event
 	err := r.db.QueryRow(

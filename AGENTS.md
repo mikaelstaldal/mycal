@@ -39,3 +39,4 @@ Go backend with embedded Preact+HTM frontend (no JS build step). Single binary s
 - Repository returns `nil, nil` for not-found on GetByID; service layer maps this to `ErrNotFound`
 - Repository Delete returns `sql.ErrNoRows` for not-found; service maps to `ErrNotFound`
 - List endpoint requires `from`/`to` query params; uses overlapping range query (`start_time < to AND end_time > from`)
+- iCalendar (RFC 5545) feed at `/calendar.ics` and `/api/v1/events.ics` — `internal/ical` package encodes events, no external dependency

@@ -2,15 +2,18 @@ package handler
 
 import (
 	"errors"
+	"log"
 	"net/http"
 	"strconv"
 
+	"github.com/mikaelstaldal/mycal/internal/ical"
 	"github.com/mikaelstaldal/mycal/internal/model"
 	"github.com/mikaelstaldal/mycal/internal/service"
 )
 
 func registerEventRoutes(mux *http.ServeMux, svc *service.EventService) {
 	mux.HandleFunc("GET /api/v1/events", listEvents(svc))
+	mux.HandleFunc("GET /api/v1/events.ics", exportICalFeed(svc))
 	mux.HandleFunc("POST /api/v1/events", createEvent(svc))
 	mux.HandleFunc("GET /api/v1/events/{id}", getEvent(svc))
 	mux.HandleFunc("PUT /api/v1/events/{id}", updateEvent(svc))
@@ -119,5 +122,25 @@ func deleteEvent(svc *service.EventService) http.HandlerFunc {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+// NewCalendarFeedHandler returns a handler for the /calendar.ics convenience URL.
+func NewCalendarFeedHandler(svc *service.EventService) http.Handler {
+	return withMiddleware(exportICalFeed(svc))
+}
+
+func exportICalFeed(svc *service.EventService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		events, err := svc.ListAll()
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to list events")
+			return
+		}
+		w.Header().Set("Content-Type", "text/calendar; charset=utf-8")
+		w.Header().Set("Content-Disposition", "attachment; filename=\"mycal.ics\"")
+		if err := ical.Encode(w, events); err != nil {
+			log.Printf("error writing ical feed: %v", err)
+		}
 	}
 }

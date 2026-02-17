@@ -32,8 +32,11 @@ func main() {
 	svc := service.NewEventService(repo)
 	apiRouter := handler.NewRouter(svc)
 
+	calendarFeed := handler.NewCalendarFeedHandler(svc)
+
 	mux := http.NewServeMux()
 	mux.Handle("/api/", apiRouter)
+	mux.Handle("GET /calendar.ics", calendarFeed)
 
 	staticFS, err := fs.Sub(web.Static, "static")
 	if err != nil {
