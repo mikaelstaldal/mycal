@@ -114,6 +114,32 @@ func (s *EventService) Update(id int64, req *model.UpdateEventRequest) (*model.E
 	return existing, nil
 }
 
+func (s *EventService) Import(events []model.Event) (int, error) {
+	imported := 0
+	for _, e := range events {
+		req := &model.CreateEventRequest{
+			Title:       e.Title,
+			Description: e.Description,
+			StartTime:   e.StartTime,
+			EndTime:     e.EndTime,
+		}
+		if err := req.Validate(); err != nil {
+			continue
+		}
+		ev := &model.Event{
+			Title:       e.Title,
+			Description: e.Description,
+			StartTime:   e.StartTime,
+			EndTime:     e.EndTime,
+		}
+		if err := s.repo.Create(ev); err != nil {
+			continue
+		}
+		imported++
+	}
+	return imported, nil
+}
+
 func (s *EventService) Delete(id int64) error {
 	err := s.repo.Delete(id)
 	if errors.Is(err, sql.ErrNoRows) {

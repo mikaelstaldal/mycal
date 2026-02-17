@@ -305,6 +305,44 @@ body {
     font-family: inherit;
 }
 
+/* Top bar actions */
+.top-bar-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Import dialog */
+.import-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 16px;
+}
+
+.import-tab {
+    padding: 6px 16px;
+    border: 1px solid #ddd;
+    background: #fff;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.import-tab.active {
+    background: #4285f4;
+    color: #fff;
+    border-color: #4285f4;
+}
+
+.import-success {
+    background: #e8f5e9;
+    color: #2e7d32;
+    padding: 8px 12px;
+    border-radius: 4px;
+    margin-bottom: 12px;
+    font-size: 0.85rem;
+}
+
 /* Responsive */
 @media (max-width: 600px) {
     .app { padding: 8px; }

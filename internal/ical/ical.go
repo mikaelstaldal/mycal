@@ -1,6 +1,7 @@
 package ical
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"strings"
@@ -58,6 +59,164 @@ func Encode(w io.Writer, events []model.Event) error {
 
 func formatICalTime(t time.Time) string {
 	return t.UTC().Format("20060102T150405Z")
+}
+
+// Decode parses an iCalendar document and returns the events found.
+func Decode(r io.Reader) ([]model.Event, error) {
+	lines, err := unfoldLines(r)
+	if err != nil {
+		return nil, fmt.Errorf("reading ical: %w", err)
+	}
+
+	var events []model.Event
+	var inEvent bool
+	var props []string
+
+	for _, line := range lines {
+		upper := strings.ToUpper(strings.TrimSpace(line))
+		if upper == "BEGIN:VEVENT" {
+			inEvent = true
+			props = nil
+			continue
+		}
+		if upper == "END:VEVENT" {
+			inEvent = false
+			if ev, ok := parseEvent(props); ok {
+				events = append(events, ev)
+			}
+			continue
+		}
+		if inEvent {
+			props = append(props, line)
+		}
+	}
+
+	return events, nil
+}
+
+// unfoldLines reads iCal content and handles line unfolding per RFC 5545:
+// lines that start with a space or tab are continuations of the previous line.
+func unfoldLines(r io.Reader) ([]string, error) {
+	var lines []string
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		line := scanner.Text()
+		// Remove trailing \r if present
+		line = strings.TrimRight(line, "\r")
+		if len(line) > 0 && (line[0] == ' ' || line[0] == '\t') {
+			// Continuation line: append to previous
+			if len(lines) > 0 {
+				lines[len(lines)-1] += line[1:]
+			}
+		} else {
+			lines = append(lines, line)
+		}
+	}
+	return lines, scanner.Err()
+}
+
+func parseEvent(props []string) (model.Event, bool) {
+	var summary, description, dtstart, dtend string
+
+	for _, prop := range props {
+		name, params, value := parsePropLine(prop)
+		switch strings.ToUpper(name) {
+		case "SUMMARY":
+			summary = unescapeText(value)
+		case "DESCRIPTION":
+			description = unescapeText(value)
+		case "DTSTART":
+			dtstart = parseICalTime(value, params)
+		case "DTEND":
+			dtend = parseICalTime(value, params)
+		}
+	}
+
+	if summary == "" || dtstart == "" || dtend == "" {
+		return model.Event{}, false
+	}
+
+	return model.Event{
+		Title:       summary,
+		Description: description,
+		StartTime:   dtstart,
+		EndTime:     dtend,
+	}, true
+}
+
+// parsePropLine splits "DTSTART;TZID=Europe/Stockholm:20060102T150405" into
+// name="DTSTART", params="TZID=Europe/Stockholm", value="20060102T150405".
+func parsePropLine(line string) (name, params, value string) {
+	// Split at first colon that's not inside params
+	colonIdx := strings.Index(line, ":")
+	semiIdx := strings.Index(line, ";")
+
+	if colonIdx < 0 {
+		return line, "", ""
+	}
+
+	nameAndParams := line[:colonIdx]
+	value = line[colonIdx+1:]
+
+	if semiIdx >= 0 && semiIdx < colonIdx {
+		name = line[:semiIdx]
+		params = line[semiIdx+1 : colonIdx]
+	} else {
+		name = nameAndParams
+	}
+	return name, params, value
+}
+
+func parseICalTime(value, params string) string {
+	// Check for VALUE=DATE (all-day event)
+	upperParams := strings.ToUpper(params)
+	if strings.Contains(upperParams, "VALUE=DATE") {
+		t, err := time.Parse("20060102", value)
+		if err != nil {
+			return ""
+		}
+		return t.UTC().Format(time.RFC3339)
+	}
+
+	// Check for TZID
+	var loc *time.Location
+	for _, part := range strings.Split(params, ";") {
+		if strings.HasPrefix(strings.ToUpper(part), "TZID=") {
+			tzName := part[5:]
+			if l, err := time.LoadLocation(tzName); err == nil {
+				loc = l
+			}
+		}
+	}
+
+	// Try UTC format: 20060102T150405Z
+	if t, err := time.Parse("20060102T150405Z", value); err == nil {
+		return t.UTC().Format(time.RFC3339)
+	}
+
+	// Try local format with TZID: 20060102T150405
+	if t, err := time.Parse("20060102T150405", value); err == nil {
+		if loc != nil {
+			t = time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), 0, loc)
+		}
+		return t.UTC().Format(time.RFC3339)
+	}
+
+	// Try date-only without VALUE=DATE param
+	if t, err := time.Parse("20060102", value); err == nil {
+		return t.UTC().Format(time.RFC3339)
+	}
+
+	return ""
+}
+
+func unescapeText(s string) string {
+	s = strings.ReplaceAll(s, "\\n", "\n")
+	s = strings.ReplaceAll(s, "\\N", "\n")
+	s = strings.ReplaceAll(s, "\\,", ",")
+	s = strings.ReplaceAll(s, "\\;", ";")
+	s = strings.ReplaceAll(s, "\\\\", "\\")
+	return s
 }
 
 func escapeText(s string) string {

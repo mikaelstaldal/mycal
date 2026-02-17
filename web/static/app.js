@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'preact/hooks';
 import { Nav } from './components/nav.js';
 import { Calendar } from './components/calendar.js';
 import { EventForm } from './components/event-form.js';
+import { ImportForm } from './components/import-form.js';
 import { Settings } from './components/settings.js';
 import { listEvents, createEvent, updateEvent, deleteEvent } from './lib/api.js';
 import { addMonths, toRFC3339 } from './lib/date-utils.js';
@@ -15,6 +16,7 @@ function App() {
     const [selectedEvent, setSelectedEvent] = useState(null);
     const [defaultDate, setDefaultDate] = useState(null);
     const [config, setConfig] = useState(getConfig);
+    const [showImport, setShowImport] = useState(false);
 
     const loadEvents = useCallback(async () => {
         const year = currentDate.getFullYear();
@@ -76,7 +78,12 @@ function App() {
             <div class="top-bar">
                 <${Nav} currentDate=${currentDate}
                         onPrev=${handlePrev} onNext=${handleNext} onToday=${handleToday} />
-                <${Settings} config=${config} onConfigChange=${setConfig} />
+                <div class="top-bar-actions">
+                    <button class="settings-btn" onClick=${() => setShowImport(true)} title="Import">
+                        \u2B07
+                    </button>
+                    <${Settings} config=${config} onConfigChange=${setConfig} />
+                </div>
             </div>
             <${Calendar} currentDate=${currentDate} events=${events}
                          onDayClick=${handleDayClick} onEventClick=${handleEventClick}
@@ -85,6 +92,10 @@ function App() {
                 <${EventForm} event=${selectedEvent} defaultDate=${defaultDate}
                               onSave=${handleSave} onDelete=${handleDelete} onClose=${handleClose}
                               config=${config} />
+            `}
+            ${showImport && html`
+                <${ImportForm} onImported=${() => { loadEvents(); }}
+                               onClose=${() => setShowImport(false)} />
             `}
         </div>
     `;

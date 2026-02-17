@@ -2,9 +2,12 @@ package handler
 
 import (
 	"errors"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/mikaelstaldal/mycal/internal/ical"
 	"github.com/mikaelstaldal/mycal/internal/model"
@@ -18,6 +21,7 @@ func registerEventRoutes(mux *http.ServeMux, svc *service.EventService) {
 	mux.HandleFunc("GET /api/v1/events/{id}", getEvent(svc))
 	mux.HandleFunc("PUT /api/v1/events/{id}", updateEvent(svc))
 	mux.HandleFunc("DELETE /api/v1/events/{id}", deleteEvent(svc))
+	mux.HandleFunc("POST /api/v1/import", importEvents(svc))
 }
 
 func listEvents(svc *service.EventService) http.HandlerFunc {
@@ -128,6 +132,60 @@ func deleteEvent(svc *service.EventService) http.HandlerFunc {
 // NewCalendarFeedHandler returns a handler for the /calendar.ics convenience URL.
 func NewCalendarFeedHandler(svc *service.EventService) http.Handler {
 	return withMiddleware(exportICalFeed(svc))
+}
+
+const maxImportSize = 5 * 1024 * 1024 // 5MB
+
+func importEvents(svc *service.EventService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			ICSContent string `json:"ics_content"`
+			URL        string `json:"url"`
+		}
+		if err := readJSON(r, &req); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid JSON")
+			return
+		}
+
+		var icsReader io.Reader
+		if req.ICSContent != "" {
+			if len(req.ICSContent) > maxImportSize {
+				writeError(w, http.StatusBadRequest, "content too large (max 5MB)")
+				return
+			}
+			icsReader = strings.NewReader(req.ICSContent)
+		} else if req.URL != "" {
+			client := &http.Client{Timeout: 10 * time.Second}
+			resp, err := client.Get(req.URL)
+			if err != nil {
+				writeError(w, http.StatusBadRequest, "failed to fetch URL")
+				return
+			}
+			defer resp.Body.Close()
+			if resp.StatusCode != http.StatusOK {
+				writeError(w, http.StatusBadRequest, "URL returned non-200 status")
+				return
+			}
+			icsReader = io.LimitReader(resp.Body, maxImportSize)
+		} else {
+			writeError(w, http.StatusBadRequest, "ics_content or url is required")
+			return
+		}
+
+		events, err := ical.Decode(icsReader)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "failed to parse iCal data")
+			return
+		}
+
+		imported, err := svc.Import(events)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to import events")
+			return
+		}
+
+		writeJSON(w, http.StatusOK, map[string]int{"imported": imported})
+	}
 }
 
 func exportICalFeed(svc *service.EventService) http.HandlerFunc {
