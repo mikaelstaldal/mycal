@@ -1,10 +1,10 @@
 import { html } from 'htm/preact';
-import { getCalendarDays, isToday, isSameDay } from '../lib/date-utils.js';
+import { getCalendarDays, getWeekdays, isToday, formatTime } from '../lib/date-utils.js';
 
-const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-export function Calendar({ currentDate, events, onDayClick, onEventClick }) {
-    const days = getCalendarDays(currentDate.getFullYear(), currentDate.getMonth());
+export function Calendar({ currentDate, events, onDayClick, onEventClick, config }) {
+    const weekStartDay = config.weekStartDay;
+    const days = getCalendarDays(currentDate.getFullYear(), currentDate.getMonth(), weekStartDay);
+    const weekdays = getWeekdays(weekStartDay);
 
     function eventsForDay(date) {
         return events.filter(e => {
@@ -19,7 +19,7 @@ export function Calendar({ currentDate, events, onDayClick, onEventClick }) {
     return html`
         <div class="calendar">
             <div class="calendar-header">
-                ${WEEKDAYS.map(d => html`<div class="weekday">${d}</div>`)}
+                ${weekdays.map(d => html`<div class="weekday">${d}</div>`)}
             </div>
             <div class="calendar-grid">
                 ${days.map(({ date, currentMonth }) => {
@@ -37,7 +37,7 @@ export function Calendar({ currentDate, events, onDayClick, onEventClick }) {
                                     <div class="event-chip"
                                          style=${e.color ? `background-color: ${e.color}` : ''}
                                          onClick=${(ev) => { ev.stopPropagation(); onEventClick(e); }}>
-                                        ${e.title}
+                                        ${formatTime(e.start_time, config.clockFormat)} ${e.title}
                                     </div>
                                 `)}
                             </div>

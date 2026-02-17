@@ -3,8 +3,10 @@ import { useState, useEffect, useCallback } from 'preact/hooks';
 import { Nav } from './components/nav.js';
 import { Calendar } from './components/calendar.js';
 import { EventForm } from './components/event-form.js';
+import { Settings } from './components/settings.js';
 import { listEvents, createEvent, updateEvent, deleteEvent } from './lib/api.js';
 import { addMonths, toRFC3339 } from './lib/date-utils.js';
+import { getConfig } from './lib/config.js';
 
 function App() {
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -12,6 +14,7 @@ function App() {
     const [showForm, setShowForm] = useState(false);
     const [selectedEvent, setSelectedEvent] = useState(null);
     const [defaultDate, setDefaultDate] = useState(null);
+    const [config, setConfig] = useState(getConfig);
 
     const loadEvents = useCallback(async () => {
         const year = currentDate.getFullYear();
@@ -70,13 +73,18 @@ function App() {
 
     return html`
         <div class="app">
-            <${Nav} currentDate=${currentDate}
-                    onPrev=${handlePrev} onNext=${handleNext} onToday=${handleToday} />
+            <div class="top-bar">
+                <${Nav} currentDate=${currentDate}
+                        onPrev=${handlePrev} onNext=${handleNext} onToday=${handleToday} />
+                <${Settings} config=${config} onConfigChange=${setConfig} />
+            </div>
             <${Calendar} currentDate=${currentDate} events=${events}
-                         onDayClick=${handleDayClick} onEventClick=${handleEventClick} />
+                         onDayClick=${handleDayClick} onEventClick=${handleEventClick}
+                         config=${config} />
             ${showForm && html`
                 <${EventForm} event=${selectedEvent} defaultDate=${defaultDate}
-                              onSave=${handleSave} onDelete=${handleDelete} onClose=${handleClose} />
+                              onSave=${handleSave} onDelete=${handleDelete} onClose=${handleClose}
+                              config=${config} />
             `}
         </div>
     `;

@@ -1,10 +1,15 @@
 import { html } from 'htm/preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
-import { toLocalDatetimeValue, fromLocalDatetimeValue } from '../lib/date-utils.js';
+import { toLocalDatetimeValue, fromLocalDatetimeValue, formatDate, formatTime } from '../lib/date-utils.js';
 
 const COLORS = ['#4285f4', '#ea4335', '#fbbc04', '#34a853', '#ff6d01', '#46bdc6', '#7baaf7', '#e67c73'];
 
-export function EventForm({ event, defaultDate, onSave, onDelete, onClose }) {
+function formatDatetime(isoStr, config) {
+    const d = new Date(isoStr);
+    return `${formatDate(d, config.dateFormat)} ${formatTime(isoStr, config.clockFormat)}`;
+}
+
+export function EventForm({ event, defaultDate, onSave, onDelete, onClose, config }) {
     const dialogRef = useRef(null);
     const [editing, setEditing] = useState(!event);
     const [title, setTitle] = useState('');
@@ -93,14 +98,20 @@ export function EventForm({ event, defaultDate, onSave, onDelete, onClose }) {
 
                 <label>
                     Start
-                    <input type="datetime-local" value=${startTime} disabled=${!editing}
-                           onInput=${e => setStartTime(e.target.value)} />
+                    ${editing
+                        ? html`<input type="datetime-local" value=${startTime}
+                                      onInput=${e => setStartTime(e.target.value)} />`
+                        : html`<input type="text" disabled value=${event ? formatDatetime(event.start_time, config) : ''} />`
+                    }
                 </label>
 
                 <label>
                     End
-                    <input type="datetime-local" value=${endTime} disabled=${!editing}
-                           onInput=${e => setEndTime(e.target.value)} />
+                    ${editing
+                        ? html`<input type="datetime-local" value=${endTime}
+                                      onInput=${e => setEndTime(e.target.value)} />`
+                        : html`<input type="text" disabled value=${event ? formatDatetime(event.end_time, config) : ''} />`
+                    }
                 </label>
 
                 ${editing && html`
