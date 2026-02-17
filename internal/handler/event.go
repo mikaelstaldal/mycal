@@ -1,0 +1,123 @@
+package handler
+
+import (
+	"errors"
+	"net/http"
+	"strconv"
+
+	"github.com/mikaelstaldal/mycal/internal/model"
+	"github.com/mikaelstaldal/mycal/internal/service"
+)
+
+func registerEventRoutes(mux *http.ServeMux, svc *service.EventService) {
+	mux.HandleFunc("GET /api/v1/events", listEvents(svc))
+	mux.HandleFunc("POST /api/v1/events", createEvent(svc))
+	mux.HandleFunc("GET /api/v1/events/{id}", getEvent(svc))
+	mux.HandleFunc("PUT /api/v1/events/{id}", updateEvent(svc))
+	mux.HandleFunc("DELETE /api/v1/events/{id}", deleteEvent(svc))
+}
+
+func listEvents(svc *service.EventService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		from := r.URL.Query().Get("from")
+		to := r.URL.Query().Get("to")
+		if from == "" || to == "" {
+			writeError(w, http.StatusBadRequest, "from and to query parameters are required")
+			return
+		}
+		events, err := svc.List(from, to)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to list events")
+			return
+		}
+		writeJSON(w, http.StatusOK, events)
+	}
+}
+
+func createEvent(svc *service.EventService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req model.CreateEventRequest
+		if err := readJSON(r, &req); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid JSON")
+			return
+		}
+		event, err := svc.Create(&req)
+		if err != nil {
+			if errors.Is(err, service.ErrValidation) {
+				writeError(w, http.StatusBadRequest, err.Error())
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "failed to create event")
+			return
+		}
+		writeJSON(w, http.StatusCreated, event)
+	}
+}
+
+func getEvent(svc *service.EventService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid id")
+			return
+		}
+		event, err := svc.GetByID(id)
+		if err != nil {
+			if errors.Is(err, service.ErrNotFound) {
+				writeError(w, http.StatusNotFound, "event not found")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "failed to get event")
+			return
+		}
+		writeJSON(w, http.StatusOK, event)
+	}
+}
+
+func updateEvent(svc *service.EventService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid id")
+			return
+		}
+		var req model.UpdateEventRequest
+		if err := readJSON(r, &req); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid JSON")
+			return
+		}
+		event, err := svc.Update(id, &req)
+		if err != nil {
+			if errors.Is(err, service.ErrNotFound) {
+				writeError(w, http.StatusNotFound, "event not found")
+				return
+			}
+			if errors.Is(err, service.ErrValidation) {
+				writeError(w, http.StatusBadRequest, err.Error())
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "failed to update event")
+			return
+		}
+		writeJSON(w, http.StatusOK, event)
+	}
+}
+
+func deleteEvent(svc *service.EventService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid id")
+			return
+		}
+		if err := svc.Delete(id); err != nil {
+			if errors.Is(err, service.ErrNotFound) {
+				writeError(w, http.StatusNotFound, "event not found")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "failed to delete event")
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
