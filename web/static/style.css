@@ -11,9 +11,8 @@ body {
 }
 
 .app {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 16px;
+    margin: 0;
+    padding: 8px 16px;
 }
 
 /* Top bar */
@@ -585,7 +584,7 @@ body {
 
 /* Responsive */
 @media (max-width: 600px) {
-    .app { padding: 8px; }
+    .app { padding: 4px 8px; }
     .day { min-height: 60px; }
     .event-chip { font-size: 0.65rem; }
     .nav h1 { font-size: 1.1rem; }
