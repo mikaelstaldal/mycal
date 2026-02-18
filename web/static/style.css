@@ -515,6 +515,74 @@ body {
     opacity: 0.9;
 }
 
+/* Search */
+.search-input {
+    padding: 6px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    width: 200px;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #4285f4;
+}
+
+.search-results {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.search-result-item {
+    padding: 12px 16px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+}
+
+.search-result-item:last-child {
+    border-bottom: none;
+}
+
+.search-result-item:hover {
+    background: #f8f8f8;
+}
+
+.search-result-title {
+    font-weight: 500;
+    font-size: 0.95rem;
+    margin-bottom: 2px;
+}
+
+.search-result-date {
+    font-size: 0.8rem;
+    color: #666;
+}
+
+.search-result-time {
+    font-size: 0.8rem;
+    color: #888;
+}
+
+.search-result-desc {
+    font-size: 0.8rem;
+    color: #888;
+    margin-top: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.search-empty {
+    padding: 24px 16px;
+    text-align: center;
+    color: #888;
+    font-size: 0.9rem;
+}
+
 /* Responsive */
 @media (max-width: 600px) {
     .app { padding: 8px; }
@@ -527,4 +595,5 @@ body {
     .time-gutter { font-size: 0.6rem; padding-right: 4px; }
     .week-day-name { font-size: 0.65rem; }
     .view-toggle button { font-size: 0.75rem; padding: 4px 8px; }
+    .search-input { width: 140px; font-size: 0.8rem; }
 }

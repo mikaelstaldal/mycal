@@ -1,12 +1,12 @@
 import { html, render } from 'htm/preact';
-import { useState, useEffect, useCallback } from 'preact/hooks';
+import { useState, useEffect, useCallback, useRef } from 'preact/hooks';
 import { Nav } from './components/nav.js';
 import { Calendar } from './components/calendar.js';
 import { WeekView } from './components/week-view.js';
 import { EventForm } from './components/event-form.js';
 import { ImportForm } from './components/import-form.js';
 import { Settings } from './components/settings.js';
-import { listEvents, createEvent, updateEvent, deleteEvent } from './lib/api.js';
+import { listEvents, searchEvents, createEvent, updateEvent, deleteEvent } from './lib/api.js';
 import { addMonths, addWeeks, startOfWeek, toRFC3339 } from './lib/date-utils.js';
 import { getConfig } from './lib/config.js';
 
@@ -19,6 +19,9 @@ function App() {
     const [config, setConfig] = useState(getConfig);
     const [showImport, setShowImport] = useState(false);
     const [viewMode, setViewMode] = useState('month');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState(null);
+    const searchTimer = useRef(null);
 
     const loadEvents = useCallback(async () => {
         let from, to;
@@ -97,6 +100,41 @@ function App() {
         setSelectedEvent(null);
     }
 
+    function handleSearchInput(e) {
+        const value = e.target.value;
+        setSearchQuery(value);
+        if (searchTimer.current) clearTimeout(searchTimer.current);
+        if (!value.trim()) {
+            setSearchResults(null);
+            return;
+        }
+        searchTimer.current = setTimeout(async () => {
+            try {
+                const results = await searchEvents(value.trim());
+                setSearchResults(results);
+            } catch (err) {
+                console.error('Search failed:', err);
+            }
+        }, 300);
+    }
+
+    function handleClearSearch() {
+        setSearchQuery('');
+        setSearchResults(null);
+    }
+
+    function formatSearchDate(startTime) {
+        const d = new Date(startTime);
+        return d.toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+    }
+
+    function formatSearchTime(startTime, endTime) {
+        const s = new Date(startTime);
+        const e = new Date(endTime);
+        return s.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) + ' - ' +
+               e.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    }
+
     return html`
         <div class="app">
             <div class="top-bar">
@@ -105,13 +143,29 @@ function App() {
                         viewMode=${viewMode} onViewChange=${handleViewChange}
                         weekStartDay=${config.weekStartDay} />
                 <div class="top-bar-actions">
+                    <input type="search" class="search-input" placeholder="Search events..."
+                           value=${searchQuery} onInput=${handleSearchInput} />
                     <button class="settings-btn" onClick=${() => setShowImport(true)} title="Import">
                         \u2B07
                     </button>
                     <${Settings} config=${config} onConfigChange=${setConfig} />
                 </div>
             </div>
-            ${viewMode === 'week' ? html`
+            ${searchResults !== null ? html`
+                <div class="search-results">
+                    ${searchResults.length === 0 ? html`
+                        <div class="search-empty">No events found for "${searchQuery}"</div>
+                    ` : searchResults.map(event => html`
+                        <div class="search-result-item" key=${event.id}
+                             onClick=${() => handleEventClick(event)}>
+                            <div class="search-result-title">${event.title}</div>
+                            <div class="search-result-date">${formatSearchDate(event.start_time)}</div>
+                            <div class="search-result-time">${formatSearchTime(event.start_time, event.end_time)}</div>
+                            ${event.description && html`<div class="search-result-desc">${event.description}</div>`}
+                        </div>
+                    `)}
+                </div>
+            ` : viewMode === 'week' ? html`
                 <${WeekView} currentDate=${currentDate} events=${events}
                              onDayClick=${handleDayClick} onEventClick=${handleEventClick}
                              config=${config} />

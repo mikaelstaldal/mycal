@@ -37,6 +37,12 @@ export async function deleteEvent(id) {
     if (!res.ok) throw new Error((await res.json()).error);
 }
 
+export async function searchEvents(query) {
+    const res = await fetch(`${BASE}?q=${encodeURIComponent(query)}`);
+    if (!res.ok) throw new Error((await res.json()).error);
+    return res.json();
+}
+
 export async function importEvents(data) {
     const res = await fetch('/api/v1/import', {
         method: 'POST',

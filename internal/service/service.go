@@ -45,6 +45,17 @@ func (s *EventService) List(from, to string) ([]model.Event, error) {
 	return events, nil
 }
 
+func (s *EventService) Search(query, from, to string) ([]model.Event, error) {
+	events, err := s.repo.Search(query, from, to)
+	if err != nil {
+		return nil, err
+	}
+	if events == nil {
+		events = []model.Event{}
+	}
+	return events, nil
+}
+
 func (s *EventService) GetByID(id int64) (*model.Event, error) {
 	e, err := s.repo.GetByID(id)
 	if err != nil {

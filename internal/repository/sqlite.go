@@ -3,6 +3,7 @@ package repository
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"github.com/mikaelstaldal/mycal/internal/model"
 	_ "modernc.org/sqlite"
@@ -33,7 +34,26 @@ func initSchema(db *sql.DB) error {
 		);
 		CREATE INDEX IF NOT EXISTS idx_events_start_time ON events(start_time);
 		CREATE INDEX IF NOT EXISTS idx_events_end_time ON events(end_time);
+
+		CREATE VIRTUAL TABLE IF NOT EXISTS events_fts USING fts5(
+			title, description, content='events', content_rowid='id'
+		);
+
+		CREATE TRIGGER IF NOT EXISTS events_ai AFTER INSERT ON events BEGIN
+			INSERT INTO events_fts(rowid, title, description) VALUES (new.id, new.title, new.description);
+		END;
+		CREATE TRIGGER IF NOT EXISTS events_ad AFTER DELETE ON events BEGIN
+			INSERT INTO events_fts(events_fts, rowid, title, description) VALUES('delete', old.id, old.title, old.description);
+		END;
+		CREATE TRIGGER IF NOT EXISTS events_au AFTER UPDATE ON events BEGIN
+			INSERT INTO events_fts(events_fts, rowid, title, description) VALUES('delete', old.id, old.title, old.description);
+			INSERT INTO events_fts(rowid, title, description) VALUES (new.id, new.title, new.description);
+		END;
 	`)
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec(`INSERT INTO events_fts(events_fts) VALUES('rebuild')`)
 	return err
 }
 
@@ -64,6 +84,55 @@ func (r *SQLiteRepository) ListAll() ([]model.Event, error) {
 		`SELECT id, title, description, start_time, end_time, color, created_at, updated_at
 		 FROM events ORDER BY start_time`,
 	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var events []model.Event
+	for rows.Next() {
+		var e model.Event
+		if err := rows.Scan(&e.ID, &e.Title, &e.Description, &e.StartTime, &e.EndTime, &e.Color, &e.CreatedAt, &e.UpdatedAt); err != nil {
+			return nil, err
+		}
+		events = append(events, e)
+	}
+	return events, rows.Err()
+}
+
+func sanitizeFTSQuery(query string) string {
+	terms := strings.Fields(query)
+	quoted := make([]string, 0, len(terms))
+	for _, t := range terms {
+		escaped := strings.ReplaceAll(t, `"`, `""`)
+		quoted = append(quoted, `"`+escaped+`"`)
+	}
+	return strings.Join(quoted, " ")
+}
+
+func (r *SQLiteRepository) Search(query, from, to string) ([]model.Event, error) {
+	ftsQuery := sanitizeFTSQuery(query)
+	if ftsQuery == "" {
+		return nil, nil
+	}
+
+	var sb strings.Builder
+	var args []any
+
+	sb.WriteString(`SELECT e.id, e.title, e.description, e.start_time, e.end_time, e.color, e.created_at, e.updated_at
+		FROM events e
+		JOIN events_fts f ON e.id = f.rowid
+		WHERE events_fts MATCH ?`)
+	args = append(args, ftsQuery)
+
+	if from != "" && to != "" {
+		sb.WriteString(` AND e.start_time < ? AND e.end_time > ?`)
+		args = append(args, to, from)
+	}
+
+	sb.WriteString(` ORDER BY f.rank`)
+
+	rows, err := r.db.Query(sb.String(), args...)
 	if err != nil {
 		return nil, err
 	}

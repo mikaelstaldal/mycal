@@ -26,8 +26,20 @@ func registerEventRoutes(mux *http.ServeMux, svc *service.EventService) {
 
 func listEvents(svc *service.EventService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query().Get("q")
 		from := r.URL.Query().Get("from")
 		to := r.URL.Query().Get("to")
+
+		if q != "" {
+			events, err := svc.Search(q, from, to)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "failed to search events")
+				return
+			}
+			writeJSON(w, http.StatusOK, events)
+			return
+		}
+
 		if from == "" || to == "" {
 			writeError(w, http.StatusBadRequest, "from and to query parameters are required")
 			return
