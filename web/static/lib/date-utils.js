@@ -95,6 +95,38 @@ export function fromLocalDatetimeValue(val) {
     return new Date(val).toISOString();
 }
 
+export function toLocalDateValue(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+
+export function formatDateOnly(dateStr, dateFormat) {
+    const d = new Date(dateStr);
+    return formatDate(d, dateFormat);
+}
+
+// Convert exclusive end date (server) to inclusive end date (UI).
+// A single-day event on Feb 25 is stored as end=Feb 26; display as Feb 25.
+export function exclusiveToInclusiveDate(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    d.setUTCDate(d.getUTCDate() - 1);
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())}`;
+}
+
+// Convert inclusive end date (UI) to exclusive end date (server).
+// User enters Feb 25; send as Feb 26 to the server.
+export function inclusiveToExclusiveDate(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() + 1);
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())}`;
+}
+
 export function startOfWeek(date, weekStartDay = 1) {
     const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
     const day = d.getDay();

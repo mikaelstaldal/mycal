@@ -28,6 +28,7 @@ func initSchema(db *sql.DB) error {
 			description TEXT NOT NULL DEFAULT '',
 			start_time  TEXT NOT NULL,
 			end_time    TEXT NOT NULL,
+			all_day     INTEGER NOT NULL DEFAULT 0,
 			color       TEXT NOT NULL DEFAULT '',
 			created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
 			updated_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
@@ -53,13 +54,61 @@ func initSchema(db *sql.DB) error {
 	if err != nil {
 		return err
 	}
+
+	// Migration: add all_day column if it doesn't exist
+	if err := migrateAddAllDay(db); err != nil {
+		return err
+	}
+
 	_, err = db.Exec(`INSERT INTO events_fts(events_fts) VALUES('rebuild')`)
 	return err
 }
 
+func migrateAddAllDay(db *sql.DB) error {
+	rows, err := db.Query(`PRAGMA table_info(events)`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	hasAllDay := false
+	for rows.Next() {
+		var cid int
+		var name, typ string
+		var notnull int
+		var dflt sql.NullString
+		var pk int
+		if err := rows.Scan(&cid, &name, &typ, &notnull, &dflt, &pk); err != nil {
+			return err
+		}
+		if name == "all_day" {
+			hasAllDay = true
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	if !hasAllDay {
+		_, err := db.Exec(`ALTER TABLE events ADD COLUMN all_day INTEGER NOT NULL DEFAULT 0`)
+		if err != nil {
+			return fmt.Errorf("migrate add all_day: %w", err)
+		}
+	}
+	return nil
+}
+
+const selectColumns = `id, title, description, start_time, end_time, all_day, color, created_at, updated_at`
+
+func scanEvent(scanner interface{ Scan(...any) error }) (model.Event, error) {
+	var e model.Event
+	err := scanner.Scan(&e.ID, &e.Title, &e.Description, &e.StartTime, &e.EndTime, &e.AllDay, &e.Color, &e.CreatedAt, &e.UpdatedAt)
+	return e, err
+}
+
 func (r *SQLiteRepository) List(from, to string) ([]model.Event, error) {
 	rows, err := r.db.Query(
-		`SELECT id, title, description, start_time, end_time, color, created_at, updated_at
+		`SELECT `+selectColumns+`
 		 FROM events WHERE start_time < ? AND end_time > ? ORDER BY start_time`,
 		to, from,
 	)
@@ -70,8 +119,8 @@ func (r *SQLiteRepository) List(from, to string) ([]model.Event, error) {
 
 	var events []model.Event
 	for rows.Next() {
-		var e model.Event
-		if err := rows.Scan(&e.ID, &e.Title, &e.Description, &e.StartTime, &e.EndTime, &e.Color, &e.CreatedAt, &e.UpdatedAt); err != nil {
+		e, err := scanEvent(rows)
+		if err != nil {
 			return nil, err
 		}
 		events = append(events, e)
@@ -81,7 +130,7 @@ func (r *SQLiteRepository) List(from, to string) ([]model.Event, error) {
 
 func (r *SQLiteRepository) ListAll() ([]model.Event, error) {
 	rows, err := r.db.Query(
-		`SELECT id, title, description, start_time, end_time, color, created_at, updated_at
+		`SELECT ` + selectColumns + `
 		 FROM events ORDER BY start_time`,
 	)
 	if err != nil {
@@ -91,8 +140,8 @@ func (r *SQLiteRepository) ListAll() ([]model.Event, error) {
 
 	var events []model.Event
 	for rows.Next() {
-		var e model.Event
-		if err := rows.Scan(&e.ID, &e.Title, &e.Description, &e.StartTime, &e.EndTime, &e.Color, &e.CreatedAt, &e.UpdatedAt); err != nil {
+		e, err := scanEvent(rows)
+		if err != nil {
 			return nil, err
 		}
 		events = append(events, e)
@@ -119,7 +168,7 @@ func (r *SQLiteRepository) Search(query, from, to string) ([]model.Event, error)
 	var sb strings.Builder
 	var args []any
 
-	sb.WriteString(`SELECT e.id, e.title, e.description, e.start_time, e.end_time, e.color, e.created_at, e.updated_at
+	sb.WriteString(`SELECT e.id, e.title, e.description, e.start_time, e.end_time, e.all_day, e.color, e.created_at, e.updated_at
 		FROM events e
 		JOIN events_fts f ON e.id = f.rowid
 		WHERE events_fts MATCH ?`)
@@ -140,8 +189,8 @@ func (r *SQLiteRepository) Search(query, from, to string) ([]model.Event, error)
 
 	var events []model.Event
 	for rows.Next() {
-		var e model.Event
-		if err := rows.Scan(&e.ID, &e.Title, &e.Description, &e.StartTime, &e.EndTime, &e.Color, &e.CreatedAt, &e.UpdatedAt); err != nil {
+		e, err := scanEvent(rows)
+		if err != nil {
 			return nil, err
 		}
 		events = append(events, e)
@@ -150,11 +199,10 @@ func (r *SQLiteRepository) Search(query, from, to string) ([]model.Event, error)
 }
 
 func (r *SQLiteRepository) GetByID(id int64) (*model.Event, error) {
-	var e model.Event
-	err := r.db.QueryRow(
-		`SELECT id, title, description, start_time, end_time, color, created_at, updated_at
+	e, err := scanEvent(r.db.QueryRow(
+		`SELECT `+selectColumns+`
 		 FROM events WHERE id = ?`, id,
-	).Scan(&e.ID, &e.Title, &e.Description, &e.StartTime, &e.EndTime, &e.Color, &e.CreatedAt, &e.UpdatedAt)
+	))
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -166,8 +214,8 @@ func (r *SQLiteRepository) GetByID(id int64) (*model.Event, error) {
 
 func (r *SQLiteRepository) Create(event *model.Event) error {
 	result, err := r.db.Exec(
-		`INSERT INTO events (title, description, start_time, end_time, color) VALUES (?, ?, ?, ?, ?)`,
-		event.Title, event.Description, event.StartTime, event.EndTime, event.Color,
+		`INSERT INTO events (title, description, start_time, end_time, all_day, color) VALUES (?, ?, ?, ?, ?, ?)`,
+		event.Title, event.Description, event.StartTime, event.EndTime, event.AllDay, event.Color,
 	)
 	if err != nil {
 		return err
@@ -185,9 +233,9 @@ func (r *SQLiteRepository) Create(event *model.Event) error {
 
 func (r *SQLiteRepository) Update(event *model.Event) error {
 	_, err := r.db.Exec(
-		`UPDATE events SET title=?, description=?, start_time=?, end_time=?, color=?,
+		`UPDATE events SET title=?, description=?, start_time=?, end_time=?, all_day=?, color=?,
 		 updated_at=strftime('%Y-%m-%dT%H:%M:%SZ','now') WHERE id=?`,
-		event.Title, event.Description, event.StartTime, event.EndTime, event.Color, event.ID,
+		event.Title, event.Description, event.StartTime, event.EndTime, event.AllDay, event.Color, event.ID,
 	)
 	if err != nil {
 		return err

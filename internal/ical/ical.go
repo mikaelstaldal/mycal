@@ -32,8 +32,13 @@ func Encode(w io.Writer, events []model.Event) error {
 
 		b.WriteString("BEGIN:VEVENT\r\n")
 		b.WriteString(fmt.Sprintf("UID:event-%d@mycal\r\n", e.ID))
-		b.WriteString(fmt.Sprintf("DTSTART:%s\r\n", formatICalTime(start)))
-		b.WriteString(fmt.Sprintf("DTEND:%s\r\n", formatICalTime(end)))
+		if e.AllDay {
+			b.WriteString(fmt.Sprintf("DTSTART;VALUE=DATE:%s\r\n", start.UTC().Format("20060102")))
+			b.WriteString(fmt.Sprintf("DTEND;VALUE=DATE:%s\r\n", end.UTC().Format("20060102")))
+		} else {
+			b.WriteString(fmt.Sprintf("DTSTART:%s\r\n", formatICalTime(start)))
+			b.WriteString(fmt.Sprintf("DTEND:%s\r\n", formatICalTime(end)))
+		}
 		b.WriteString(fmt.Sprintf("SUMMARY:%s\r\n", escapeText(e.Title)))
 		if e.Description != "" {
 			b.WriteString(fmt.Sprintf("DESCRIPTION:%s\r\n", escapeText(e.Description)))
@@ -117,6 +122,7 @@ func unfoldLines(r io.Reader) ([]string, error) {
 
 func parseEvent(props []string) (model.Event, bool) {
 	var summary, description, dtstart, dtend string
+	allDay := false
 
 	for _, prop := range props {
 		name, params, value := parsePropLine(prop)
@@ -126,6 +132,10 @@ func parseEvent(props []string) (model.Event, bool) {
 		case "DESCRIPTION":
 			description = unescapeText(value)
 		case "DTSTART":
+			upperParams := strings.ToUpper(params)
+			if strings.Contains(upperParams, "VALUE=DATE") {
+				allDay = true
+			}
 			dtstart = parseICalTime(value, params)
 		case "DTEND":
 			dtend = parseICalTime(value, params)
@@ -141,6 +151,7 @@ func parseEvent(props []string) (model.Event, bool) {
 		Description: description,
 		StartTime:   dtstart,
 		EndTime:     dtend,
+		AllDay:      allDay,
 	}, true
 }
 

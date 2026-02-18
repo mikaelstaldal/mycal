@@ -376,6 +376,23 @@ body {
     background: #f0f0f0;
 }
 
+/* Checkbox label in form */
+.checkbox-label {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    font-size: 0.85rem;
+    color: #555;
+    cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+}
+
 /* Week view */
 .week-view {
     border: 1px solid #ddd;
@@ -514,6 +531,50 @@ body {
     opacity: 0.9;
 }
 
+/* All-day row in week view */
+.week-allday-row {
+    display: grid;
+    grid-template-columns: 60px repeat(7, 1fr);
+    border-bottom: 1px solid #ddd;
+    min-height: 28px;
+}
+
+.allday-label {
+    font-size: 0.7rem;
+    color: #999;
+    text-align: right;
+    padding: 4px 8px 4px 0;
+    border-right: 1px solid #ddd;
+}
+
+.allday-cell {
+    padding: 2px;
+    border-right: 1px solid #eee;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.allday-cell:last-child {
+    border-right: none;
+}
+
+.allday-event {
+    font-size: 0.7rem;
+    padding: 2px 4px;
+    border-radius: 3px;
+    background: #4285f4;
+    color: #fff;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.allday-event:hover {
+    opacity: 0.85;
+}
+
 /* Search */
 .search-input {
     padding: 6px 12px;
@@ -591,6 +652,7 @@ body {
     .week-header { grid-template-columns: 40px repeat(7, 1fr); }
     .week-grid { grid-template-columns: 40px repeat(7, 1fr); }
     .week-events-overlay { grid-template-columns: 40px repeat(7, 1fr); }
+    .week-allday-row { grid-template-columns: 40px repeat(7, 1fr); }
     .time-gutter { font-size: 0.6rem; padding-right: 4px; }
     .week-day-name { font-size: 0.65rem; }
     .view-toggle button { font-size: 0.75rem; padding: 4px 8px; }

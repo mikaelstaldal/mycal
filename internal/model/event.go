@@ -11,6 +11,7 @@ type Event struct {
 	Description string `json:"description"`
 	StartTime   string `json:"start_time"`
 	EndTime     string `json:"end_time"`
+	AllDay      bool   `json:"all_day"`
 	Color       string `json:"color"`
 	CreatedAt   string `json:"created_at"`
 	UpdatedAt   string `json:"updated_at"`
@@ -21,8 +22,11 @@ type CreateEventRequest struct {
 	Description string `json:"description"`
 	StartTime   string `json:"start_time"`
 	EndTime     string `json:"end_time"`
+	AllDay      bool   `json:"all_day"`
 	Color       string `json:"color"`
 }
+
+const dateOnly = "2006-01-02"
 
 func (r *CreateEventRequest) Validate() error {
 	if r.Title == "" {
@@ -31,6 +35,31 @@ func (r *CreateEventRequest) Validate() error {
 	if r.StartTime == "" {
 		return fmt.Errorf("start_time is required")
 	}
+
+	if r.AllDay {
+		start, err := time.Parse(dateOnly, r.StartTime)
+		if err != nil {
+			return fmt.Errorf("start_time must be YYYY-MM-DD format for all-day events")
+		}
+		if r.EndTime == "" || r.EndTime == r.StartTime {
+			// Default to single-day event (next day exclusive end)
+			r.EndTime = start.AddDate(0, 0, 1).Format(dateOnly)
+		} else {
+			end, err := time.Parse(dateOnly, r.EndTime)
+			if err != nil {
+				return fmt.Errorf("end_time must be YYYY-MM-DD format for all-day events")
+			}
+			if end.Before(start) {
+				return fmt.Errorf("end_time must not be before start_time")
+			}
+		}
+		// Normalize to midnight UTC
+		endDate, _ := time.Parse(dateOnly, r.EndTime)
+		r.StartTime = start.UTC().Format(time.RFC3339)
+		r.EndTime = endDate.UTC().Format(time.RFC3339)
+		return nil
+	}
+
 	if r.EndTime == "" {
 		return fmt.Errorf("end_time is required")
 	}
@@ -53,6 +82,7 @@ type UpdateEventRequest struct {
 	Description *string `json:"description"`
 	StartTime   *string `json:"start_time"`
 	EndTime     *string `json:"end_time"`
+	AllDay      *bool   `json:"all_day"`
 	Color       *string `json:"color"`
 }
 
@@ -60,24 +90,48 @@ func (r *UpdateEventRequest) Validate() error {
 	if r.Title != nil && *r.Title == "" {
 		return fmt.Errorf("title cannot be empty")
 	}
+
+	allDay := r.AllDay != nil && *r.AllDay
+
+	if allDay {
+		if r.StartTime != nil {
+			if _, err := time.Parse(dateOnly, *r.StartTime); err != nil {
+				return fmt.Errorf("start_time must be YYYY-MM-DD format for all-day events")
+			}
+		}
+		if r.EndTime != nil {
+			if _, err := time.Parse(dateOnly, *r.EndTime); err != nil {
+				return fmt.Errorf("end_time must be YYYY-MM-DD format for all-day events")
+			}
+		}
+		return nil
+	}
+
+	// If not setting all_day, and all_day pointer is nil, we don't know yet
+	// whether event is all-day; service layer will do final validation
 	start := ""
 	end := ""
 	if r.StartTime != nil {
 		if _, err := time.Parse(time.RFC3339, *r.StartTime); err != nil {
-			return fmt.Errorf("start_time must be RFC 3339 format")
+			// Might be date-only if toggling to all-day
+			if _, err2 := time.Parse(dateOnly, *r.StartTime); err2 != nil {
+				return fmt.Errorf("start_time must be RFC 3339 format")
+			}
 		}
 		start = *r.StartTime
 	}
 	if r.EndTime != nil {
 		if _, err := time.Parse(time.RFC3339, *r.EndTime); err != nil {
-			return fmt.Errorf("end_time must be RFC 3339 format")
+			if _, err2 := time.Parse(dateOnly, *r.EndTime); err2 != nil {
+				return fmt.Errorf("end_time must be RFC 3339 format")
+			}
 		}
 		end = *r.EndTime
 	}
 	if start != "" && end != "" {
-		s, _ := time.Parse(time.RFC3339, start)
-		e, _ := time.Parse(time.RFC3339, end)
-		if !e.After(s) {
+		s, err1 := time.Parse(time.RFC3339, start)
+		e, err2 := time.Parse(time.RFC3339, end)
+		if err1 == nil && err2 == nil && !e.After(s) {
 			return fmt.Errorf("end_time must be after start_time")
 		}
 	}

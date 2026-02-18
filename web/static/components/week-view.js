@@ -8,13 +8,29 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, config
     const days = getWeekDays(currentDate, weekStartDay);
 
     function eventsForDay(date) {
+        const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        const dayEnd = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
         return events.filter(e => {
+            if (e.all_day) {
+                // Compare dates only (UTC) to avoid timezone shift issues
+                const startDate = e.start_time.substring(0, 10);
+                const endDate = e.end_time.substring(0, 10); // exclusive
+                const pad = n => String(n).padStart(2, '0');
+                const dayStr = `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`;
+                return dayStr >= startDate && dayStr < endDate;
+            }
             const start = new Date(e.start_time);
             const end = new Date(e.end_time);
-            const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-            const dayEnd = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
             return start < dayEnd && end > dayStart;
         });
+    }
+
+    function timedEventsForDay(date) {
+        return eventsForDay(date).filter(e => !e.all_day);
+    }
+
+    function allDayEventsForDay(date) {
+        return eventsForDay(date).filter(e => e.all_day);
     }
 
     function eventStyle(event, date) {
@@ -42,6 +58,8 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, config
 
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+    const hasAnyAllDay = days.some(date => allDayEventsForDay(date).length > 0);
+
     return html`
         <div class="week-view">
             <div class="week-header">
@@ -56,6 +74,25 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, config
                     `;
                 })}
             </div>
+            ${hasAnyAllDay && html`
+                <div class="week-allday-row">
+                    <div class="allday-label">all-day</div>
+                    ${days.map(date => {
+                        const adEvents = allDayEventsForDay(date);
+                        return html`
+                            <div class="allday-cell">
+                                ${adEvents.map(e => html`
+                                    <div class="allday-event"
+                                         style=${e.color ? `background-color: ${e.color}` : ''}
+                                         onClick=${(ev) => { ev.stopPropagation(); onEventClick(e); }}>
+                                        ${e.title}
+                                    </div>
+                                `)}
+                            </div>
+                        `;
+                    })}
+                </div>
+            `}
             <div class="week-body">
                 <div class="week-grid">
                     ${HOURS.map(hour => html`
@@ -73,7 +110,7 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, config
                 <div class="week-events-overlay">
                     <div class="week-events-gutter-spacer"></div>
                     ${days.map((date, colIndex) => {
-                        const dayEvents = eventsForDay(date);
+                        const dayEvents = timedEventsForDay(date);
                         return html`
                             <div class="week-day-events">
                                 ${dayEvents.map(e => html`
