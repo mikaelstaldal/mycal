@@ -26,6 +26,21 @@ Open http://localhost:8080 in your browser.
 |------|---------|-------------|
 | `-addr` | `:8080` | Listen address |
 | `-db` | `mycal.db` | SQLite database file path |
+| `-basic-auth-file` | *(disabled)* | Path to htpasswd file for HTTP basic authentication |
+
+### Authentication
+
+HTTP basic authentication can be enabled by providing an [htpasswd](https://httpd.apache.org/docs/current/programs/htpasswd.html) file with bcrypt-hashed passwords:
+
+```bash
+# Create a new htpasswd file with a user (requires apache2-utils or httpd-tools)
+htpasswd -Bc htpasswd admin
+
+# Start with authentication enabled
+./mycal -basic-auth-file htpasswd
+```
+
+When enabled, all endpoints (UI, API, and iCalendar feed) require valid credentials. The browser will prompt for a username and password automatically.
 
 ## API
 
