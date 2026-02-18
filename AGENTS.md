@@ -18,6 +18,10 @@ go test ./internal/repository/ -v       # repository tests only
 go test ./internal/repository/ -run TestList  # single test
 ```
 
+## Verification
+
+Use the `playwright` MCP to verify that the web frontend looks reasonable.
+
 ## Architecture
 
 Go backend with embedded Preact+HTM frontend (no JS build step). Single binary serves both JSON API and static files.

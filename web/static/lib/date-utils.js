@@ -94,3 +94,48 @@ export function fromLocalDatetimeValue(val) {
     if (!val) return '';
     return new Date(val).toISOString();
 }
+
+export function startOfWeek(date, weekStartDay = 1) {
+    const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const day = d.getDay();
+    const diff = (day - weekStartDay + 7) % 7;
+    d.setDate(d.getDate() - diff);
+    return d;
+}
+
+export function addWeeks(date, n) {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate() + n * 7);
+}
+
+export function getWeekDays(date, weekStartDay = 1) {
+    const start = startOfWeek(date, weekStartDay);
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+        days.push(new Date(start.getFullYear(), start.getMonth(), start.getDate() + i));
+    }
+    return days;
+}
+
+export function formatWeekRange(date, weekStartDay = 1) {
+    const days = getWeekDays(date, weekStartDay);
+    const first = days[0];
+    const last = days[6];
+    const opts = { month: 'short', day: 'numeric' };
+    const firstStr = first.toLocaleDateString(undefined, opts);
+    const lastStr = last.toLocaleDateString(undefined, opts);
+    const year = last.getFullYear();
+    if (first.getMonth() === last.getMonth()) {
+        return `${firstStr} – ${last.getDate()}, ${year}`;
+    }
+    return `${firstStr} – ${lastStr}, ${year}`;
+}
+
+export function formatHour(hour, clockFormat = '24h') {
+    if (clockFormat === '12h') {
+        if (hour === 0) return '12 AM';
+        if (hour < 12) return `${hour} AM`;
+        if (hour === 12) return '12 PM';
+        return `${hour - 12} PM`;
+    }
+    return `${String(hour).padStart(2, '0')}:00`;
+}
