@@ -1,5 +1,5 @@
 import { html } from 'htm/preact';
-import { getCalendarDays, getWeekdays, isToday, formatTime } from '../lib/date-utils.js';
+import { getCalendarDays, getWeekdays, isToday, formatTime, getISOWeekNumber } from '../lib/date-utils.js';
 
 export function Calendar({ currentDate, events, onDayClick, onEventClick, config }) {
     const weekStartDay = config.weekStartDay;
@@ -24,35 +24,45 @@ export function Calendar({ currentDate, events, onDayClick, onEventClick, config
         });
     }
 
+    // Group days into weeks of 7
+    const weeks = [];
+    for (let i = 0; i < days.length; i += 7) {
+        weeks.push(days.slice(i, i + 7));
+    }
+
     return html`
         <div class="calendar">
             <div class="calendar-header">
+                <div class="week-number-header"></div>
                 ${weekdays.map(d => html`<div class="weekday">${d}</div>`)}
             </div>
             <div class="calendar-grid">
-                ${days.map(({ date, currentMonth }) => {
-                    const dayEvents = eventsForDay(date);
-                    const classes = ['day',
-                        !currentMonth && 'other-month',
-                        isToday(date) && 'today'
-                    ].filter(Boolean).join(' ');
+                ${weeks.map(week => html`
+                    <div class="week-number">${getISOWeekNumber(week[0].date)}</div>
+                    ${week.map(({ date, currentMonth }) => {
+                        const dayEvents = eventsForDay(date);
+                        const classes = ['day',
+                            !currentMonth && 'other-month',
+                            isToday(date) && 'today'
+                        ].filter(Boolean).join(' ');
 
-                    return html`
-                        <div class=${classes} onClick=${() => onDayClick(date)}>
-                            <span class="day-number">${date.getDate()}</span>
-                            <div class="day-events">
-                                ${dayEvents.map(e => html`
-                                    <div class="event-chip"
-                                         key=${`${e.id}-${e.recurrence_index || 0}`}
-                                         style=${e.color ? `background-color: ${e.color}` : ''}
-                                         onClick=${(ev) => { ev.stopPropagation(); onEventClick(e); }}>
-                                        ${e.all_day ? '' : formatTime(e.start_time, config.clockFormat) + ' '}${e.title}
-                                    </div>
-                                `)}
+                        return html`
+                            <div class=${classes} onClick=${() => onDayClick(date)}>
+                                <span class="day-number">${date.getDate()}</span>
+                                <div class="day-events">
+                                    ${dayEvents.map(e => html`
+                                        <div class="event-chip"
+                                             key=${`${e.id}-${e.recurrence_index || 0}`}
+                                             style=${e.color ? `background-color: ${e.color}` : ''}
+                                             onClick=${(ev) => { ev.stopPropagation(); onEventClick(e); }}>
+                                            ${e.all_day ? '' : formatTime(e.start_time, config.clockFormat) + ' '}${e.title}
+                                        </div>
+                                    `)}
+                                </div>
                             </div>
-                        </div>
-                    `;
-                })}
+                        `;
+                    })}
+                `)}
             </div>
         </div>
     `;

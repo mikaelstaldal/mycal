@@ -52,12 +52,16 @@ body {
 /* Calendar */
 .calendar-header {
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: 28px repeat(7, 1fr);
     text-align: center;
     font-weight: 600;
     font-size: 0.85rem;
     color: #666;
     margin-bottom: 4px;
+}
+
+.week-number-header {
+    /* empty spacer above week numbers */
 }
 
 .weekday {
@@ -66,12 +70,21 @@ body {
 
 .calendar-grid {
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: 28px repeat(7, 1fr);
     gap: 1px;
     background: #ddd;
     border: 1px solid #ddd;
     border-radius: 4px;
     overflow: hidden;
+}
+
+.week-number {
+    background: #fafafa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    color: #999;
 }
 
 .day {
