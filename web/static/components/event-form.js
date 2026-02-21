@@ -20,6 +20,7 @@ export function EventForm({ event, defaultDate, onSave, onDelete, onClose, confi
     const [color, setColor] = useState('');
     const [recurrenceFreq, setRecurrenceFreq] = useState('');
     const [recurrenceCount, setRecurrenceCount] = useState(0);
+    const [reminderMinutes, setReminderMinutes] = useState(0);
     const [error, setError] = useState('');
 
     useEffect(() => {
@@ -37,6 +38,7 @@ export function EventForm({ event, defaultDate, onSave, onDelete, onClose, confi
             setColor(event.color);
             setRecurrenceFreq(event.recurrence_freq || '');
             setRecurrenceCount(event.recurrence_count || 0);
+            setReminderMinutes(event.reminder_minutes || 0);
             setEditing(false);
         } else if (defaultDate) {
             const start = new Date(defaultDate);
@@ -51,6 +53,7 @@ export function EventForm({ event, defaultDate, onSave, onDelete, onClose, confi
             setColor('');
             setRecurrenceFreq('');
             setRecurrenceCount(0);
+            setReminderMinutes(0);
             setEditing(true);
         }
         setError('');
@@ -92,6 +95,7 @@ export function EventForm({ event, defaultDate, onSave, onDelete, onClose, confi
                 color,
                 recurrence_freq: recurrenceFreq,
                 recurrence_count: recurrenceCount,
+                reminder_minutes: 0,
             };
             onSave(event?.id, data).catch(err => setError(err.message));
         } else {
@@ -105,6 +109,7 @@ export function EventForm({ event, defaultDate, onSave, onDelete, onClose, confi
                 color,
                 recurrence_freq: recurrenceFreq,
                 recurrence_count: recurrenceCount,
+                reminder_minutes: reminderMinutes,
             };
             onSave(event?.id, data).catch(err => setError(err.message));
         }
@@ -131,6 +136,11 @@ export function EventForm({ event, defaultDate, onSave, onDelete, onClose, confi
         if (!event) return '';
         if (event.all_day) return formatDateOnly(exclusiveToInclusiveDate(event.end_time), config.dateFormat);
         return formatDatetime(event.end_time, config);
+    }
+
+    function displayReminder() {
+        const labels = { 0: 'None', 5: '5 minutes', 10: '10 minutes', 15: '15 minutes', 30: '30 minutes', 60: '1 hour' };
+        return labels[reminderMinutes] || `${reminderMinutes} minutes`;
     }
 
     function displayRecurrence() {
@@ -235,6 +245,26 @@ export function EventForm({ event, defaultDate, onSave, onDelete, onClose, confi
                         <input type="text" disabled value=${displayRecurrence()} />
                     </label>
                 `}
+
+                ${!allDay && editing ? html`
+                    <label>
+                        Reminder
+                        <select value=${reminderMinutes}
+                                onChange=${e => setReminderMinutes(parseInt(e.target.value) || 0)}>
+                            <option value="0">None</option>
+                            <option value="5">5 minutes before</option>
+                            <option value="10">10 minutes before</option>
+                            <option value="15">15 minutes before</option>
+                            <option value="30">30 minutes before</option>
+                            <option value="60">1 hour before</option>
+                        </select>
+                    </label>
+                ` : !allDay && reminderMinutes > 0 && !editing ? html`
+                    <label>
+                        Reminder
+                        <input type="text" disabled value=${displayReminder()} />
+                    </label>
+                ` : null}
 
                 <div class="dialog-actions">
                     ${event && !editing && html`

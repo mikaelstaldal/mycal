@@ -16,6 +16,7 @@ type Event struct {
 	RecurrenceFreq  string `json:"recurrence_freq"`
 	RecurrenceCount int    `json:"recurrence_count"`
 	RecurrenceIndex int    `json:"recurrence_index,omitempty"`
+	ReminderMinutes int    `json:"reminder_minutes"`
 	CreatedAt       string `json:"created_at"`
 	UpdatedAt       string `json:"updated_at"`
 }
@@ -41,6 +42,7 @@ type CreateEventRequest struct {
 	Color           string `json:"color"`
 	RecurrenceFreq  string `json:"recurrence_freq"`
 	RecurrenceCount int    `json:"recurrence_count"`
+	ReminderMinutes int    `json:"reminder_minutes"`
 }
 
 const dateOnly = "2006-01-02"
@@ -80,6 +82,9 @@ func (r *CreateEventRequest) Validate() error {
 		if r.RecurrenceCount < 0 {
 			return fmt.Errorf("recurrence_count must be >= 0")
 		}
+		if r.ReminderMinutes < 0 {
+			return fmt.Errorf("reminder_minutes must be >= 0")
+		}
 		return nil
 	}
 
@@ -103,6 +108,9 @@ func (r *CreateEventRequest) Validate() error {
 	if r.RecurrenceCount < 0 {
 		return fmt.Errorf("recurrence_count must be >= 0")
 	}
+	if r.ReminderMinutes < 0 {
+		return fmt.Errorf("reminder_minutes must be >= 0")
+	}
 	return nil
 }
 
@@ -115,6 +123,7 @@ type UpdateEventRequest struct {
 	Color           *string `json:"color"`
 	RecurrenceFreq  *string `json:"recurrence_freq"`
 	RecurrenceCount *int    `json:"recurrence_count"`
+	ReminderMinutes *int    `json:"reminder_minutes"`
 }
 
 func (r *UpdateEventRequest) Validate() error {
@@ -171,6 +180,9 @@ func (r *UpdateEventRequest) Validate() error {
 	}
 	if r.RecurrenceCount != nil && *r.RecurrenceCount < 0 {
 		return fmt.Errorf("recurrence_count must be >= 0")
+	}
+	if r.ReminderMinutes != nil && *r.ReminderMinutes < 0 {
+		return fmt.Errorf("reminder_minutes must be >= 0")
 	}
 	return nil
 }

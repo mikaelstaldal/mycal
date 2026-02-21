@@ -9,6 +9,7 @@ import { Settings } from './components/settings.js';
 import { listEvents, searchEvents, createEvent, updateEvent, deleteEvent, getEvent } from './lib/api.js';
 import { addMonths, addWeeks, startOfWeek, toRFC3339 } from './lib/date-utils.js';
 import { getConfig } from './lib/config.js';
+import { checkAndNotify, requestPermission } from './lib/notifications.js';
 
 function App() {
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -44,6 +45,12 @@ function App() {
     }, [currentDate, viewMode, config.weekStartDay]);
 
     useEffect(() => { loadEvents(); }, [loadEvents]);
+
+    useEffect(() => {
+        checkAndNotify(events);
+        const id = setInterval(() => checkAndNotify(events), 30000);
+        return () => clearInterval(id);
+    }, [events]);
 
     function handlePrev() {
         if (viewMode === 'week') {
@@ -89,6 +96,9 @@ function App() {
     }
 
     async function handleSave(id, data) {
+        if (data.reminder_minutes > 0) {
+            requestPermission();
+        }
         if (id) {
             await updateEvent(id, data);
         } else {

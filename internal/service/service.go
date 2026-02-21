@@ -99,6 +99,7 @@ func (s *EventService) Create(req *model.CreateEventRequest) (*model.Event, erro
 		Color:           req.Color,
 		RecurrenceFreq:  req.RecurrenceFreq,
 		RecurrenceCount: req.RecurrenceCount,
+		ReminderMinutes: req.ReminderMinutes,
 	}
 	if err := s.repo.Create(e); err != nil {
 		return nil, err
@@ -137,6 +138,9 @@ func (s *EventService) Update(id int64, req *model.UpdateEventRequest) (*model.E
 	}
 	if req.RecurrenceCount != nil {
 		existing.RecurrenceCount = *req.RecurrenceCount
+	}
+	if req.ReminderMinutes != nil {
+		existing.ReminderMinutes = *req.ReminderMinutes
 	}
 
 	if existing.AllDay {
@@ -202,6 +206,7 @@ func (s *EventService) Import(events []model.Event) (int, error) {
 			AllDay:          e.AllDay,
 			RecurrenceFreq:  e.RecurrenceFreq,
 			RecurrenceCount: e.RecurrenceCount,
+			ReminderMinutes: e.ReminderMinutes,
 		}
 		if err := req.Validate(); err != nil {
 			continue
@@ -214,6 +219,7 @@ func (s *EventService) Import(events []model.Event) (int, error) {
 			AllDay:          e.AllDay,
 			RecurrenceFreq:  e.RecurrenceFreq,
 			RecurrenceCount: e.RecurrenceCount,
+			ReminderMinutes: e.ReminderMinutes,
 		}
 		if err := s.repo.Create(ev); err != nil {
 			continue

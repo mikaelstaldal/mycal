@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"time"
 
@@ -50,6 +51,13 @@ func Encode(w io.Writer, events []model.Event) error {
 			}
 			b.WriteString(rrule + "\r\n")
 		}
+		if e.ReminderMinutes > 0 {
+			b.WriteString("BEGIN:VALARM\r\n")
+			b.WriteString("ACTION:DISPLAY\r\n")
+			b.WriteString(fmt.Sprintf("TRIGGER:-PT%dM\r\n", e.ReminderMinutes))
+			b.WriteString(fmt.Sprintf("DESCRIPTION:Reminder: %s\r\n", escapeText(e.Title)))
+			b.WriteString("END:VALARM\r\n")
+		}
 		if e.CreatedAt != "" {
 			if t, err := time.Parse(time.RFC3339, e.CreatedAt); err == nil {
 				b.WriteString(fmt.Sprintf("CREATED:%s\r\n", formatICalTime(t)))
@@ -82,24 +90,39 @@ func Decode(r io.Reader) ([]model.Event, error) {
 
 	var events []model.Event
 	var inEvent bool
+	var inAlarm bool
 	var props []string
+	var alarmProps []string
 
 	for _, line := range lines {
 		upper := strings.ToUpper(strings.TrimSpace(line))
 		if upper == "BEGIN:VEVENT" {
 			inEvent = true
 			props = nil
+			alarmProps = nil
 			continue
 		}
 		if upper == "END:VEVENT" {
 			inEvent = false
-			if ev, ok := parseEvent(props); ok {
+			if ev, ok := parseEvent(props, alarmProps); ok {
 				events = append(events, ev)
 			}
 			continue
 		}
+		if upper == "BEGIN:VALARM" {
+			inAlarm = true
+			continue
+		}
+		if upper == "END:VALARM" {
+			inAlarm = false
+			continue
+		}
 		if inEvent {
-			props = append(props, line)
+			if inAlarm {
+				alarmProps = append(alarmProps, line)
+			} else {
+				props = append(props, line)
+			}
 		}
 	}
 
@@ -127,7 +150,7 @@ func unfoldLines(r io.Reader) ([]string, error) {
 	return lines, scanner.Err()
 }
 
-func parseEvent(props []string) (model.Event, bool) {
+func parseEvent(props []string, alarmProps []string) (model.Event, bool) {
 	var summary, description, dtstart, dtend string
 	var recurrenceFreq string
 	var recurrenceCount int
@@ -157,6 +180,8 @@ func parseEvent(props []string) (model.Event, bool) {
 		return model.Event{}, false
 	}
 
+	reminderMinutes := parseTriggerMinutes(alarmProps)
+
 	return model.Event{
 		Title:           summary,
 		Description:     description,
@@ -165,7 +190,65 @@ func parseEvent(props []string) (model.Event, bool) {
 		AllDay:          allDay,
 		RecurrenceFreq:  recurrenceFreq,
 		RecurrenceCount: recurrenceCount,
+		ReminderMinutes: reminderMinutes,
 	}, true
+}
+
+// parseTriggerMinutes extracts reminder minutes from VALARM TRIGGER property.
+// Supports formats like -PT15M, -PT1H, -PT1H30M, -P1D.
+func parseTriggerMinutes(alarmProps []string) int {
+	for _, prop := range alarmProps {
+		name, _, value := parsePropLine(prop)
+		if strings.ToUpper(name) != "TRIGGER" {
+			continue
+		}
+		value = strings.TrimSpace(strings.ToUpper(value))
+		if !strings.HasPrefix(value, "-P") {
+			continue
+		}
+		value = value[2:] // strip "-P"
+		minutes := 0
+		if strings.HasPrefix(value, "T") {
+			value = value[1:] // strip "T"
+			minutes = parseDurationToMinutes(value)
+		} else {
+			// e.g. "1D", "1DT2H"
+			if idx := strings.Index(value, "D"); idx >= 0 {
+				days, _ := strconv.Atoi(value[:idx])
+				minutes += days * 24 * 60
+				rest := value[idx+1:]
+				if strings.HasPrefix(rest, "T") {
+					minutes += parseDurationToMinutes(rest[1:])
+				}
+			}
+		}
+		if minutes > 0 {
+			return minutes
+		}
+	}
+	return 0
+}
+
+func parseDurationToMinutes(s string) int {
+	minutes := 0
+	num := ""
+	for _, c := range s {
+		if c >= '0' && c <= '9' {
+			num += string(c)
+		} else {
+			n, _ := strconv.Atoi(num)
+			num = ""
+			switch c {
+			case 'H':
+				minutes += n * 60
+			case 'M':
+				minutes += n
+			case 'S':
+				// ignore seconds
+			}
+		}
+	}
+	return minutes
 }
 
 func parseRRule(value string) (freq string, count int) {
