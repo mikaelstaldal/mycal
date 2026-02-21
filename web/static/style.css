@@ -397,8 +397,10 @@ body {
 .week-view {
     border: 1px solid #ddd;
     border-radius: 4px;
-    overflow: hidden;
     background: #fff;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 100px);
 }
 
 .week-header {
@@ -451,7 +453,8 @@ body {
 .week-body {
     position: relative;
     overflow-y: auto;
-    max-height: calc(100vh - 160px);
+    flex: 1;
+    min-height: 0;
 }
 
 .week-grid {
