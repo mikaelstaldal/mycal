@@ -17,7 +17,8 @@ export function Settings({ config, onConfigChange }) {
     }
 
     function handleChange(key, value) {
-        const updated = { ...config, [key]: key === 'weekStartDay' ? Number(value) : value };
+        const numericKeys = ['weekStartDay', 'dayStartHour'];
+        const updated = { ...config, [key]: numericKeys.includes(key) ? Number(value) : value };
         saveConfig(updated);
         onConfigChange(updated);
     }
@@ -63,6 +64,17 @@ export function Settings({ config, onConfigChange }) {
                             onChange=${e => handleChange('defaultView', e.target.value)}>
                         <option value="month">Month</option>
                         <option value="week">Week</option>
+                    </select>
+                </label>
+                <label>
+                    Week view starts at
+                    <select value=${config.dayStartHour}
+                            onChange=${e => handleChange('dayStartHour', e.target.value)}>
+                        ${Array.from({ length: 24 }, (_, i) => html`
+                            <option value=${i}>${config.clockFormat === '12h'
+                                ? (i === 0 ? '12 AM' : i < 12 ? i + ' AM' : i === 12 ? '12 PM' : (i - 12) + ' PM')
+                                : String(i).padStart(2, '0') + ':00'}</option>
+                        `)}
                     </select>
                 </label>
                 <div class="dialog-actions">

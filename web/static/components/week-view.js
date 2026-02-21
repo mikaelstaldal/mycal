@@ -1,4 +1,5 @@
 import { html } from 'htm/preact';
+import { useEffect, useRef } from 'preact/hooks';
 import { getWeekDays, isToday, formatHour, formatTime } from '../lib/date-utils.js';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
@@ -60,6 +61,14 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, config
 
     const hasAnyAllDay = days.some(date => allDayEventsForDay(date).length > 0);
 
+    const weekBodyRef = useRef(null);
+    useEffect(() => {
+        if (weekBodyRef.current) {
+            const hour = config.dayStartHour || 0;
+            weekBodyRef.current.scrollTop = hour * 48;
+        }
+    }, []);
+
     return html`
         <div class="week-view">
             <div class="week-header">
@@ -94,7 +103,7 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, config
                     })}
                 </div>
             `}
-            <div class="week-body">
+            <div class="week-body" ref=${weekBodyRef}>
                 <div class="week-grid">
                     ${HOURS.map(hour => html`
                         <div class="time-gutter">${formatHour(hour, config.clockFormat)}</div>
