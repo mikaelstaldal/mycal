@@ -57,6 +57,14 @@ export function Settings({ config, onConfigChange }) {
                         <option value="dd/MM/yyyy">dd/MM/yyyy</option>
                     </select>
                 </label>
+                <label>
+                    Default view
+                    <select value=${config.defaultView}
+                            onChange=${e => handleChange('defaultView', e.target.value)}>
+                        <option value="month">Month</option>
+                        <option value="week">Week</option>
+                    </select>
+                </label>
                 <div class="dialog-actions">
                     <button onClick=${handleClose}>Close</button>
                 </div>

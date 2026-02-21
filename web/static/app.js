@@ -18,7 +18,7 @@ function App() {
     const [defaultDate, setDefaultDate] = useState(null);
     const [config, setConfig] = useState(getConfig);
     const [showImport, setShowImport] = useState(false);
-    const [viewMode, setViewMode] = useState('month');
+    const [viewMode, setViewMode] = useState(() => getConfig().defaultView || 'month');
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState(null);
     const searchTimer = useRef(null);
