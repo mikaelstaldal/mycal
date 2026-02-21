@@ -23,15 +23,17 @@ func NewSQLiteRepository(db *sql.DB) (*SQLiteRepository, error) {
 func initSchema(db *sql.DB) error {
 	_, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS events (
-			id          INTEGER PRIMARY KEY AUTOINCREMENT,
-			title       TEXT NOT NULL,
-			description TEXT NOT NULL DEFAULT '',
-			start_time  TEXT NOT NULL,
-			end_time    TEXT NOT NULL,
-			all_day     INTEGER NOT NULL DEFAULT 0,
-			color       TEXT NOT NULL DEFAULT '',
-			created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
-			updated_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+			id               INTEGER PRIMARY KEY AUTOINCREMENT,
+			title            TEXT NOT NULL,
+			description      TEXT NOT NULL DEFAULT '',
+			start_time       TEXT NOT NULL,
+			end_time         TEXT NOT NULL,
+			all_day          INTEGER NOT NULL DEFAULT 0,
+			color            TEXT NOT NULL DEFAULT '',
+			recurrence_freq  TEXT NOT NULL DEFAULT '',
+			recurrence_count INTEGER NOT NULL DEFAULT 0,
+			created_at       TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+			updated_at       TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
 		);
 		CREATE INDEX IF NOT EXISTS idx_events_start_time ON events(start_time);
 		CREATE INDEX IF NOT EXISTS idx_events_end_time ON events(end_time);
@@ -57,6 +59,11 @@ func initSchema(db *sql.DB) error {
 
 	// Migration: add all_day column if it doesn't exist
 	if err := migrateAddAllDay(db); err != nil {
+		return err
+	}
+
+	// Migration: add recurrence columns if they don't exist
+	if err := migrateAddRecurrence(db); err != nil {
 		return err
 	}
 
@@ -98,18 +105,54 @@ func migrateAddAllDay(db *sql.DB) error {
 	return nil
 }
 
-const selectColumns = `id, title, description, start_time, end_time, all_day, color, created_at, updated_at`
+func migrateAddRecurrence(db *sql.DB) error {
+	rows, err := db.Query(`PRAGMA table_info(events)`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	hasFreq := false
+	for rows.Next() {
+		var cid int
+		var name, typ string
+		var notnull int
+		var dflt sql.NullString
+		var pk int
+		if err := rows.Scan(&cid, &name, &typ, &notnull, &dflt, &pk); err != nil {
+			return err
+		}
+		if name == "recurrence_freq" {
+			hasFreq = true
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	if !hasFreq {
+		if _, err := db.Exec(`ALTER TABLE events ADD COLUMN recurrence_freq TEXT NOT NULL DEFAULT ''`); err != nil {
+			return fmt.Errorf("migrate add recurrence_freq: %w", err)
+		}
+		if _, err := db.Exec(`ALTER TABLE events ADD COLUMN recurrence_count INTEGER NOT NULL DEFAULT 0`); err != nil {
+			return fmt.Errorf("migrate add recurrence_count: %w", err)
+		}
+	}
+	return nil
+}
+
+const selectColumns = `id, title, description, start_time, end_time, all_day, color, recurrence_freq, recurrence_count, created_at, updated_at`
 
 func scanEvent(scanner interface{ Scan(...any) error }) (model.Event, error) {
 	var e model.Event
-	err := scanner.Scan(&e.ID, &e.Title, &e.Description, &e.StartTime, &e.EndTime, &e.AllDay, &e.Color, &e.CreatedAt, &e.UpdatedAt)
+	err := scanner.Scan(&e.ID, &e.Title, &e.Description, &e.StartTime, &e.EndTime, &e.AllDay, &e.Color, &e.RecurrenceFreq, &e.RecurrenceCount, &e.CreatedAt, &e.UpdatedAt)
 	return e, err
 }
 
 func (r *SQLiteRepository) List(from, to string) ([]model.Event, error) {
 	rows, err := r.db.Query(
 		`SELECT `+selectColumns+`
-		 FROM events WHERE start_time < ? AND end_time > ? ORDER BY start_time`,
+		 FROM events WHERE start_time < ? AND end_time > ? AND recurrence_freq = '' ORDER BY start_time`,
 		to, from,
 	)
 	if err != nil {
@@ -168,7 +211,7 @@ func (r *SQLiteRepository) Search(query, from, to string) ([]model.Event, error)
 	var sb strings.Builder
 	var args []any
 
-	sb.WriteString(`SELECT e.id, e.title, e.description, e.start_time, e.end_time, e.all_day, e.color, e.created_at, e.updated_at
+	sb.WriteString(`SELECT e.id, e.title, e.description, e.start_time, e.end_time, e.all_day, e.color, e.recurrence_freq, e.recurrence_count, e.created_at, e.updated_at
 		FROM events e
 		JOIN events_fts f ON e.id = f.rowid
 		WHERE events_fts MATCH ?`)
@@ -214,8 +257,8 @@ func (r *SQLiteRepository) GetByID(id int64) (*model.Event, error) {
 
 func (r *SQLiteRepository) Create(event *model.Event) error {
 	result, err := r.db.Exec(
-		`INSERT INTO events (title, description, start_time, end_time, all_day, color) VALUES (?, ?, ?, ?, ?, ?)`,
-		event.Title, event.Description, event.StartTime, event.EndTime, event.AllDay, event.Color,
+		`INSERT INTO events (title, description, start_time, end_time, all_day, color, recurrence_freq, recurrence_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		event.Title, event.Description, event.StartTime, event.EndTime, event.AllDay, event.Color, event.RecurrenceFreq, event.RecurrenceCount,
 	)
 	if err != nil {
 		return err
@@ -233,9 +276,9 @@ func (r *SQLiteRepository) Create(event *model.Event) error {
 
 func (r *SQLiteRepository) Update(event *model.Event) error {
 	_, err := r.db.Exec(
-		`UPDATE events SET title=?, description=?, start_time=?, end_time=?, all_day=?, color=?,
+		`UPDATE events SET title=?, description=?, start_time=?, end_time=?, all_day=?, color=?, recurrence_freq=?, recurrence_count=?,
 		 updated_at=strftime('%Y-%m-%dT%H:%M:%SZ','now') WHERE id=?`,
-		event.Title, event.Description, event.StartTime, event.EndTime, event.AllDay, event.Color, event.ID,
+		event.Title, event.Description, event.StartTime, event.EndTime, event.AllDay, event.Color, event.RecurrenceFreq, event.RecurrenceCount, event.ID,
 	)
 	if err != nil {
 		return err
@@ -243,6 +286,28 @@ func (r *SQLiteRepository) Update(event *model.Event) error {
 	return r.db.QueryRow(
 		`SELECT updated_at FROM events WHERE id = ?`, event.ID,
 	).Scan(&event.UpdatedAt)
+}
+
+func (r *SQLiteRepository) ListRecurring(to string) ([]model.Event, error) {
+	rows, err := r.db.Query(
+		`SELECT `+selectColumns+`
+		 FROM events WHERE recurrence_freq != '' AND start_time < ? ORDER BY start_time`,
+		to,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var events []model.Event
+	for rows.Next() {
+		e, err := scanEvent(rows)
+		if err != nil {
+			return nil, err
+		}
+		events = append(events, e)
+	}
+	return events, rows.Err()
 }
 
 func (r *SQLiteRepository) Delete(id int64) error {

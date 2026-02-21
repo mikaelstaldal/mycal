@@ -43,6 +43,13 @@ func Encode(w io.Writer, events []model.Event) error {
 		if e.Description != "" {
 			b.WriteString(fmt.Sprintf("DESCRIPTION:%s\r\n", escapeText(e.Description)))
 		}
+		if e.RecurrenceFreq != "" {
+			rrule := "RRULE:FREQ=" + e.RecurrenceFreq
+			if e.RecurrenceCount > 0 {
+				rrule += fmt.Sprintf(";COUNT=%d", e.RecurrenceCount)
+			}
+			b.WriteString(rrule + "\r\n")
+		}
 		if e.CreatedAt != "" {
 			if t, err := time.Parse(time.RFC3339, e.CreatedAt); err == nil {
 				b.WriteString(fmt.Sprintf("CREATED:%s\r\n", formatICalTime(t)))
@@ -122,6 +129,8 @@ func unfoldLines(r io.Reader) ([]string, error) {
 
 func parseEvent(props []string) (model.Event, bool) {
 	var summary, description, dtstart, dtend string
+	var recurrenceFreq string
+	var recurrenceCount int
 	allDay := false
 
 	for _, prop := range props {
@@ -139,6 +148,8 @@ func parseEvent(props []string) (model.Event, bool) {
 			dtstart = parseICalTime(value, params)
 		case "DTEND":
 			dtend = parseICalTime(value, params)
+		case "RRULE":
+			recurrenceFreq, recurrenceCount = parseRRule(value)
 		}
 	}
 
@@ -147,12 +158,30 @@ func parseEvent(props []string) (model.Event, bool) {
 	}
 
 	return model.Event{
-		Title:       summary,
-		Description: description,
-		StartTime:   dtstart,
-		EndTime:     dtend,
-		AllDay:      allDay,
+		Title:           summary,
+		Description:     description,
+		StartTime:       dtstart,
+		EndTime:         dtend,
+		AllDay:          allDay,
+		RecurrenceFreq:  recurrenceFreq,
+		RecurrenceCount: recurrenceCount,
 	}, true
+}
+
+func parseRRule(value string) (freq string, count int) {
+	for _, part := range strings.Split(value, ";") {
+		kv := strings.SplitN(part, "=", 2)
+		if len(kv) != 2 {
+			continue
+		}
+		switch strings.ToUpper(kv[0]) {
+		case "FREQ":
+			freq = strings.ToUpper(kv[1])
+		case "COUNT":
+			fmt.Sscanf(kv[1], "%d", &count)
+		}
+	}
+	return
 }
 
 // parsePropLine splits "DTSTART;TZID=Europe/Stockholm:20060102T150405" into

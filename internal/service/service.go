@@ -42,6 +42,25 @@ func (s *EventService) List(from, to string) ([]model.Event, error) {
 	if events == nil {
 		events = []model.Event{}
 	}
+
+	// Expand recurring events
+	recurring, err := s.repo.ListRecurring(to)
+	if err != nil {
+		return nil, err
+	}
+
+	fromTime, _ := time.Parse(time.RFC3339, from)
+	toTime, _ := time.Parse(time.RFC3339, to)
+
+	var expanded []model.Event
+	for _, re := range recurring {
+		expanded = append(expanded, expandRecurring(re, fromTime, toTime)...)
+	}
+
+	if len(expanded) > 0 {
+		events = mergeEvents(events, expanded)
+	}
+
 	return events, nil
 }
 
@@ -72,12 +91,14 @@ func (s *EventService) Create(req *model.CreateEventRequest) (*model.Event, erro
 		return nil, fmt.Errorf("%w: %s", ErrValidation, err.Error())
 	}
 	e := &model.Event{
-		Title:       req.Title,
-		Description: req.Description,
-		StartTime:   req.StartTime,
-		EndTime:     req.EndTime,
-		AllDay:      req.AllDay,
-		Color:       req.Color,
+		Title:           req.Title,
+		Description:     req.Description,
+		StartTime:       req.StartTime,
+		EndTime:         req.EndTime,
+		AllDay:          req.AllDay,
+		Color:           req.Color,
+		RecurrenceFreq:  req.RecurrenceFreq,
+		RecurrenceCount: req.RecurrenceCount,
 	}
 	if err := s.repo.Create(e); err != nil {
 		return nil, err
@@ -110,6 +131,12 @@ func (s *EventService) Update(id int64, req *model.UpdateEventRequest) (*model.E
 	}
 	if req.Color != nil {
 		existing.Color = *req.Color
+	}
+	if req.RecurrenceFreq != nil {
+		existing.RecurrenceFreq = *req.RecurrenceFreq
+	}
+	if req.RecurrenceCount != nil {
+		existing.RecurrenceCount = *req.RecurrenceCount
 	}
 
 	if existing.AllDay {
@@ -168,21 +195,25 @@ func (s *EventService) Import(events []model.Event) (int, error) {
 	imported := 0
 	for _, e := range events {
 		req := &model.CreateEventRequest{
-			Title:       e.Title,
-			Description: e.Description,
-			StartTime:   e.StartTime,
-			EndTime:     e.EndTime,
-			AllDay:      e.AllDay,
+			Title:           e.Title,
+			Description:     e.Description,
+			StartTime:       e.StartTime,
+			EndTime:         e.EndTime,
+			AllDay:          e.AllDay,
+			RecurrenceFreq:  e.RecurrenceFreq,
+			RecurrenceCount: e.RecurrenceCount,
 		}
 		if err := req.Validate(); err != nil {
 			continue
 		}
 		ev := &model.Event{
-			Title:       e.Title,
-			Description: e.Description,
-			StartTime:   req.StartTime,
-			EndTime:     req.EndTime,
-			AllDay:      e.AllDay,
+			Title:           e.Title,
+			Description:     e.Description,
+			StartTime:       req.StartTime,
+			EndTime:         req.EndTime,
+			AllDay:          e.AllDay,
+			RecurrenceFreq:  e.RecurrenceFreq,
+			RecurrenceCount: e.RecurrenceCount,
 		}
 		if err := s.repo.Create(ev); err != nil {
 			continue

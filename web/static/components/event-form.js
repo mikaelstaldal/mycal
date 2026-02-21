@@ -18,6 +18,8 @@ export function EventForm({ event, defaultDate, onSave, onDelete, onClose, confi
     const [endTime, setEndTime] = useState('');
     const [allDay, setAllDay] = useState(false);
     const [color, setColor] = useState('');
+    const [recurrenceFreq, setRecurrenceFreq] = useState('');
+    const [recurrenceCount, setRecurrenceCount] = useState(0);
     const [error, setError] = useState('');
 
     useEffect(() => {
@@ -33,6 +35,8 @@ export function EventForm({ event, defaultDate, onSave, onDelete, onClose, confi
                 setEndTime(toLocalDatetimeValue(event.end_time));
             }
             setColor(event.color);
+            setRecurrenceFreq(event.recurrence_freq || '');
+            setRecurrenceCount(event.recurrence_count || 0);
             setEditing(false);
         } else if (defaultDate) {
             const start = new Date(defaultDate);
@@ -45,6 +49,8 @@ export function EventForm({ event, defaultDate, onSave, onDelete, onClose, confi
             setDescription('');
             setAllDay(false);
             setColor('');
+            setRecurrenceFreq('');
+            setRecurrenceCount(0);
             setEditing(true);
         }
         setError('');
@@ -84,6 +90,8 @@ export function EventForm({ event, defaultDate, onSave, onDelete, onClose, confi
                 start_time: startTime,
                 end_time: inclusiveToExclusiveDate(endTime || startTime),
                 color,
+                recurrence_freq: recurrenceFreq,
+                recurrence_count: recurrenceCount,
             };
             onSave(event?.id, data).catch(err => setError(err.message));
         } else {
@@ -95,6 +103,8 @@ export function EventForm({ event, defaultDate, onSave, onDelete, onClose, confi
                 start_time: fromLocalDatetimeValue(startTime),
                 end_time: fromLocalDatetimeValue(endTime),
                 color,
+                recurrence_freq: recurrenceFreq,
+                recurrence_count: recurrenceCount,
             };
             onSave(event?.id, data).catch(err => setError(err.message));
         }
@@ -121,6 +131,13 @@ export function EventForm({ event, defaultDate, onSave, onDelete, onClose, confi
         if (!event) return '';
         if (event.all_day) return formatDateOnly(exclusiveToInclusiveDate(event.end_time), config.dateFormat);
         return formatDatetime(event.end_time, config);
+    }
+
+    function displayRecurrence() {
+        if (!recurrenceFreq) return 'None';
+        const freqLabels = { DAILY: 'Daily', WEEKLY: 'Weekly', MONTHLY: 'Monthly', YEARLY: 'Yearly' };
+        const label = freqLabels[recurrenceFreq] || recurrenceFreq;
+        return recurrenceCount > 0 ? `${label}, ${recurrenceCount} times` : `${label}, forever`;
     }
 
     return html`
@@ -191,6 +208,32 @@ export function EventForm({ event, defaultDate, onSave, onDelete, onClose, confi
                             `)}
                         </div>
                     </div>
+                `}
+
+                ${editing ? html`
+                    <label>
+                        Repeat
+                        <select value=${recurrenceFreq}
+                                onChange=${e => setRecurrenceFreq(e.target.value)}>
+                            <option value="">None</option>
+                            <option value="DAILY">Daily</option>
+                            <option value="WEEKLY">Weekly</option>
+                            <option value="MONTHLY">Monthly</option>
+                            <option value="YEARLY">Yearly</option>
+                        </select>
+                    </label>
+                    ${recurrenceFreq && html`
+                        <label>
+                            Occurrences (0 = unlimited)
+                            <input type="number" min="0" value=${recurrenceCount}
+                                   onInput=${e => setRecurrenceCount(parseInt(e.target.value) || 0)} />
+                        </label>
+                    `}
+                ` : recurrenceFreq && html`
+                    <label>
+                        Repeat
+                        <input type="text" disabled value=${displayRecurrence()} />
+                    </label>
                 `}
 
                 <div class="dialog-actions">

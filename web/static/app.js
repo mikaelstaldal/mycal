@@ -6,7 +6,7 @@ import { WeekView } from './components/week-view.js';
 import { EventForm } from './components/event-form.js';
 import { ImportForm } from './components/import-form.js';
 import { Settings } from './components/settings.js';
-import { listEvents, searchEvents, createEvent, updateEvent, deleteEvent } from './lib/api.js';
+import { listEvents, searchEvents, createEvent, updateEvent, deleteEvent, getEvent } from './lib/api.js';
 import { addMonths, addWeeks, startOfWeek, toRFC3339 } from './lib/date-utils.js';
 import { getConfig } from './lib/config.js';
 
@@ -71,8 +71,19 @@ function App() {
         setShowForm(true);
     }
 
-    function handleEventClick(event) {
-        setSelectedEvent(event);
+    async function handleEventClick(event) {
+        if (event.recurrence_index > 0) {
+            // Fetch parent event for editing
+            try {
+                const parent = await getEvent(event.id);
+                setSelectedEvent(parent);
+            } catch (err) {
+                console.error('Failed to fetch parent event:', err);
+                setSelectedEvent(event);
+            }
+        } else {
+            setSelectedEvent(event);
+        }
         setDefaultDate(null);
         setShowForm(true);
     }

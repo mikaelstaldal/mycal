@@ -6,24 +6,41 @@ import (
 )
 
 type Event struct {
-	ID          int64  `json:"id"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	StartTime   string `json:"start_time"`
-	EndTime     string `json:"end_time"`
-	AllDay      bool   `json:"all_day"`
-	Color       string `json:"color"`
-	CreatedAt   string `json:"created_at"`
-	UpdatedAt   string `json:"updated_at"`
+	ID              int64  `json:"id"`
+	Title           string `json:"title"`
+	Description     string `json:"description"`
+	StartTime       string `json:"start_time"`
+	EndTime         string `json:"end_time"`
+	AllDay          bool   `json:"all_day"`
+	Color           string `json:"color"`
+	RecurrenceFreq  string `json:"recurrence_freq"`
+	RecurrenceCount int    `json:"recurrence_count"`
+	RecurrenceIndex int    `json:"recurrence_index,omitempty"`
+	CreatedAt       string `json:"created_at"`
+	UpdatedAt       string `json:"updated_at"`
+}
+
+func (e *Event) IsRecurring() bool {
+	return e.RecurrenceFreq != ""
+}
+
+var validFreqs = map[string]bool{
+	"":        true,
+	"DAILY":   true,
+	"WEEKLY":  true,
+	"MONTHLY": true,
+	"YEARLY":  true,
 }
 
 type CreateEventRequest struct {
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	StartTime   string `json:"start_time"`
-	EndTime     string `json:"end_time"`
-	AllDay      bool   `json:"all_day"`
-	Color       string `json:"color"`
+	Title           string `json:"title"`
+	Description     string `json:"description"`
+	StartTime       string `json:"start_time"`
+	EndTime         string `json:"end_time"`
+	AllDay          bool   `json:"all_day"`
+	Color           string `json:"color"`
+	RecurrenceFreq  string `json:"recurrence_freq"`
+	RecurrenceCount int    `json:"recurrence_count"`
 }
 
 const dateOnly = "2006-01-02"
@@ -57,6 +74,12 @@ func (r *CreateEventRequest) Validate() error {
 		endDate, _ := time.Parse(dateOnly, r.EndTime)
 		r.StartTime = start.UTC().Format(time.RFC3339)
 		r.EndTime = endDate.UTC().Format(time.RFC3339)
+		if !validFreqs[r.RecurrenceFreq] {
+			return fmt.Errorf("recurrence_freq must be one of: DAILY, WEEKLY, MONTHLY, YEARLY")
+		}
+		if r.RecurrenceCount < 0 {
+			return fmt.Errorf("recurrence_count must be >= 0")
+		}
 		return nil
 	}
 
@@ -74,16 +97,24 @@ func (r *CreateEventRequest) Validate() error {
 	if !end.After(start) {
 		return fmt.Errorf("end_time must be after start_time")
 	}
+	if !validFreqs[r.RecurrenceFreq] {
+		return fmt.Errorf("recurrence_freq must be one of: DAILY, WEEKLY, MONTHLY, YEARLY")
+	}
+	if r.RecurrenceCount < 0 {
+		return fmt.Errorf("recurrence_count must be >= 0")
+	}
 	return nil
 }
 
 type UpdateEventRequest struct {
-	Title       *string `json:"title"`
-	Description *string `json:"description"`
-	StartTime   *string `json:"start_time"`
-	EndTime     *string `json:"end_time"`
-	AllDay      *bool   `json:"all_day"`
-	Color       *string `json:"color"`
+	Title           *string `json:"title"`
+	Description     *string `json:"description"`
+	StartTime       *string `json:"start_time"`
+	EndTime         *string `json:"end_time"`
+	AllDay          *bool   `json:"all_day"`
+	Color           *string `json:"color"`
+	RecurrenceFreq  *string `json:"recurrence_freq"`
+	RecurrenceCount *int    `json:"recurrence_count"`
 }
 
 func (r *UpdateEventRequest) Validate() error {
@@ -134,6 +165,12 @@ func (r *UpdateEventRequest) Validate() error {
 		if err1 == nil && err2 == nil && !e.After(s) {
 			return fmt.Errorf("end_time must be after start_time")
 		}
+	}
+	if r.RecurrenceFreq != nil && !validFreqs[*r.RecurrenceFreq] {
+		return fmt.Errorf("recurrence_freq must be one of: DAILY, WEEKLY, MONTHLY, YEARLY")
+	}
+	if r.RecurrenceCount != nil && *r.RecurrenceCount < 0 {
+		return fmt.Errorf("recurrence_count must be >= 0")
 	}
 	return nil
 }
