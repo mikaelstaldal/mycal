@@ -129,3 +129,61 @@ func TestDeleteNotFound(t *testing.T) {
 		t.Fatal("expected error for missing event")
 	}
 }
+
+func TestCreateAndGetWithLocation(t *testing.T) {
+	repo := newTestRepo(t)
+	lat := 59.3293
+	lon := 18.0686
+	e := &model.Event{
+		Title:     "Located Event",
+		StartTime: "2026-03-15T10:00:00Z",
+		EndTime:   "2026-03-15T11:00:00Z",
+		Location:  "Stockholm Office",
+		Latitude:  &lat,
+		Longitude: &lon,
+	}
+	if err := repo.Create(e); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := repo.GetByID(e.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Location != "Stockholm Office" {
+		t.Fatalf("got location %q, want %q", got.Location, "Stockholm Office")
+	}
+	if got.Latitude == nil || *got.Latitude != 59.3293 {
+		t.Fatalf("got latitude %v, want 59.3293", got.Latitude)
+	}
+	if got.Longitude == nil || *got.Longitude != 18.0686 {
+		t.Fatalf("got longitude %v, want 18.0686", got.Longitude)
+	}
+}
+
+func TestCreateWithoutCoordinates(t *testing.T) {
+	repo := newTestRepo(t)
+	e := &model.Event{
+		Title:     "No Coords Event",
+		StartTime: "2026-03-15T10:00:00Z",
+		EndTime:   "2026-03-15T11:00:00Z",
+		Location:  "Somewhere",
+	}
+	if err := repo.Create(e); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := repo.GetByID(e.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Location != "Somewhere" {
+		t.Fatalf("got location %q, want %q", got.Location, "Somewhere")
+	}
+	if got.Latitude != nil {
+		t.Fatalf("expected nil latitude, got %v", *got.Latitude)
+	}
+	if got.Longitude != nil {
+		t.Fatalf("expected nil longitude, got %v", *got.Longitude)
+	}
+}

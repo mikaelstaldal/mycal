@@ -44,6 +44,12 @@ func Encode(w io.Writer, events []model.Event) error {
 		if e.Description != "" {
 			b.WriteString(fmt.Sprintf("DESCRIPTION:%s\r\n", escapeText(e.Description)))
 		}
+		if e.Location != "" {
+			b.WriteString(fmt.Sprintf("LOCATION:%s\r\n", escapeText(e.Location)))
+		}
+		if e.Latitude != nil && e.Longitude != nil {
+			b.WriteString(fmt.Sprintf("GEO:%f;%f\r\n", *e.Latitude, *e.Longitude))
+		}
 		if e.RecurrenceFreq != "" {
 			rrule := "RRULE:FREQ=" + e.RecurrenceFreq
 			if e.RecurrenceCount > 0 {
@@ -154,6 +160,8 @@ func parseEvent(props []string, alarmProps []string) (model.Event, bool) {
 	var summary, description, dtstart, dtend string
 	var recurrenceFreq string
 	var recurrenceCount int
+	var location string
+	var latitude, longitude *float64
 	allDay := false
 
 	for _, prop := range props {
@@ -163,6 +171,19 @@ func parseEvent(props []string, alarmProps []string) (model.Event, bool) {
 			summary = unescapeText(value)
 		case "DESCRIPTION":
 			description = unescapeText(value)
+		case "LOCATION":
+			location = unescapeText(value)
+		case "GEO":
+			parts := strings.SplitN(value, ";", 2)
+			if len(parts) == 2 {
+				var lat, lon float64
+				if _, err := fmt.Sscanf(parts[0], "%f", &lat); err == nil {
+					if _, err := fmt.Sscanf(parts[1], "%f", &lon); err == nil {
+						latitude = &lat
+						longitude = &lon
+					}
+				}
+			}
 		case "DTSTART":
 			upperParams := strings.ToUpper(params)
 			if strings.Contains(upperParams, "VALUE=DATE") {
@@ -191,6 +212,9 @@ func parseEvent(props []string, alarmProps []string) (model.Event, bool) {
 		RecurrenceFreq:  recurrenceFreq,
 		RecurrenceCount: recurrenceCount,
 		ReminderMinutes: reminderMinutes,
+		Location:        location,
+		Latitude:        latitude,
+		Longitude:       longitude,
 	}, true
 }
 

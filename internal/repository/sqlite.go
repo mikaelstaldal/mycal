@@ -32,6 +32,9 @@ func initSchema(db *sql.DB) error {
 			color            TEXT NOT NULL DEFAULT '',
 			recurrence_freq  TEXT NOT NULL DEFAULT '',
 			recurrence_count INTEGER NOT NULL DEFAULT 0,
+			location         TEXT NOT NULL DEFAULT '',
+			latitude         REAL,
+			longitude        REAL,
 			created_at       TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
 			updated_at       TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
 		);
@@ -69,6 +72,11 @@ func initSchema(db *sql.DB) error {
 
 	// Migration: add reminder_minutes column if it doesn't exist
 	if err := migrateAddReminderMinutes(db); err != nil {
+		return err
+	}
+
+	// Migration: add location columns if they don't exist
+	if err := migrateAddLocation(db); err != nil {
 		return err
 	}
 
@@ -180,11 +188,57 @@ func migrateAddReminderMinutes(db *sql.DB) error {
 	return nil
 }
 
-const selectColumns = `id, title, description, start_time, end_time, all_day, color, recurrence_freq, recurrence_count, reminder_minutes, created_at, updated_at`
+func migrateAddLocation(db *sql.DB) error {
+	rows, err := db.Query(`PRAGMA table_info(events)`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	hasLocation := false
+	for rows.Next() {
+		var cid int
+		var name, typ string
+		var notnull int
+		var dflt sql.NullString
+		var pk int
+		if err := rows.Scan(&cid, &name, &typ, &notnull, &dflt, &pk); err != nil {
+			return err
+		}
+		if name == "location" {
+			hasLocation = true
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	if !hasLocation {
+		if _, err := db.Exec(`ALTER TABLE events ADD COLUMN location TEXT NOT NULL DEFAULT ''`); err != nil {
+			return fmt.Errorf("migrate add location: %w", err)
+		}
+		if _, err := db.Exec(`ALTER TABLE events ADD COLUMN latitude REAL`); err != nil {
+			return fmt.Errorf("migrate add latitude: %w", err)
+		}
+		if _, err := db.Exec(`ALTER TABLE events ADD COLUMN longitude REAL`); err != nil {
+			return fmt.Errorf("migrate add longitude: %w", err)
+		}
+	}
+	return nil
+}
+
+const selectColumns = `id, title, description, start_time, end_time, all_day, color, recurrence_freq, recurrence_count, reminder_minutes, location, latitude, longitude, created_at, updated_at`
 
 func scanEvent(scanner interface{ Scan(...any) error }) (model.Event, error) {
 	var e model.Event
-	err := scanner.Scan(&e.ID, &e.Title, &e.Description, &e.StartTime, &e.EndTime, &e.AllDay, &e.Color, &e.RecurrenceFreq, &e.RecurrenceCount, &e.ReminderMinutes, &e.CreatedAt, &e.UpdatedAt)
+	var lat, lon sql.NullFloat64
+	err := scanner.Scan(&e.ID, &e.Title, &e.Description, &e.StartTime, &e.EndTime, &e.AllDay, &e.Color, &e.RecurrenceFreq, &e.RecurrenceCount, &e.ReminderMinutes, &e.Location, &lat, &lon, &e.CreatedAt, &e.UpdatedAt)
+	if lat.Valid {
+		e.Latitude = &lat.Float64
+	}
+	if lon.Valid {
+		e.Longitude = &lon.Float64
+	}
 	return e, err
 }
 
@@ -250,7 +304,7 @@ func (r *SQLiteRepository) Search(query, from, to string) ([]model.Event, error)
 	var sb strings.Builder
 	var args []any
 
-	sb.WriteString(`SELECT e.id, e.title, e.description, e.start_time, e.end_time, e.all_day, e.color, e.recurrence_freq, e.recurrence_count, e.reminder_minutes, e.created_at, e.updated_at
+	sb.WriteString(`SELECT e.id, e.title, e.description, e.start_time, e.end_time, e.all_day, e.color, e.recurrence_freq, e.recurrence_count, e.reminder_minutes, e.location, e.latitude, e.longitude, e.created_at, e.updated_at
 		FROM events e
 		JOIN events_fts f ON e.id = f.rowid
 		WHERE events_fts MATCH ?`)
@@ -296,8 +350,8 @@ func (r *SQLiteRepository) GetByID(id int64) (*model.Event, error) {
 
 func (r *SQLiteRepository) Create(event *model.Event) error {
 	result, err := r.db.Exec(
-		`INSERT INTO events (title, description, start_time, end_time, all_day, color, recurrence_freq, recurrence_count, reminder_minutes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		event.Title, event.Description, event.StartTime, event.EndTime, event.AllDay, event.Color, event.RecurrenceFreq, event.RecurrenceCount, event.ReminderMinutes,
+		`INSERT INTO events (title, description, start_time, end_time, all_day, color, recurrence_freq, recurrence_count, reminder_minutes, location, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		event.Title, event.Description, event.StartTime, event.EndTime, event.AllDay, event.Color, event.RecurrenceFreq, event.RecurrenceCount, event.ReminderMinutes, event.Location, event.Latitude, event.Longitude,
 	)
 	if err != nil {
 		return err
@@ -315,9 +369,9 @@ func (r *SQLiteRepository) Create(event *model.Event) error {
 
 func (r *SQLiteRepository) Update(event *model.Event) error {
 	_, err := r.db.Exec(
-		`UPDATE events SET title=?, description=?, start_time=?, end_time=?, all_day=?, color=?, recurrence_freq=?, recurrence_count=?, reminder_minutes=?,
+		`UPDATE events SET title=?, description=?, start_time=?, end_time=?, all_day=?, color=?, recurrence_freq=?, recurrence_count=?, reminder_minutes=?, location=?, latitude=?, longitude=?,
 		 updated_at=strftime('%Y-%m-%dT%H:%M:%SZ','now') WHERE id=?`,
-		event.Title, event.Description, event.StartTime, event.EndTime, event.AllDay, event.Color, event.RecurrenceFreq, event.RecurrenceCount, event.ReminderMinutes, event.ID,
+		event.Title, event.Description, event.StartTime, event.EndTime, event.AllDay, event.Color, event.RecurrenceFreq, event.RecurrenceCount, event.ReminderMinutes, event.Location, event.Latitude, event.Longitude, event.ID,
 	)
 	if err != nil {
 		return err

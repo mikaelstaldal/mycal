@@ -6,19 +6,22 @@ import (
 )
 
 type Event struct {
-	ID              int64  `json:"id"`
-	Title           string `json:"title"`
-	Description     string `json:"description"`
-	StartTime       string `json:"start_time"`
-	EndTime         string `json:"end_time"`
-	AllDay          bool   `json:"all_day"`
-	Color           string `json:"color"`
-	RecurrenceFreq  string `json:"recurrence_freq"`
-	RecurrenceCount int    `json:"recurrence_count"`
-	RecurrenceIndex int    `json:"recurrence_index,omitempty"`
-	ReminderMinutes int    `json:"reminder_minutes"`
-	CreatedAt       string `json:"created_at"`
-	UpdatedAt       string `json:"updated_at"`
+	ID              int64    `json:"id"`
+	Title           string   `json:"title"`
+	Description     string   `json:"description"`
+	StartTime       string   `json:"start_time"`
+	EndTime         string   `json:"end_time"`
+	AllDay          bool     `json:"all_day"`
+	Color           string   `json:"color"`
+	RecurrenceFreq  string   `json:"recurrence_freq"`
+	RecurrenceCount int      `json:"recurrence_count"`
+	RecurrenceIndex int      `json:"recurrence_index,omitempty"`
+	ReminderMinutes int      `json:"reminder_minutes"`
+	Location        string   `json:"location"`
+	Latitude        *float64 `json:"latitude"`
+	Longitude       *float64 `json:"longitude"`
+	CreatedAt       string   `json:"created_at"`
+	UpdatedAt       string   `json:"updated_at"`
 }
 
 func (e *Event) IsRecurring() bool {
@@ -34,15 +37,18 @@ var validFreqs = map[string]bool{
 }
 
 type CreateEventRequest struct {
-	Title           string `json:"title"`
-	Description     string `json:"description"`
-	StartTime       string `json:"start_time"`
-	EndTime         string `json:"end_time"`
-	AllDay          bool   `json:"all_day"`
-	Color           string `json:"color"`
-	RecurrenceFreq  string `json:"recurrence_freq"`
-	RecurrenceCount int    `json:"recurrence_count"`
-	ReminderMinutes int    `json:"reminder_minutes"`
+	Title           string   `json:"title"`
+	Description     string   `json:"description"`
+	StartTime       string   `json:"start_time"`
+	EndTime         string   `json:"end_time"`
+	AllDay          bool     `json:"all_day"`
+	Color           string   `json:"color"`
+	RecurrenceFreq  string   `json:"recurrence_freq"`
+	RecurrenceCount int      `json:"recurrence_count"`
+	ReminderMinutes int      `json:"reminder_minutes"`
+	Location        string   `json:"location"`
+	Latitude        *float64 `json:"latitude"`
+	Longitude       *float64 `json:"longitude"`
 }
 
 const dateOnly = "2006-01-02"
@@ -85,7 +91,7 @@ func (r *CreateEventRequest) Validate() error {
 		if r.ReminderMinutes < 0 {
 			return fmt.Errorf("reminder_minutes must be >= 0")
 		}
-		return nil
+		return r.validateCoordinates()
 	}
 
 	if r.EndTime == "" {
@@ -111,19 +117,32 @@ func (r *CreateEventRequest) Validate() error {
 	if r.ReminderMinutes < 0 {
 		return fmt.Errorf("reminder_minutes must be >= 0")
 	}
+	return r.validateCoordinates()
+}
+
+func (r *CreateEventRequest) validateCoordinates() error {
+	if r.Latitude != nil && (*r.Latitude < -90 || *r.Latitude > 90) {
+		return fmt.Errorf("latitude must be between -90 and 90")
+	}
+	if r.Longitude != nil && (*r.Longitude < -180 || *r.Longitude > 180) {
+		return fmt.Errorf("longitude must be between -180 and 180")
+	}
 	return nil
 }
 
 type UpdateEventRequest struct {
-	Title           *string `json:"title"`
-	Description     *string `json:"description"`
-	StartTime       *string `json:"start_time"`
-	EndTime         *string `json:"end_time"`
-	AllDay          *bool   `json:"all_day"`
-	Color           *string `json:"color"`
-	RecurrenceFreq  *string `json:"recurrence_freq"`
-	RecurrenceCount *int    `json:"recurrence_count"`
-	ReminderMinutes *int    `json:"reminder_minutes"`
+	Title           *string  `json:"title"`
+	Description     *string  `json:"description"`
+	StartTime       *string  `json:"start_time"`
+	EndTime         *string  `json:"end_time"`
+	AllDay          *bool    `json:"all_day"`
+	Color           *string  `json:"color"`
+	RecurrenceFreq  *string  `json:"recurrence_freq"`
+	RecurrenceCount *int     `json:"recurrence_count"`
+	ReminderMinutes *int     `json:"reminder_minutes"`
+	Location        *string  `json:"location"`
+	Latitude        *float64 `json:"latitude"`
+	Longitude       *float64 `json:"longitude"`
 }
 
 func (r *UpdateEventRequest) Validate() error {
@@ -183,6 +202,12 @@ func (r *UpdateEventRequest) Validate() error {
 	}
 	if r.ReminderMinutes != nil && *r.ReminderMinutes < 0 {
 		return fmt.Errorf("reminder_minutes must be >= 0")
+	}
+	if r.Latitude != nil && (*r.Latitude < -90 || *r.Latitude > 90) {
+		return fmt.Errorf("latitude must be between -90 and 90")
+	}
+	if r.Longitude != nil && (*r.Longitude < -180 || *r.Longitude > 180) {
+		return fmt.Errorf("longitude must be between -180 and 180")
 	}
 	return nil
 }

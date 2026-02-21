@@ -674,3 +674,11 @@ body {
     .view-toggle button { font-size: 0.75rem; padding: 4px 8px; }
     .search-input { width: 140px; font-size: 0.8rem; }
 }
+
+.coord-row {
+    display: flex;
+    gap: 12px;
+}
+.coord-row label {
+    flex: 1;
+}

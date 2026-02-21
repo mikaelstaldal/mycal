@@ -21,6 +21,9 @@ export function EventForm({ event, defaultDate, onSave, onDelete, onClose, confi
     const [recurrenceFreq, setRecurrenceFreq] = useState('');
     const [recurrenceCount, setRecurrenceCount] = useState(0);
     const [reminderMinutes, setReminderMinutes] = useState(0);
+    const [location, setLocation] = useState('');
+    const [latitude, setLatitude] = useState('');
+    const [longitude, setLongitude] = useState('');
     const [error, setError] = useState('');
 
     useEffect(() => {
@@ -39,6 +42,9 @@ export function EventForm({ event, defaultDate, onSave, onDelete, onClose, confi
             setRecurrenceFreq(event.recurrence_freq || '');
             setRecurrenceCount(event.recurrence_count || 0);
             setReminderMinutes(event.reminder_minutes || 0);
+            setLocation(event.location || '');
+            setLatitude(event.latitude != null ? String(event.latitude) : '');
+            setLongitude(event.longitude != null ? String(event.longitude) : '');
             setEditing(false);
         } else if (defaultDate) {
             const start = new Date(defaultDate);
@@ -54,6 +60,9 @@ export function EventForm({ event, defaultDate, onSave, onDelete, onClose, confi
             setRecurrenceFreq('');
             setRecurrenceCount(0);
             setReminderMinutes(0);
+            setLocation('');
+            setLatitude('');
+            setLongitude('');
             setEditing(true);
         }
         setError('');
@@ -84,6 +93,12 @@ export function EventForm({ event, defaultDate, onSave, onDelete, onClose, confi
         e.preventDefault();
         if (!title.trim()) { setError('Title is required'); return; }
 
+        const locationFields = {
+            location,
+            latitude: latitude !== '' ? parseFloat(latitude) : null,
+            longitude: longitude !== '' ? parseFloat(longitude) : null,
+        };
+
         if (allDay) {
             if (!startTime) { setError('Start date is required'); return; }
             const data = {
@@ -96,6 +111,7 @@ export function EventForm({ event, defaultDate, onSave, onDelete, onClose, confi
                 recurrence_freq: recurrenceFreq,
                 recurrence_count: recurrenceCount,
                 reminder_minutes: 0,
+                ...locationFields,
             };
             onSave(event?.id, data).catch(err => setError(err.message));
         } else {
@@ -110,6 +126,7 @@ export function EventForm({ event, defaultDate, onSave, onDelete, onClose, confi
                 recurrence_freq: recurrenceFreq,
                 recurrence_count: recurrenceCount,
                 reminder_minutes: reminderMinutes,
+                ...locationFields,
             };
             onSave(event?.id, data).catch(err => setError(err.message));
         }
@@ -203,6 +220,36 @@ export function EventForm({ event, defaultDate, onSave, onDelete, onClose, confi
                         : html`<input type="text" disabled value=${displayEnd()} />`
                     }
                 </label>
+
+                ${editing ? html`
+                    <label>
+                        Location
+                        <input type="text" value=${location}
+                               onInput=${e => setLocation(e.target.value)}
+                               placeholder="e.g. Conference Room A" />
+                    </label>
+                    <div class="coord-row">
+                        <label>
+                            Latitude
+                            <input type="number" step="any" min="-90" max="90"
+                                   value=${latitude}
+                                   onInput=${e => setLatitude(e.target.value)}
+                                   placeholder="e.g. 59.3293" />
+                        </label>
+                        <label>
+                            Longitude
+                            <input type="number" step="any" min="-180" max="180"
+                                   value=${longitude}
+                                   onInput=${e => setLongitude(e.target.value)}
+                                   placeholder="e.g. 18.0686" />
+                        </label>
+                    </div>
+                ` : location && html`
+                    <label>
+                        Location
+                        <input type="text" disabled value=${location} />
+                    </label>
+                `}
 
                 ${editing && html`
                     <div class="color-picker">
