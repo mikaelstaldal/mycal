@@ -1,14 +1,16 @@
-# CLAUDE.md
+# AI coding agent instructions
 
 This file provides guidance to AI coding agents when working with code in this repository.
 
 ## Build & Run
 
 ```bash
-go build -o mycal .        # build single binary
-./mycal                     # serves on :8080, uses mycal.db
-./mycal -addr :3000 -db /path/to/cal.db  # custom address and DB path
+go build -o /tmp/claude/mycal .       # build single binary
+/tmp/claude/mycal                     # serves on :8080, uses mycal.db
+/tmp/claude/mycal -addr :3000 -db /path/to/cal.db  # custom address and DB path
 ```
+
+The coding agent should always compile the application into `/tmp/claude` and run it from there.
 
 ## Tests
 
