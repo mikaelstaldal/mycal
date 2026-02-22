@@ -1,6 +1,7 @@
 import { html } from 'htm/preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { toLocalDatetimeValue, fromLocalDatetimeValue, formatDate, formatTime, toLocalDateValue, formatDateOnly, exclusiveToInclusiveDate, inclusiveToExclusiveDate } from '../lib/date-utils.js';
+import { MapPicker } from './map-picker.js';
 
 const COLORS = ['#4285f4', '#ea4335', '#fbbc04', '#34a853', '#ff6d01', '#46bdc6', '#7baaf7', '#e67c73'];
 
@@ -244,11 +245,41 @@ export function EventForm({ event, defaultDate, onSave, onDelete, onClose, confi
                                    placeholder="e.g. 18.0686" />
                         </label>
                     </div>
-                ` : location && html`
-                    <label>
-                        Location
-                        <input type="text" disabled value=${location} />
-                    </label>
+                    <${MapPicker}
+                        apiKey=${config.googleMapsApiKey}
+                        latitude=${latitude}
+                        longitude=${longitude}
+                        editing=${true}
+                        onCoordinateChange=${(lat, lng) => { setLatitude(lat); setLongitude(lng); }}
+                    />
+                ` : html`
+                    ${location && html`
+                        <label>
+                            Location
+                            <input type="text" disabled value=${location} />
+                        </label>
+                    `}
+                    ${(latitude !== '' && longitude !== '') ? html`
+                        <${MapPicker}
+                            apiKey=${config.googleMapsApiKey}
+                            latitude=${latitude}
+                            longitude=${longitude}
+                            editing=${false}
+                        />
+                        ${!config.googleMapsApiKey && html`
+                            <a href="https://www.google.com/maps?q=${latitude},${longitude}"
+                               target="_blank" rel="noopener noreferrer"
+                               style="display: inline-block; margin: 4px 0 8px; color: #4285f4;">
+                                View on Google Maps \u2197
+                            </a>
+                        `}
+                    ` : location && html`
+                        <a href="https://www.google.com/maps/search/${encodeURIComponent(location)}"
+                           target="_blank" rel="noopener noreferrer"
+                           style="display: inline-block; margin: 4px 0 8px; color: #4285f4;">
+                            Search on Google Maps \u2197
+                        </a>
+                    `}
                 `}
 
                 ${editing && html`

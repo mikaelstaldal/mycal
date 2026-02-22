@@ -77,6 +77,12 @@ export function Settings({ config, onConfigChange }) {
                         `)}
                     </select>
                 </label>
+                <label>
+                    Google Maps API key
+                    <input type="text" value=${config.googleMapsApiKey || ''}
+                           onInput=${e => handleChange('googleMapsApiKey', e.target.value)}
+                           placeholder="Leave empty to disable maps" />
+                </label>
                 <div class="dialog-actions">
                     <button onClick=${handleClose}>Close</button>
                 </div>

@@ -6,6 +6,7 @@ const DEFAULTS = {
     dateFormat: 'yyyy-MM-dd', // 'yyyy-MM-dd', 'MM/dd/yyyy', 'dd/MM/yyyy'
     defaultView: 'month', // 'month' or 'week'
     dayStartHour: 8, // 0-23, hour to scroll to in week view
+    googleMapsApiKey: '', // empty = maps disabled
 };
 
 export function getConfig() {
