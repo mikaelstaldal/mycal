@@ -49,5 +49,4 @@ Go backend with embedded Preact+HTM frontend (no JS build step). Single binary s
 
 ## Database
 
-The application is currently at an early stage in development with no data in production therefore, 
-database migrations are not necessary.
+Do not do database migrations, assume that we will start with an empty database.
