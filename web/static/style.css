@@ -291,7 +291,7 @@ body {
     border-radius: 8px;
     padding: 24px;
     width: 90%;
-    max-width: 350px;
+    max-width: 420px;
     box-shadow: 0 8px 32px rgba(0,0,0,0.2);
 }
 
@@ -304,6 +304,17 @@ body {
     margin-bottom: 12px;
     font-size: 0.85rem;
     color: #555;
+}
+
+.settings-dialog input[type="text"] {
+    display: block;
+    width: 100%;
+    margin-top: 4px;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.95rem;
+    font-family: inherit;
 }
 
 .settings-dialog select {

@@ -223,29 +223,34 @@ export function EventForm({ event, defaultDate, onSave, onDelete, onClose, confi
                 </label>
 
                 ${editing ? html`
-                    <label>
-                        Location
-                        <input type="text" value=${location}
-                               onInput=${e => setLocation(e.target.value)}
-                               placeholder="e.g. Conference Room A" />
-                    </label>
-                    <div class="coord-row">
+                    ${!(config.mapProvider === 'openstreetmap' || (config.mapProvider === 'google' && /^AIza[A-Za-z0-9_-]{35}$/.test(config.googleMapsApiKey))) && html`
                         <label>
-                            Latitude
-                            <input type="number" step="any" min="-90" max="90"
-                                   value=${latitude}
-                                   onInput=${e => setLatitude(e.target.value)}
-                                   placeholder="e.g. 59.3293" />
+                            Location
+                            <input type="text" value=${location}
+                                   onInput=${e => setLocation(e.target.value)}
+                                   placeholder="e.g. Conference Room A" />
                         </label>
-                        <label>
-                            Longitude
-                            <input type="number" step="any" min="-180" max="180"
-                                   value=${longitude}
-                                   onInput=${e => setLongitude(e.target.value)}
-                                   placeholder="e.g. 18.0686" />
-                        </label>
-                    </div>
+                    `}
+                    ${!(config.mapProvider === 'openstreetmap' || (config.mapProvider === 'google' && /^AIza[A-Za-z0-9_-]{35}$/.test(config.googleMapsApiKey))) && html`
+                        <div class="coord-row">
+                            <label>
+                                Latitude
+                                <input type="number" step="any" min="-90" max="90"
+                                       value=${latitude}
+                                       onInput=${e => setLatitude(e.target.value)}
+                                       placeholder="e.g. 59.3293" />
+                            </label>
+                            <label>
+                                Longitude
+                                <input type="number" step="any" min="-180" max="180"
+                                       value=${longitude}
+                                       onInput=${e => setLongitude(e.target.value)}
+                                       placeholder="e.g. 18.0686" />
+                            </label>
+                        </div>
+                    `}
                     <${MapPicker}
+                        mapProvider=${config.mapProvider}
                         apiKey=${config.googleMapsApiKey}
                         latitude=${latitude}
                         longitude=${longitude}
@@ -261,23 +266,28 @@ export function EventForm({ event, defaultDate, onSave, onDelete, onClose, confi
                     `}
                     ${(latitude !== '' && longitude !== '') ? html`
                         <${MapPicker}
+                            mapProvider=${config.mapProvider}
                             apiKey=${config.googleMapsApiKey}
                             latitude=${latitude}
                             longitude=${longitude}
                             editing=${false}
                         />
-                        ${!config.googleMapsApiKey && html`
-                            <a href="https://www.google.com/maps?q=${latitude},${longitude}"
+                        ${config.mapProvider !== 'google' && html`
+                            <a href=${config.mapProvider === 'openstreetmap'
+                                    ? `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=15/${latitude}/${longitude}`
+                                    : `https://www.google.com/maps?q=${latitude},${longitude}`}
                                target="_blank" rel="noopener noreferrer"
                                style="display: inline-block; margin: 4px 0 8px; color: #4285f4;">
-                                View on Google Maps \u2197
+                                ${config.mapProvider === 'openstreetmap' ? 'View on OpenStreetMap' : 'View on Google Maps'} \u2197
                             </a>
                         `}
                     ` : location && html`
-                        <a href="https://www.google.com/maps/search/${encodeURIComponent(location)}"
+                        <a href=${config.mapProvider === 'openstreetmap'
+                                ? `https://www.openstreetmap.org/search?query=${encodeURIComponent(location)}`
+                                : `https://www.google.com/maps/search/${encodeURIComponent(location)}`}
                            target="_blank" rel="noopener noreferrer"
                            style="display: inline-block; margin: 4px 0 8px; color: #4285f4;">
-                            Search on Google Maps \u2197
+                            ${config.mapProvider === 'openstreetmap' ? 'Search on OpenStreetMap' : 'Search on Google Maps'} \u2197
                         </a>
                     `}
                 `}

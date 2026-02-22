@@ -2,13 +2,31 @@ import { html } from 'htm/preact';
 import { useState, useRef, useEffect } from 'preact/hooks';
 import { saveConfig } from '../lib/config.js';
 
+// Google Maps API keys are 39 chars starting with "AIza"
+function isValidGoogleMapsApiKey(key) {
+    return /^AIza[A-Za-z0-9_-]{35}$/.test(key);
+}
+
 export function Settings({ config, onConfigChange }) {
     const [open, setOpen] = useState(false);
+    const [apiKeyError, setApiKeyError] = useState('');
+    const [pendingApiKey, setPendingApiKey] = useState('');
+    // Track dropdown selection locally so we can show the API key field
+    // before actually saving 'google' as the provider
+    const [selectedProvider, setSelectedProvider] = useState(config.mapProvider || 'none');
     const dialogRef = useRef(null);
 
     useEffect(() => {
         if (open && dialogRef.current && !dialogRef.current.open) {
             dialogRef.current.showModal();
+        }
+    }, [open]);
+
+    useEffect(() => {
+        if (open) {
+            setPendingApiKey(config.googleMapsApiKey || '');
+            setSelectedProvider(config.mapProvider || 'none');
+            setApiKeyError('');
         }
     }, [open]);
 
@@ -21,6 +39,41 @@ export function Settings({ config, onConfigChange }) {
         const updated = { ...config, [key]: numericKeys.includes(key) ? Number(value) : value };
         saveConfig(updated);
         onConfigChange(updated);
+    }
+
+    function handleMapProviderChange(value) {
+        setSelectedProvider(value);
+        if (value === 'google') {
+            setPendingApiKey(config.googleMapsApiKey || '');
+            if (isValidGoogleMapsApiKey(config.googleMapsApiKey)) {
+                setApiKeyError('');
+                handleChange('mapProvider', 'google');
+            } else {
+                setApiKeyError('Enter a valid API key to enable Google Maps');
+                // Don't save 'google' as provider yet — keep current provider
+            }
+        } else {
+            setApiKeyError('');
+            handleChange('mapProvider', value);
+        }
+    }
+
+    function handleApiKeyInput(value) {
+        setPendingApiKey(value);
+        if (value === '') {
+            setApiKeyError('API key is required for Google Maps');
+        } else if (!isValidGoogleMapsApiKey(value)) {
+            setApiKeyError('Invalid API key format (expected 39 characters starting with AIza)');
+        } else {
+            setApiKeyError('');
+            // Key is valid — now save both the key and switch the provider
+            const updated = { ...config, googleMapsApiKey: value, mapProvider: 'google' };
+            saveConfig(updated);
+            onConfigChange(updated);
+            return;
+        }
+        // Save the key value for persistence, but don't switch provider
+        handleChange('googleMapsApiKey', value);
     }
 
     return html`
@@ -78,11 +131,27 @@ export function Settings({ config, onConfigChange }) {
                     </select>
                 </label>
                 <label>
-                    Google Maps API key
-                    <input type="text" value=${config.googleMapsApiKey || ''}
-                           onInput=${e => handleChange('googleMapsApiKey', e.target.value)}
-                           placeholder="Leave empty to disable maps" />
+                    Map provider
+                    <select value=${selectedProvider}
+                            onChange=${e => handleMapProviderChange(e.target.value)}>
+                        <option value="none">None</option>
+                        <option value="openstreetmap">OpenStreetMap</option>
+                        <option value="google">Google Maps</option>
+                    </select>
                 </label>
+                ${selectedProvider === 'google' && html`
+                    <label>
+                        Google Maps API key
+                        <input type="text" value=${pendingApiKey}
+                               onInput=${e => handleApiKeyInput(e.target.value)}
+                               placeholder="AIza..." />
+                    </label>
+                    ${apiKeyError && html`
+                        <div style="color: #c62828; font-size: 0.8rem; margin: -8px 0 8px;">
+                            ${apiKeyError}
+                        </div>
+                    `}
+                `}
                 <div class="dialog-actions">
                     <button onClick=${handleClose}>Close</button>
                 </div>
