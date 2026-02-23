@@ -75,6 +75,11 @@ func HTML(s string) string {
 			}
 		}
 
+		// Force links to open in a new tab
+		if lower == "a" {
+			attrs = append(attrs, `target="_blank"`, `rel="noopener noreferrer"`)
+		}
+
 		result := "<" + lower
 		if len(attrs) > 0 {
 			result += " " + strings.Join(attrs, " ")

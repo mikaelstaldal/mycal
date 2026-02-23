@@ -41,12 +41,12 @@ func TestHTML(t *testing.T) {
 		{
 			name: "safe link preserved",
 			in:   `<a href="https://example.com" title="Example">link</a>`,
-			want: `<a href="https://example.com" title="Example">link</a>`,
+			want: `<a href="https://example.com" title="Example" target="_blank" rel="noopener noreferrer">link</a>`,
 		},
 		{
 			name: "javascript href removed",
 			in:   `<a href="javascript:alert(1)">link</a>`,
-			want: `<a>link</a>`,
+			want: `<a target="_blank" rel="noopener noreferrer">link</a>`,
 		},
 		{
 			name: "mixed content",
