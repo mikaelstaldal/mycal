@@ -182,7 +182,7 @@ function App() {
                             <div class="search-result-title">${event.title}</div>
                             <div class="search-result-date">${formatSearchDate(event.start_time)}</div>
                             <div class="search-result-time">${formatSearchTime(event.start_time, event.end_time)}</div>
-                            ${event.description && html`<div class="search-result-desc">${event.description}</div>`}
+                            ${event.description && html`<div class="search-result-desc" dangerouslySetInnerHTML=${{ __html: event.description }} />`}
                         </div>
                     `)}
                 </div>

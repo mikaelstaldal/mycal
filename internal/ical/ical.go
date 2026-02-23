@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/mikaelstaldal/mycal/internal/model"
+	"github.com/mikaelstaldal/mycal/internal/sanitize"
 )
 
 // Encode writes events as an iCalendar (RFC 5545) document to w.
@@ -170,7 +171,7 @@ func parseEvent(props []string, alarmProps []string) (model.Event, bool) {
 		case "SUMMARY":
 			summary = unescapeText(value)
 		case "DESCRIPTION":
-			description = unescapeText(value)
+			description = sanitize.HTML(unescapeText(value))
 		case "LOCATION":
 			location = unescapeText(value)
 		case "GEO":

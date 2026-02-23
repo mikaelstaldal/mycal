@@ -184,11 +184,18 @@ export function EventForm({ event, defaultDate, onSave, onDelete, onClose, confi
                            onInput=${e => setTitle(e.target.value)} />
                 </label>
 
-                <label>
-                    Description
-                    <textarea value=${description} disabled=${!editing}
-                              onInput=${e => setDescription(e.target.value)} rows="3" />
-                </label>
+                ${editing ? html`
+                    <label>
+                        Description
+                        <textarea value=${description}
+                                  onInput=${e => setDescription(e.target.value)} rows="3" />
+                    </label>
+                ` : description && html`
+                    <label>
+                        Description
+                        <div class="description-display" dangerouslySetInnerHTML=${{ __html: description }} />
+                    </label>
+                `}
 
                 ${editing && html`
                     <label class="checkbox-label">
