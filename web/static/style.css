@@ -715,6 +715,27 @@ body {
     color: #4285f4;
 }
 
+/* Rich text editor (Quill) overrides */
+.event-dialog .ql-toolbar {
+    border-radius: 4px 4px 0 0;
+    border-color: #ddd;
+    font-family: inherit;
+}
+
+.event-dialog .ql-container {
+    border-radius: 0 0 4px 4px;
+    border-color: #ddd;
+    font-family: inherit;
+    font-size: 0.95rem;
+    min-height: 80px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.event-dialog .ql-editor {
+    min-height: 80px;
+}
+
 .coord-row {
     display: flex;
     gap: 12px;

@@ -8,6 +8,7 @@ import (
 
 	"github.com/mikaelstaldal/mycal/internal/model"
 	"github.com/mikaelstaldal/mycal/internal/repository"
+	"github.com/mikaelstaldal/mycal/internal/sanitize"
 )
 
 var (
@@ -92,7 +93,7 @@ func (s *EventService) Create(req *model.CreateEventRequest) (*model.Event, erro
 	}
 	e := &model.Event{
 		Title:           req.Title,
-		Description:     req.Description,
+		Description:     sanitize.HTML(req.Description),
 		StartTime:       req.StartTime,
 		EndTime:         req.EndTime,
 		AllDay:          req.AllDay,
@@ -128,7 +129,7 @@ func (s *EventService) Update(id int64, req *model.UpdateEventRequest) (*model.E
 		existing.Title = *req.Title
 	}
 	if req.Description != nil {
-		existing.Description = *req.Description
+		existing.Description = sanitize.HTML(*req.Description)
 	}
 	if req.AllDay != nil {
 		existing.AllDay = *req.AllDay

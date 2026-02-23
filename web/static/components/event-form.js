@@ -2,6 +2,7 @@ import { html } from 'htm/preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { toLocalDatetimeValue, fromLocalDatetimeValue, formatDate, formatTime, toLocalDateValue, formatDateOnly, exclusiveToInclusiveDate, inclusiveToExclusiveDate } from '../lib/date-utils.js';
 import { MapPicker } from './map-picker.js';
+import { RichEditor } from './rich-editor.js';
 
 const COLORS = ['#4285f4', '#ea4335', '#fbbc04', '#34a853', '#ff6d01', '#46bdc6', '#7baaf7', '#e67c73'];
 
@@ -187,8 +188,7 @@ export function EventForm({ event, defaultDate, onSave, onDelete, onClose, confi
                 ${editing ? html`
                     <label>
                         Description
-                        <textarea value=${description}
-                                  onInput=${e => setDescription(e.target.value)} rows="3" />
+                        <${RichEditor} value=${description} onChange=${v => setDescription(v)} />
                     </label>
                 ` : description && html`
                     <label>
