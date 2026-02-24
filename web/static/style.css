@@ -872,10 +872,14 @@ body {
     background: #4285f4;
     color: #fff;
     font-weight: 600;
-    aspect-ratio: 1;
-    display: flex;
+    width: 24px;
+    height: 24px;
+    line-height: 18px;
+    border-radius: 50%;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
+    margin: auto;
 }
 
 .year-day-has-events:not(.year-day-today) {
