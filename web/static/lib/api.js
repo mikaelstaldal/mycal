@@ -52,3 +52,13 @@ export async function importEvents(data) {
     if (!res.ok) throw new Error((await res.json()).error);
     return res.json();
 }
+
+export async function importSingleEvent(data) {
+    const res = await fetch('/api/v1/import-single', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error((await res.json()).error);
+    return res.json();
+}

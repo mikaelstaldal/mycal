@@ -212,6 +212,62 @@ func (s *EventService) Update(id int64, req *model.UpdateEventRequest) (*model.E
 	return existing, nil
 }
 
+func (s *EventService) ImportSingle(events []model.Event) (*model.Event, error) {
+	if len(events) == 0 {
+		return nil, fmt.Errorf("%w: iCal source contains no events", ErrValidation)
+	}
+	if len(events) > 1 {
+		return nil, fmt.Errorf("%w: iCal source contains %d events, expected exactly one", ErrValidation, len(events))
+	}
+
+	e := events[0]
+	startTime := e.StartTime
+	endTime := e.EndTime
+	if e.AllDay {
+		if t, err := time.Parse(time.RFC3339, startTime); err == nil {
+			startTime = t.Format(dateOnly)
+		}
+		if t, err := time.Parse(time.RFC3339, endTime); err == nil {
+			endTime = t.Format(dateOnly)
+		}
+	}
+	req := &model.CreateEventRequest{
+		Title:           e.Title,
+		Description:     e.Description,
+		StartTime:       startTime,
+		EndTime:         endTime,
+		AllDay:          e.AllDay,
+		RecurrenceFreq:  e.RecurrenceFreq,
+		RecurrenceCount: e.RecurrenceCount,
+		RecurrenceUntil: e.RecurrenceUntil,
+		ReminderMinutes: e.ReminderMinutes,
+		Location:        e.Location,
+		Latitude:        e.Latitude,
+		Longitude:       e.Longitude,
+	}
+	if err := req.Validate(); err != nil {
+		return nil, fmt.Errorf("%w: %s", ErrValidation, err.Error())
+	}
+	ev := &model.Event{
+		Title:           e.Title,
+		Description:     e.Description,
+		StartTime:       req.StartTime,
+		EndTime:         req.EndTime,
+		AllDay:          e.AllDay,
+		RecurrenceFreq:  e.RecurrenceFreq,
+		RecurrenceCount: e.RecurrenceCount,
+		RecurrenceUntil: e.RecurrenceUntil,
+		ReminderMinutes: e.ReminderMinutes,
+		Location:        e.Location,
+		Latitude:        e.Latitude,
+		Longitude:       e.Longitude,
+	}
+	if err := s.repo.Create(ev); err != nil {
+		return nil, err
+	}
+	return ev, nil
+}
+
 func (s *EventService) Import(events []model.Event) (int, error) {
 	imported := 0
 	for _, e := range events {

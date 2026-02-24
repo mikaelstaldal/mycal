@@ -374,6 +374,12 @@ body {
     font-size: 0.85rem;
 }
 
+.import-hint {
+    font-size: 0.8rem;
+    color: #888;
+    margin-bottom: 8px;
+}
+
 /* View toggle */
 .view-toggle {
     display: flex;
