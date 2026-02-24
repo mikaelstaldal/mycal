@@ -52,7 +52,7 @@ body {
 /* Calendar */
 .calendar-header {
     display: grid;
-    grid-template-columns: 28px repeat(7, 1fr);
+    grid-template-columns: 28px repeat(7, minmax(0, 1fr));
     text-align: center;
     font-weight: 600;
     font-size: 0.85rem;
@@ -70,7 +70,7 @@ body {
 
 .calendar-grid {
     display: grid;
-    grid-template-columns: 28px repeat(7, 1fr);
+    grid-template-columns: 28px repeat(7, minmax(0, 1fr));
     gap: 1px;
     background: #ddd;
     border: 1px solid #ddd;
@@ -90,8 +90,10 @@ body {
 .day {
     background: #fff;
     min-height: 100px;
+    min-width: 0;
     padding: 4px;
     cursor: pointer;
+    overflow: hidden;
 }
 
 .day:hover {
