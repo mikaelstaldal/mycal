@@ -15,6 +15,7 @@ type Event struct {
 	Color           string   `json:"color"`
 	RecurrenceFreq  string   `json:"recurrence_freq"`
 	RecurrenceCount int      `json:"recurrence_count"`
+	RecurrenceUntil string   `json:"recurrence_until"`
 	RecurrenceIndex int      `json:"recurrence_index,omitempty"`
 	ReminderMinutes int      `json:"reminder_minutes"`
 	Location        string   `json:"location"`
@@ -45,6 +46,7 @@ type CreateEventRequest struct {
 	Color           string   `json:"color"`
 	RecurrenceFreq  string   `json:"recurrence_freq"`
 	RecurrenceCount int      `json:"recurrence_count"`
+	RecurrenceUntil string   `json:"recurrence_until"`
 	ReminderMinutes int      `json:"reminder_minutes"`
 	Location        string   `json:"location"`
 	Latitude        *float64 `json:"latitude"`
@@ -88,6 +90,11 @@ func (r *CreateEventRequest) Validate() error {
 		if r.RecurrenceCount < 0 {
 			return fmt.Errorf("recurrence_count must be >= 0")
 		}
+		if r.RecurrenceUntil != "" {
+			if _, err := time.Parse(time.RFC3339, r.RecurrenceUntil); err != nil {
+				return fmt.Errorf("recurrence_until must be RFC 3339 format")
+			}
+		}
 		if r.ReminderMinutes < 0 {
 			return fmt.Errorf("reminder_minutes must be >= 0")
 		}
@@ -114,6 +121,11 @@ func (r *CreateEventRequest) Validate() error {
 	if r.RecurrenceCount < 0 {
 		return fmt.Errorf("recurrence_count must be >= 0")
 	}
+	if r.RecurrenceUntil != "" {
+		if _, err := time.Parse(time.RFC3339, r.RecurrenceUntil); err != nil {
+			return fmt.Errorf("recurrence_until must be RFC 3339 format")
+		}
+	}
 	if r.ReminderMinutes < 0 {
 		return fmt.Errorf("reminder_minutes must be >= 0")
 	}
@@ -139,6 +151,7 @@ type UpdateEventRequest struct {
 	Color           *string  `json:"color"`
 	RecurrenceFreq  *string  `json:"recurrence_freq"`
 	RecurrenceCount *int     `json:"recurrence_count"`
+	RecurrenceUntil *string  `json:"recurrence_until"`
 	ReminderMinutes *int     `json:"reminder_minutes"`
 	Location        *string  `json:"location"`
 	Latitude        *float64 `json:"latitude"`

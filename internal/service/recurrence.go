@@ -24,6 +24,13 @@ func expandRecurring(event model.Event, from, to time.Time) []model.Event {
 	}
 	duration := endTime.Sub(startTime)
 
+	var untilTime time.Time
+	if event.RecurrenceUntil != "" {
+		if t, err := time.Parse(time.RFC3339, event.RecurrenceUntil); err == nil {
+			untilTime = t
+		}
+	}
+
 	var instances []model.Event
 	for i := 0; i < maxExpansions; i++ {
 		if event.RecurrenceCount > 0 && i >= event.RecurrenceCount {
@@ -32,6 +39,11 @@ func expandRecurring(event model.Event, from, to time.Time) []model.Event {
 
 		instanceStart := addFreq(startTime, event.RecurrenceFreq, i)
 		instanceEnd := instanceStart.Add(duration)
+
+		// Stop if past the UNTIL date
+		if !untilTime.IsZero() && instanceStart.After(untilTime) {
+			break
+		}
 
 		// Stop if past the query window
 		if instanceStart.Compare(to) >= 0 {

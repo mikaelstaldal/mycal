@@ -100,6 +100,7 @@ func (s *EventService) Create(req *model.CreateEventRequest) (*model.Event, erro
 		Color:           req.Color,
 		RecurrenceFreq:  req.RecurrenceFreq,
 		RecurrenceCount: req.RecurrenceCount,
+		RecurrenceUntil: req.RecurrenceUntil,
 		ReminderMinutes: req.ReminderMinutes,
 		Location:        req.Location,
 		Latitude:        req.Latitude,
@@ -142,6 +143,9 @@ func (s *EventService) Update(id int64, req *model.UpdateEventRequest) (*model.E
 	}
 	if req.RecurrenceCount != nil {
 		existing.RecurrenceCount = *req.RecurrenceCount
+	}
+	if req.RecurrenceUntil != nil {
+		existing.RecurrenceUntil = *req.RecurrenceUntil
 	}
 	if req.ReminderMinutes != nil {
 		existing.ReminderMinutes = *req.ReminderMinutes
@@ -219,6 +223,7 @@ func (s *EventService) Import(events []model.Event) (int, error) {
 			AllDay:          e.AllDay,
 			RecurrenceFreq:  e.RecurrenceFreq,
 			RecurrenceCount: e.RecurrenceCount,
+			RecurrenceUntil: e.RecurrenceUntil,
 			ReminderMinutes: e.ReminderMinutes,
 			Location:        e.Location,
 			Latitude:        e.Latitude,
@@ -235,6 +240,7 @@ func (s *EventService) Import(events []model.Event) (int, error) {
 			AllDay:          e.AllDay,
 			RecurrenceFreq:  e.RecurrenceFreq,
 			RecurrenceCount: e.RecurrenceCount,
+			RecurrenceUntil: e.RecurrenceUntil,
 			ReminderMinutes: e.ReminderMinutes,
 			Location:        e.Location,
 			Latitude:        e.Latitude,

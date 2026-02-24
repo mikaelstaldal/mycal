@@ -56,6 +56,11 @@ func Encode(w io.Writer, events []model.Event) error {
 			if e.RecurrenceCount > 0 {
 				rrule += fmt.Sprintf(";COUNT=%d", e.RecurrenceCount)
 			}
+			if e.RecurrenceUntil != "" {
+				if t, err := time.Parse(time.RFC3339, e.RecurrenceUntil); err == nil {
+					rrule += ";UNTIL=" + formatICalTime(t)
+				}
+			}
 			b.WriteString(rrule + "\r\n")
 		}
 		if e.ReminderMinutes > 0 {
@@ -161,6 +166,7 @@ func parseEvent(props []string, alarmProps []string) (model.Event, bool) {
 	var summary, description, dtstart, dtend string
 	var recurrenceFreq string
 	var recurrenceCount int
+	var recurrenceUntil string
 	var location string
 	var latitude, longitude *float64
 	allDay := false
@@ -194,7 +200,7 @@ func parseEvent(props []string, alarmProps []string) (model.Event, bool) {
 		case "DTEND":
 			dtend = parseICalTime(value, params)
 		case "RRULE":
-			recurrenceFreq, recurrenceCount = parseRRule(value)
+			recurrenceFreq, recurrenceCount, recurrenceUntil = parseRRule(value)
 		}
 	}
 
@@ -212,6 +218,7 @@ func parseEvent(props []string, alarmProps []string) (model.Event, bool) {
 		AllDay:          allDay,
 		RecurrenceFreq:  recurrenceFreq,
 		RecurrenceCount: recurrenceCount,
+		RecurrenceUntil: recurrenceUntil,
 		ReminderMinutes: reminderMinutes,
 		Location:        location,
 		Latitude:        latitude,
@@ -276,7 +283,7 @@ func parseDurationToMinutes(s string) int {
 	return minutes
 }
 
-func parseRRule(value string) (freq string, count int) {
+func parseRRule(value string) (freq string, count int, until string) {
 	for _, part := range strings.Split(value, ";") {
 		kv := strings.SplitN(part, "=", 2)
 		if len(kv) != 2 {
@@ -287,6 +294,8 @@ func parseRRule(value string) (freq string, count int) {
 			freq = strings.ToUpper(kv[1])
 		case "COUNT":
 			fmt.Sscanf(kv[1], "%d", &count)
+		case "UNTIL":
+			until = parseICalTime(kv[1], "")
 		}
 	}
 	return

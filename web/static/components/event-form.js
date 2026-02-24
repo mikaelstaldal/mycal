@@ -22,6 +22,7 @@ export function EventForm({ event, defaultDate, onSave, onDelete, onClose, confi
     const [color, setColor] = useState('');
     const [recurrenceFreq, setRecurrenceFreq] = useState('');
     const [recurrenceCount, setRecurrenceCount] = useState(0);
+    const [recurrenceUntil, setRecurrenceUntil] = useState('');
     const [reminderMinutes, setReminderMinutes] = useState(0);
     const [location, setLocation] = useState('');
     const [latitude, setLatitude] = useState('');
@@ -43,6 +44,7 @@ export function EventForm({ event, defaultDate, onSave, onDelete, onClose, confi
             setColor(event.color);
             setRecurrenceFreq(event.recurrence_freq || '');
             setRecurrenceCount(event.recurrence_count || 0);
+            setRecurrenceUntil(event.recurrence_until ? event.recurrence_until.substring(0, 10) : '');
             setReminderMinutes(event.reminder_minutes || 0);
             setLocation(event.location || '');
             setLatitude(event.latitude != null ? String(event.latitude) : '');
@@ -61,6 +63,7 @@ export function EventForm({ event, defaultDate, onSave, onDelete, onClose, confi
             setColor('');
             setRecurrenceFreq('');
             setRecurrenceCount(0);
+            setRecurrenceUntil('');
             setReminderMinutes(0);
             setLocation('');
             setLatitude('');
@@ -112,6 +115,7 @@ export function EventForm({ event, defaultDate, onSave, onDelete, onClose, confi
                 color,
                 recurrence_freq: recurrenceFreq,
                 recurrence_count: recurrenceCount,
+                recurrence_until: recurrenceUntil ? recurrenceUntil + 'T00:00:00Z' : '',
                 reminder_minutes: 0,
                 ...locationFields,
             };
@@ -127,6 +131,7 @@ export function EventForm({ event, defaultDate, onSave, onDelete, onClose, confi
                 color,
                 recurrence_freq: recurrenceFreq,
                 recurrence_count: recurrenceCount,
+                recurrence_until: recurrenceUntil ? recurrenceUntil + 'T00:00:00Z' : '',
                 reminder_minutes: reminderMinutes,
                 ...locationFields,
             };
@@ -166,6 +171,7 @@ export function EventForm({ event, defaultDate, onSave, onDelete, onClose, confi
         if (!recurrenceFreq) return 'None';
         const freqLabels = { DAILY: 'Daily', WEEKLY: 'Weekly', MONTHLY: 'Monthly', YEARLY: 'Yearly' };
         const label = freqLabels[recurrenceFreq] || recurrenceFreq;
+        if (recurrenceUntil) return `${label}, until ${recurrenceUntil}`;
         return recurrenceCount > 0 ? `${label}, ${recurrenceCount} times` : `${label}, forever`;
     }
 
@@ -332,6 +338,11 @@ export function EventForm({ event, defaultDate, onSave, onDelete, onClose, confi
                             Occurrences (0 = unlimited)
                             <input type="number" min="0" value=${recurrenceCount}
                                    onInput=${e => setRecurrenceCount(parseInt(e.target.value) || 0)} />
+                        </label>
+                        <label>
+                            Until date (optional)
+                            <input type="date" value=${recurrenceUntil}
+                                   onInput=${e => setRecurrenceUntil(e.target.value)} />
                         </label>
                     `}
                 ` : recurrenceFreq && html`
