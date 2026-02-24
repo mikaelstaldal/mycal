@@ -215,11 +215,23 @@ func (s *EventService) Update(id int64, req *model.UpdateEventRequest) (*model.E
 func (s *EventService) Import(events []model.Event) (int, error) {
 	imported := 0
 	for _, e := range events {
+		startTime := e.StartTime
+		endTime := e.EndTime
+		// All-day events: Validate() expects YYYY-MM-DD, but iCal decoder
+		// produces RFC3339. Convert back to date-only format.
+		if e.AllDay {
+			if t, err := time.Parse(time.RFC3339, startTime); err == nil {
+				startTime = t.Format(dateOnly)
+			}
+			if t, err := time.Parse(time.RFC3339, endTime); err == nil {
+				endTime = t.Format(dateOnly)
+			}
+		}
 		req := &model.CreateEventRequest{
 			Title:           e.Title,
 			Description:     e.Description,
-			StartTime:       e.StartTime,
-			EndTime:         e.EndTime,
+			StartTime:       startTime,
+			EndTime:         endTime,
 			AllDay:          e.AllDay,
 			RecurrenceFreq:  e.RecurrenceFreq,
 			RecurrenceCount: e.RecurrenceCount,
