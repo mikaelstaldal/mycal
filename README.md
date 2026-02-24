@@ -14,8 +14,7 @@ A personal calendar application with a Go backend, SQLite storage, and a Preact 
 ## Getting Started
 
 ```bash
-go build -o mycal .
-./mycal
+go build -o mycal . && ./mycal
 ```
 
 Open http://localhost:8080 in your browser.
