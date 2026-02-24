@@ -22,6 +22,7 @@ function App() {
     const [config, setConfig] = useState(getConfig);
     const [showImport, setShowImport] = useState(false);
     const [toast, setToast] = useState(null);
+    const [toastError, setToastError] = useState(false);
     const [viewMode, setViewMode] = useState(() => getConfig().defaultView || 'month');
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState(null);
@@ -227,10 +228,10 @@ function App() {
                               config=${config} />
             `}
             ${showImport && html`
-                <${ImportForm} onImported=${(message) => { setShowImport(false); loadEvents(); setToast(message); }}
+                <${ImportForm} onImported=${(message, isError) => { setShowImport(false); if (!isError) loadEvents(); setToastError(!!isError); setToast(message); }}
                                onClose=${() => setShowImport(false)} />
             `}
-            ${toast && html`<${Toast} message=${toast} onDone=${() => setToast(null)} />`}
+            ${toast && html`<${Toast} message=${toast} isError=${toastError} onDone=${() => setToast(null)} />`}
         </div>
     `;
 }
