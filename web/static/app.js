@@ -150,6 +150,15 @@ function App() {
         setSelectedEvent(null);
     }
 
+    async function handleEventDrag(eventId, startTime, endTime) {
+        try {
+            await updateEvent(eventId, { start_time: startTime, end_time: endTime });
+            await loadEvents();
+        } catch (err) {
+            console.error('Failed to update event via drag:', err);
+        }
+    }
+
     function handleYearMonthClick(month) {
         setCurrentDate(new Date(currentDate.getFullYear(), month, 1));
         setViewMode('month');
@@ -237,11 +246,11 @@ function App() {
             ` : viewMode === 'day' ? html`
                 <${DayView} currentDate=${currentDate} events=${events}
                             onDayClick=${handleDayClick} onEventClick=${handleEventClick}
-                            onAllDayClick=${handleAllDayClick} config=${config} />
+                            onAllDayClick=${handleAllDayClick} onEventDrag=${handleEventDrag} config=${config} />
             ` : viewMode === 'week' ? html`
                 <${WeekView} currentDate=${currentDate} events=${events}
                              onDayClick=${handleDayClick} onEventClick=${handleEventClick}
-                             onAllDayClick=${handleAllDayClick} config=${config} />
+                             onAllDayClick=${handleAllDayClick} onEventDrag=${handleEventDrag} config=${config} />
             ` : html`
                 <${Calendar} currentDate=${currentDate} events=${events}
                              onDayClick=${handleDayClick} onEventClick=${handleEventClick}

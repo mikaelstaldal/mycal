@@ -1,10 +1,11 @@
 import { html } from 'htm/preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { isToday, formatHour, formatTime } from '../lib/date-utils.js';
+import { startDrag } from '../lib/drag.js';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
-export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDayClick, config }) {
+export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDayClick, onEventDrag, config }) {
     const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
 
     function eventsForDay() {
@@ -110,12 +111,26 @@ export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDa
                             const durationMin = (new Date(e.end_time) - new Date(e.start_time)) / 60000;
                             const isShort = durationMin <= 30;
                             const classes = ['week-event', isShort && 'short-event'].filter(Boolean).join(' ');
+                            const canDrag = !e.recurrence_index;
                             return html`
                                 <div class=${classes}
                                      key=${`${e.id}-${e.recurrence_index || 0}`}
                                      title=${e.title}
                                      style=${eventStyle(e)}
-                                     onClick=${(ev) => { ev.stopPropagation(); onEventClick(e); }}>
+                                     onClick=${(ev) => { ev.stopPropagation(); onEventClick(e); }}
+                                     onMouseDown=${canDrag ? (ev) => {
+                                         if (ev.button !== 0) return;
+                                         startDrag(e, ev.currentTarget, ev, {
+                                             mode: 'move',
+                                             onDragEnd: (s, end) => onEventDrag(e.id, s, end)
+                                         });
+                                     } : undefined}
+                                     onTouchStart=${canDrag ? (ev) => {
+                                         startDrag(e, ev.currentTarget, ev, {
+                                             mode: 'move',
+                                             onDragEnd: (s, end) => onEventDrag(e.id, s, end)
+                                         });
+                                     } : undefined}>
                                     ${isShort ? html`
                                         <span class="week-event-time">${formatTime(e.start_time, config.clockFormat)}</span>
                                         <span class="week-event-title">${e.title}</span>
@@ -123,6 +138,21 @@ export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDa
                                         <span class="week-event-title">${e.title}</span>
                                         <span class="week-event-time">${formatTime(e.start_time, config.clockFormat)}</span>
                                     `}
+                                    ${canDrag && html`<div class="resize-handle"
+                                        onMouseDown=${(ev) => {
+                                            ev.stopPropagation();
+                                            startDrag(e, ev.currentTarget.parentElement, ev, {
+                                                mode: 'resize',
+                                                onDragEnd: (s, end) => onEventDrag(e.id, s, end)
+                                            });
+                                        }}
+                                        onTouchStart=${(ev) => {
+                                            ev.stopPropagation();
+                                            startDrag(e, ev.currentTarget.parentElement, ev, {
+                                                mode: 'resize',
+                                                onDragEnd: (s, end) => onEventDrag(e.id, s, end)
+                                            });
+                                        }} />`}
                                 </div>
                             `;
                         })}

@@ -586,8 +586,35 @@ body {
     box-sizing: border-box;
 }
 
+.week-event {
+    cursor: grab;
+}
+
 .week-event:hover {
     opacity: 0.85;
+}
+
+.week-event.dragging {
+    opacity: 0.6;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    cursor: grabbing;
+    z-index: 10;
+}
+
+.resize-handle {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 6px;
+    cursor: ns-resize;
+    border-radius: 0 0 3px 3px;
+    opacity: 0;
+}
+
+.week-event:hover .resize-handle {
+    opacity: 1;
+    background: rgba(255,255,255,0.3);
 }
 
 .week-event.short-event {
@@ -686,11 +713,23 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    cursor: pointer;
+    cursor: grab;
+    position: relative;
 }
 
 .allday-event:hover {
     opacity: 0.85;
+}
+
+.allday-event.dragging {
+    opacity: 0.6;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    cursor: grabbing;
+    z-index: 10;
+}
+
+.allday-cell:has(.dragging) {
+    overflow: visible;
 }
 
 /* Day view */
