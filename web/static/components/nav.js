@@ -1,8 +1,10 @@
 import { html } from 'htm/preact';
-import { formatMonthYear, formatWeekRange } from '../lib/date-utils.js';
+import { formatMonthYear, formatWeekRange, formatDayHeading } from '../lib/date-utils.js';
 
 export function Nav({ currentDate, onPrev, onNext, onToday, viewMode, onViewChange, weekStartDay }) {
-    const heading = viewMode === 'week'
+    const heading = viewMode === 'day'
+        ? formatDayHeading(currentDate)
+        : viewMode === 'week'
         ? formatWeekRange(currentDate, weekStartDay)
         : viewMode === 'year'
         ? String(currentDate.getFullYear())
@@ -17,6 +19,7 @@ export function Nav({ currentDate, onPrev, onNext, onToday, viewMode, onViewChan
                 <button class=${viewMode === 'year' ? 'active' : ''} onClick=${() => onViewChange('year')}>Year</button>
                 <button class=${viewMode === 'month' ? 'active' : ''} onClick=${() => onViewChange('month')}>Month</button>
                 <button class=${viewMode === 'week' ? 'active' : ''} onClick=${() => onViewChange('week')}>Week</button>
+                <button class=${viewMode === 'day' ? 'active' : ''} onClick=${() => onViewChange('day')}>Day</button>
             </div>
             <h1>${heading}</h1>
         </nav>

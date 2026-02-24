@@ -582,6 +582,8 @@ body {
     cursor: pointer;
     pointer-events: auto;
     z-index: 1;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    box-sizing: border-box;
 }
 
 .week-event:hover {
@@ -691,6 +693,104 @@ body {
     opacity: 0.85;
 }
 
+/* Day view */
+.day-view {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 100px);
+}
+
+.day-view-header {
+    display: grid;
+    grid-template-columns: 60px 1fr;
+    border-bottom: 1px solid #ddd;
+    background: #fafafa;
+}
+
+.day-view-day-header {
+    grid-column: 2;
+    text-align: center;
+    padding: 8px 4px;
+    font-size: 0.85rem;
+}
+
+.day-view-day-header.today .day-view-day-number {
+    background: #4285f4;
+    color: #fff;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.day-view-day-name {
+    display: block;
+    font-weight: 600;
+    color: #666;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+}
+
+.day-view-day-number {
+    display: inline-block;
+    margin-top: 2px;
+    font-size: 0.95rem;
+}
+
+.day-view-allday-row {
+    display: grid;
+    grid-template-columns: 60px 1fr;
+    border-bottom: 1px solid #ddd;
+    min-height: 28px;
+    flex-shrink: 0;
+}
+
+.day-view-allday-cell {
+    padding: 2px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    overflow-x: hidden;
+}
+
+.day-view-body {
+    position: relative;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+}
+
+.day-view-grid {
+    display: grid;
+    grid-template-columns: 60px 1fr;
+}
+
+.day-view-events-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: grid;
+    grid-template-columns: 60px 1fr;
+    pointer-events: none;
+}
+
+.day-view-events-gutter-spacer {
+    pointer-events: none;
+}
+
+.day-view-day-events {
+    position: relative;
+    pointer-events: none;
+}
+
 /* Year view */
 .year-view {
     display: grid;
@@ -772,6 +872,10 @@ body {
     background: #4285f4;
     color: #fff;
     font-weight: 600;
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .year-day-has-events:not(.year-day-today) {
@@ -871,6 +975,10 @@ body {
     .week-events-overlay { grid-template-columns: 40px repeat(7, minmax(0, 1fr)); }
     .week-allday-row { grid-template-columns: 40px repeat(7, minmax(0, 1fr)); }
     .time-gutter { font-size: 0.6rem; padding-right: 4px; }
+    .day-view-header { grid-template-columns: 40px 1fr; }
+    .day-view-grid { grid-template-columns: 40px 1fr; }
+    .day-view-events-overlay { grid-template-columns: 40px 1fr; }
+    .day-view-allday-row { grid-template-columns: 40px 1fr; }
     .week-day-name { font-size: 0.65rem; }
     .view-toggle button { font-size: 0.75rem; padding: 4px 8px; }
     .search-input { width: 140px; font-size: 0.8rem; }

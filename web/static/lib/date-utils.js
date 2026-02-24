@@ -169,6 +169,10 @@ export function formatWeekRange(date, weekStartDay = 1) {
     return `${firstStr} – ${lastStr}, ${year}`;
 }
 
+export function formatDayHeading(date) {
+    return date.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
+}
+
 export function formatHour(hour, clockFormat = '24h') {
     if (clockFormat === '12h') {
         if (hour === 0) return '12 AM';
