@@ -556,6 +556,23 @@ body {
     opacity: 0.85;
 }
 
+.week-event.short-event {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.week-event.short-event .week-event-title {
+    display: inline;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.week-event.short-event .week-event-time {
+    flex-shrink: 0;
+}
+
 .week-event-title {
     font-weight: 500;
     display: block;
@@ -575,6 +592,7 @@ body {
     grid-template-columns: 60px repeat(7, minmax(0, 1fr));
     border-bottom: 1px solid #ddd;
     min-height: 28px;
+    flex-shrink: 0;
 }
 
 .allday-label {
@@ -583,6 +601,32 @@ body {
     text-align: right;
     padding: 4px 8px 4px 0;
     border-right: 1px solid #ddd;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: flex-start;
+}
+
+.allday-toggle {
+    cursor: pointer;
+    font-size: 0.6rem;
+    color: #4285f4;
+    margin-top: 2px;
+}
+
+.allday-toggle:hover {
+    color: #1a5fd4;
+}
+
+.allday-more {
+    font-size: 0.6rem;
+    color: #666;
+    cursor: pointer;
+    padding: 0 4px;
+}
+
+.allday-more:hover {
+    color: #4285f4;
 }
 
 .allday-cell {
@@ -592,7 +636,7 @@ body {
     flex-direction: column;
     gap: 2px;
     min-width: 0;
-    overflow: hidden;
+    overflow-x: hidden;
 }
 
 .allday-cell:last-child {

@@ -1,5 +1,5 @@
 import { html } from 'htm/preact';
-import { useEffect, useRef } from 'preact/hooks';
+import { useState, useEffect, useRef } from 'preact/hooks';
 import { getWeekDays, isToday, formatHour, formatTime } from '../lib/date-utils.js';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
@@ -60,6 +60,10 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, config
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
     const hasAnyAllDay = days.some(date => allDayEventsForDay(date).length > 0);
+    const maxAllDay = 2;
+    const maxAllDayCount = Math.max(...days.map(date => allDayEventsForDay(date).length));
+    const hasOverflow = maxAllDayCount > maxAllDay;
+    const [allDayExpanded, setAllDayExpanded] = useState(false);
 
     const weekBodyRef = useRef(null);
     useEffect(() => {
@@ -85,12 +89,21 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, config
             </div>
             ${hasAnyAllDay && html`
                 <div class="week-allday-row">
-                    <div class="allday-label">all-day</div>
+                    <div class="allday-label">
+                        all-day
+                        ${hasOverflow && html`
+                            <div class="allday-toggle" onClick=${() => setAllDayExpanded(!allDayExpanded)}>
+                                ${allDayExpanded ? '\u25B2' : '\u25BC'}
+                            </div>
+                        `}
+                    </div>
                     ${days.map(date => {
                         const adEvents = allDayEventsForDay(date);
+                        const visible = allDayExpanded ? adEvents : adEvents.slice(0, maxAllDay);
+                        const hidden = adEvents.length - visible.length;
                         return html`
                             <div class="allday-cell">
-                                ${adEvents.map(e => html`
+                                ${visible.map(e => html`
                                     <div class="allday-event"
                                          key=${`${e.id}-${e.recurrence_index || 0}`}
                                          title=${e.title}
@@ -99,6 +112,11 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, config
                                         ${e.title}
                                     </div>
                                 `)}
+                                ${hidden > 0 && html`
+                                    <div class="allday-more" onClick=${() => setAllDayExpanded(true)}>
+                                        +${hidden} more
+                                    </div>
+                                `}
                             </div>
                         `;
                     })}
@@ -124,16 +142,26 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, config
                         const dayEvents = timedEventsForDay(date);
                         return html`
                             <div class="week-day-events">
-                                ${dayEvents.map(e => html`
-                                    <div class="week-event"
-                                         key=${`${e.id}-${e.recurrence_index || 0}`}
-                                         title=${e.title}
-                                         style=${eventStyle(e, date)}
-                                         onClick=${(ev) => { ev.stopPropagation(); onEventClick(e); }}>
-                                        <span class="week-event-title">${e.title}</span>
-                                        <span class="week-event-time">${formatTime(e.start_time, config.clockFormat)}</span>
-                                    </div>
-                                `)}
+                                ${dayEvents.map(e => {
+                                    const durationMin = (new Date(e.end_time) - new Date(e.start_time)) / 60000;
+                                    const isShort = durationMin <= 30;
+                                    const classes = ['week-event', isShort && 'short-event'].filter(Boolean).join(' ');
+                                    return html`
+                                        <div class=${classes}
+                                             key=${`${e.id}-${e.recurrence_index || 0}`}
+                                             title=${e.title}
+                                             style=${eventStyle(e, date)}
+                                             onClick=${(ev) => { ev.stopPropagation(); onEventClick(e); }}>
+                                            ${isShort ? html`
+                                                <span class="week-event-time">${formatTime(e.start_time, config.clockFormat)}</span>
+                                                <span class="week-event-title">${e.title}</span>
+                                            ` : html`
+                                                <span class="week-event-title">${e.title}</span>
+                                                <span class="week-event-time">${formatTime(e.start_time, config.clockFormat)}</span>
+                                            `}
+                                        </div>
+                                    `;
+                                })}
                             </div>
                         `;
                     })}
