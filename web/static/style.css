@@ -385,9 +385,12 @@ body {
     border-radius: 4px 0 0 4px;
 }
 
+.view-toggle button + button {
+    border-left: none;
+}
+
 .view-toggle button:last-child {
     border-radius: 0 4px 4px 0;
-    border-left: none;
 }
 
 .view-toggle button.active {
@@ -602,6 +605,107 @@ body {
     opacity: 0.85;
 }
 
+/* Year view */
+.year-view {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+}
+
+.year-month {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.year-month-header {
+    padding: 5px 8px;
+    font-weight: 600;
+    font-size: 0.8rem;
+    background: #fafafa;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+}
+
+.year-month-header:hover {
+    background: #e8f0fe;
+    color: #1a73e8;
+}
+
+.year-month-grid {
+    padding: 2px 4px 3px;
+}
+
+.year-weekday-row {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    font-size: 0.55rem;
+    color: #999;
+    font-weight: 600;
+}
+
+.year-weekday {
+    padding: 1px 0;
+    line-height: 1.8;
+}
+
+.year-week-row {
+    display: grid;
+    grid-template-columns: 16px repeat(7, 1fr);
+    text-align: center;
+    align-items: center;
+}
+
+.year-week-number {
+    font-size: 0.5rem;
+    color: #bbb;
+    cursor: pointer;
+    border-radius: 2px;
+}
+
+.year-week-number:hover {
+    background: #e8f0fe;
+    color: #1a73e8;
+}
+
+.year-day {
+    font-size: 0.65rem;
+    line-height: 2.2;
+    border-radius: 50%;
+    text-align: center;
+    position: relative;
+}
+
+.year-day-other {
+    color: #ccc;
+}
+
+.year-day-today {
+    background: #4285f4;
+    color: #fff;
+    font-weight: 600;
+}
+
+.year-day-has-events:not(.year-day-today) {
+    font-weight: 700;
+    color: #1a73e8;
+}
+
+.year-day-has-events:not(.year-day-today)::after {
+    content: '';
+    display: block;
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: #4285f4;
+    position: absolute;
+    bottom: -1px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
 /* Search */
 .search-input {
     padding: 6px 12px;
@@ -684,6 +788,7 @@ body {
     .week-day-name { font-size: 0.65rem; }
     .view-toggle button { font-size: 0.75rem; padding: 4px 8px; }
     .search-input { width: 140px; font-size: 0.8rem; }
+    .year-view { grid-template-columns: repeat(2, 1fr); gap: 8px; }
 }
 
 /* Description display */

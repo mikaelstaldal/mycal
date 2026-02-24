@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'preact/hooks';
 import { Nav } from './components/nav.js';
 import { Calendar } from './components/calendar.js';
 import { WeekView } from './components/week-view.js';
+import { YearView } from './components/year-view.js';
 import { EventForm } from './components/event-form.js';
 import { ImportForm } from './components/import-form.js';
 import { Settings } from './components/settings.js';
@@ -30,6 +31,10 @@ function App() {
             const weekStart = startOfWeek(currentDate, config.weekStartDay);
             from = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() - 1);
             to = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 8);
+        } else if (viewMode === 'year') {
+            const year = currentDate.getFullYear();
+            from = new Date(year, 0, -6);
+            to = new Date(year + 1, 0, 7);
         } else {
             const year = currentDate.getFullYear();
             const month = currentDate.getMonth();
@@ -55,6 +60,8 @@ function App() {
     function handlePrev() {
         if (viewMode === 'week') {
             setCurrentDate(addWeeks(currentDate, -1));
+        } else if (viewMode === 'year') {
+            setCurrentDate(new Date(currentDate.getFullYear() - 1, currentDate.getMonth(), 1));
         } else {
             setCurrentDate(addMonths(currentDate, -1));
         }
@@ -63,6 +70,8 @@ function App() {
     function handleNext() {
         if (viewMode === 'week') {
             setCurrentDate(addWeeks(currentDate, 1));
+        } else if (viewMode === 'year') {
+            setCurrentDate(new Date(currentDate.getFullYear() + 1, currentDate.getMonth(), 1));
         } else {
             setCurrentDate(addMonths(currentDate, 1));
         }
@@ -119,6 +128,16 @@ function App() {
     function handleClose() {
         setShowForm(false);
         setSelectedEvent(null);
+    }
+
+    function handleYearMonthClick(month) {
+        setCurrentDate(new Date(currentDate.getFullYear(), month, 1));
+        setViewMode('month');
+    }
+
+    function handleYearWeekClick(date) {
+        setCurrentDate(date);
+        setViewMode('week');
     }
 
     function handleSearchInput(e) {
@@ -186,6 +205,10 @@ function App() {
                         </div>
                     `)}
                 </div>
+            ` : viewMode === 'year' ? html`
+                <${YearView} currentDate=${currentDate} events=${events}
+                             onMonthClick=${handleYearMonthClick} onWeekClick=${handleYearWeekClick}
+                             config=${config} />
             ` : viewMode === 'week' ? html`
                 <${WeekView} currentDate=${currentDate} events=${events}
                              onDayClick=${handleDayClick} onEventClick=${handleEventClick}
