@@ -47,6 +47,17 @@ Go backend with embedded Preact+HTM frontend (no JS build step). Single binary s
 - List endpoint requires `from`/`to` query params; uses overlapping range query (`start_time < to AND end_time > from`)
 - iCalendar (RFC 5545) feed at `/calendar.ics` and `/api/v1/events.ics` — `internal/ical` package encodes events, no external dependency
 
+## API
+
+Update the API section of `README.md` whenever the API is changed.
+
 ## Database
 
 Do not do database migrations, assume that we will start with an empty database.
+
+## Feature Backlog
+
+See `TODO.md` for the list of planned features.
+
+**Important**: Always read `TODO.md` at the start of a session and take note of the not yet done features in the "Current" section. 
+When implementing a new feature from the list, mark it as complete (`[x]`) in TODO.md after the implementation is done, tested, verified and commited.
