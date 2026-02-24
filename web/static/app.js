@@ -216,6 +216,7 @@ function App() {
             ` : html`
                 <${Calendar} currentDate=${currentDate} events=${events}
                              onDayClick=${handleDayClick} onEventClick=${handleEventClick}
+                             onWeekClick=${handleYearWeekClick}
                              config=${config} />
             `}
             ${showForm && html`

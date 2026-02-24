@@ -1,7 +1,7 @@
 import { html } from 'htm/preact';
 import { getCalendarDays, getWeekdays, isToday, formatTime, getISOWeekNumber } from '../lib/date-utils.js';
 
-export function Calendar({ currentDate, events, onDayClick, onEventClick, config }) {
+export function Calendar({ currentDate, events, onDayClick, onEventClick, onWeekClick, config }) {
     const weekStartDay = config.weekStartDay;
     const days = getCalendarDays(currentDate.getFullYear(), currentDate.getMonth(), weekStartDay);
     const weekdays = getWeekdays(weekStartDay);
@@ -38,7 +38,7 @@ export function Calendar({ currentDate, events, onDayClick, onEventClick, config
             </div>
             <div class="calendar-grid">
                 ${weeks.map(week => html`
-                    <div class="week-number">${getISOWeekNumber(week[0].date)}</div>
+                    <div class="week-number" onClick=${() => onWeekClick(week[0].date)}>${getISOWeekNumber(week[0].date)}</div>
                     ${week.map(({ date, currentMonth }) => {
                         const dayEvents = eventsForDay(date);
                         const classes = ['day',
