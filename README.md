@@ -43,17 +43,57 @@ When enabled, all endpoints (UI, API, and iCalendar feed) require valid credenti
 
 ## API
 
-All endpoints are under `/api/v1`. Datetimes use RFC 3339 format. Errors return `{"error": "message"}`.
+All endpoints are under `/api/v1`. Datetimes use RFC 3339 format (or `YYYY-MM-DD` for all-day events). Errors return `{"error": "message"}`.
 
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/v1/events?from=...&to=...` | List events in a time range |
+| GET | `/api/v1/events?q=...` | Search events by text |
 | POST | `/api/v1/events` | Create an event |
 | GET | `/api/v1/events/{id}` | Get a single event |
 | PUT | `/api/v1/events/{id}` | Update an event (partial) |
 | DELETE | `/api/v1/events/{id}` | Delete an event |
+| POST | `/api/v1/import` | Import events from iCalendar data |
+| POST | `/api/v1/import-single` | Import a single event from iCalendar data |
 | GET | `/api/v1/events.ics` | iCalendar feed (all events) |
 | GET | `/calendar.ics` | iCalendar feed (convenience URL) |
+
+### Event Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | int | Event ID (read-only) |
+| `title` | string | Event title (required, max 500 chars) |
+| `description` | string | Event description (max 10000 chars) |
+| `start_time` | string | Start time in RFC 3339 or `YYYY-MM-DD` for all-day (required) |
+| `end_time` | string | End time in RFC 3339 or `YYYY-MM-DD` for all-day (required, must be after start) |
+| `all_day` | bool | Whether this is an all-day event |
+| `color` | string | Color hex code |
+| `recurrence_freq` | string | `""`, `"DAILY"`, `"WEEKLY"`, `"MONTHLY"`, or `"YEARLY"` |
+| `recurrence_count` | int | Number of recurrences (0–1000) |
+| `recurrence_until` | string | Recurrence end date in RFC 3339 |
+| `reminder_minutes` | int | Minutes before event to remind (0–40320) |
+| `location` | string | Location text (max 500 chars) |
+| `latitude` | float | Location latitude (-90 to 90) |
+| `longitude` | float | Location longitude (-180 to 180) |
+| `created_at` | string | Creation timestamp (read-only) |
+| `updated_at` | string | Last update timestamp (read-only) |
+
+For `PUT` updates, all fields are optional — only included fields are changed.
+
+### Import
+
+The import endpoints accept either iCalendar content directly or a URL to fetch it from:
+
+```json
+{"ics_content": "BEGIN:VCALENDAR..."}
+```
+
+or
+
+```json
+{"url": "https://example.com/calendar.ics"}
+```
 
 ### iCalendar Feed
 
@@ -76,8 +116,22 @@ curl -X POST http://localhost:8080/api/v1/events \
     "color": "#4285f4"
   }'
 
+# Create an all-day event
+curl -X POST http://localhost:8080/api/v1/events \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "title": "Holiday",
+    "start_time": "2026-06-06",
+    "end_time": "2026-06-07",
+    "all_day": true,
+    "color": "#0b8043"
+  }'
+
 # List events for February 2026
 curl 'http://localhost:8080/api/v1/events?from=2026-02-01T00:00:00Z&to=2026-03-01T00:00:00Z'
+
+# Search events
+curl 'http://localhost:8080/api/v1/events?q=meeting'
 ```
 
 ## Tech Stack
