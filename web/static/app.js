@@ -6,6 +6,7 @@ import { WeekView } from './components/week-view.js';
 import { YearView } from './components/year-view.js';
 import { EventForm } from './components/event-form.js';
 import { ImportForm } from './components/import-form.js';
+import { Toast } from './components/toast.js';
 import { Settings } from './components/settings.js';
 import { listEvents, searchEvents, createEvent, updateEvent, deleteEvent, getEvent } from './lib/api.js';
 import { addMonths, addWeeks, startOfWeek, toRFC3339 } from './lib/date-utils.js';
@@ -20,6 +21,7 @@ function App() {
     const [defaultDate, setDefaultDate] = useState(null);
     const [config, setConfig] = useState(getConfig);
     const [showImport, setShowImport] = useState(false);
+    const [toast, setToast] = useState(null);
     const [viewMode, setViewMode] = useState(() => getConfig().defaultView || 'month');
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState(null);
@@ -225,9 +227,10 @@ function App() {
                               config=${config} />
             `}
             ${showImport && html`
-                <${ImportForm} onImported=${() => { loadEvents(); }}
+                <${ImportForm} onImported=${(message) => { setShowImport(false); loadEvents(); setToast(message); }}
                                onClose=${() => setShowImport(false)} />
             `}
+            ${toast && html`<${Toast} message=${toast} onDone=${() => setToast(null)} />`}
         </div>
     `;
 }

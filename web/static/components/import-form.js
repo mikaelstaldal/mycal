@@ -7,7 +7,6 @@ export function ImportForm({ onImported, onClose }) {
     const [sourceMode, setSourceMode] = useState('file');
     const [url, setUrl] = useState('');
     const [error, setError] = useState('');
-    const [result, setResult] = useState(null);
     const [loading, setLoading] = useState(false);
     const dialogRef = useRef(null);
     const fileRef = useRef(null);
@@ -18,13 +17,8 @@ export function ImportForm({ onImported, onClose }) {
         }
     }, []);
 
-    function resetResult() {
-        setError('');
-        setResult(null);
-    }
-
     async function handleImport() {
-        resetResult();
+        setError('');
         setLoading(true);
         try {
             let data;
@@ -37,24 +31,20 @@ export function ImportForm({ onImported, onClose }) {
                 if (!url.trim()) { setError('Please enter a URL'); setLoading(false); return; }
                 data = { url: url.trim() };
             }
+            let message;
             if (importMode === 'single') {
                 await importSingleEvent(data);
-                setResult('single');
+                message = 'Event imported successfully.';
             } else {
                 const res = await importEvents(data);
-                setResult(res.imported);
+                message = `Imported ${res.imported} event${res.imported !== 1 ? 's' : ''}.`;
             }
-            onImported();
+            onImported(message);
         } catch (err) {
             setError(err.message);
-        } finally {
             setLoading(false);
         }
     }
-
-    const resultMessage = result === 'single'
-        ? 'Event imported successfully.'
-        : result != null ? `Imported ${result} event${result !== 1 ? 's' : ''}.` : null;
 
     return html`
         <dialog ref=${dialogRef} class="event-dialog import-dialog" onClose=${onClose}>
@@ -64,18 +54,17 @@ export function ImportForm({ onImported, onClose }) {
             </div>
             <div class="import-tabs">
                 <button class=${`import-tab ${importMode === 'single' ? 'active' : ''}`}
-                        onClick=${() => { setImportMode('single'); resetResult(); }}>Single Event</button>
+                        onClick=${() => { setImportMode('single'); setError(''); }}>Single Event</button>
                 <button class=${`import-tab ${importMode === 'bulk' ? 'active' : ''}`}
-                        onClick=${() => { setImportMode('bulk'); resetResult(); }}>Bulk Import</button>
+                        onClick=${() => { setImportMode('bulk'); setError(''); }}>Bulk Import</button>
             </div>
             <div class="import-tabs">
                 <button class=${`import-tab ${sourceMode === 'file' ? 'active' : ''}`}
-                        onClick=${() => { setSourceMode('file'); resetResult(); }}>File</button>
+                        onClick=${() => { setSourceMode('file'); setError(''); }}>File</button>
                 <button class=${`import-tab ${sourceMode === 'url' ? 'active' : ''}`}
-                        onClick=${() => { setSourceMode('url'); resetResult(); }}>URL</button>
+                        onClick=${() => { setSourceMode('url'); setError(''); }}>URL</button>
             </div>
             ${error && html`<div class="error">${error}</div>`}
-            ${resultMessage && html`<div class="import-success">${resultMessage}</div>`}
             ${sourceMode === 'file' && html`
                 <label>
                     iCalendar file (.ics)

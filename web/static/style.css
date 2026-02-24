@@ -380,6 +380,28 @@ body {
     margin-bottom: 8px;
 }
 
+/* Toast notification */
+.toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #323232;
+    color: #fff;
+    padding: 12px 24px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    cursor: pointer;
+    z-index: 1000;
+    animation: toast-in 0.25s ease-out;
+}
+
+@keyframes toast-in {
+    from { opacity: 0; transform: translateX(-50%) translateY(16px); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
 /* View toggle */
 .view-toggle {
     display: flex;
