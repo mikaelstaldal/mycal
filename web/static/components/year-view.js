@@ -1,7 +1,7 @@
 import { html } from 'htm/preact';
 import { getCalendarDays, getWeekdays, isToday, getISOWeekNumber } from '../lib/date-utils.js';
 
-export function YearView({ currentDate, events, onMonthClick, onWeekClick, config }) {
+export function YearView({ currentDate, events, onMonthClick, onWeekClick, onDayClick, config }) {
     const year = currentDate.getFullYear();
     const weekStartDay = config.weekStartDay;
     const weekdays = getWeekdays(weekStartDay);
@@ -59,7 +59,9 @@ export function YearView({ currentDate, events, onMonthClick, onWeekClick, confi
                                     currentMonth && isToday(date) && 'year-day-today',
                                     hasEvents && 'year-day-has-events'
                                 ].filter(Boolean).join(' ');
-                                return html`<div class=${classes}>${date.getDate()}</div>`;
+                                return html`<div class=${classes}
+                                    style=${currentMonth ? 'cursor: pointer' : ''}
+                                    onClick=${currentMonth ? (ev) => { ev.stopPropagation(); onDayClick(date); } : undefined}>${date.getDate()}</div>`;
                             })}
                         </div>
                     `)}
