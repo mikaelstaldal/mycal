@@ -4,7 +4,7 @@ import { isToday, formatHour, formatTime } from '../lib/date-utils.js';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
-export function DayView({ currentDate, events, onDayClick, onEventClick, config }) {
+export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDayClick, config }) {
     const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
 
     function eventsForDay() {
@@ -77,22 +77,20 @@ export function DayView({ currentDate, events, onDayClick, onEventClick, config 
                     <span class="day-view-day-number">${date.getDate()}</span>
                 </div>
             </div>
-            ${hasAllDay && html`
-                <div class="day-view-allday-row">
-                    <div class="allday-label">all-day</div>
-                    <div class="day-view-allday-cell">
-                        ${adEvents.map(e => html`
-                            <div class="allday-event"
-                                 key=${`${e.id}-${e.recurrence_index || 0}`}
-                                 title=${e.title}
-                                 style=${e.color ? `background-color: ${e.color}` : ''}
-                                 onClick=${(ev) => { ev.stopPropagation(); onEventClick(e); }}>
-                                ${e.title}
-                            </div>
-                        `)}
-                    </div>
+            <div class="day-view-allday-row">
+                <div class="allday-label">all-day</div>
+                <div class="day-view-allday-cell" onClick=${() => onAllDayClick(date)}>
+                    ${adEvents.map(e => html`
+                        <div class="allday-event"
+                             key=${`${e.id}-${e.recurrence_index || 0}`}
+                             title=${e.title}
+                             style=${e.color ? `background-color: ${e.color}` : ''}
+                             onClick=${(ev) => { ev.stopPropagation(); onEventClick(e); }}>
+                            ${e.title}
+                        </div>
+                    `)}
                 </div>
-            `}
+            </div>
             <div class="day-view-body" ref=${dayBodyRef}>
                 <div class="day-view-grid">
                     ${HOURS.map(hour => html`

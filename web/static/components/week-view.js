@@ -1,10 +1,10 @@
 import { html } from 'htm/preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
-import { getWeekDays, isToday, formatHour, formatTime } from '../lib/date-utils.js';
+import { getWeekDays, isToday, formatHour, formatTime, getISOWeekNumber } from '../lib/date-utils.js';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
-export function WeekView({ currentDate, events, onDayClick, onEventClick, config }) {
+export function WeekView({ currentDate, events, onDayClick, onEventClick, onAllDayClick, config }) {
     const weekStartDay = config.weekStartDay;
     const days = getWeekDays(currentDate, weekStartDay);
 
@@ -76,7 +76,7 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, config
     return html`
         <div class="week-view">
             <div class="week-header">
-                <div class="time-gutter-header"></div>
+                <div class="time-gutter-header">W${getISOWeekNumber(days[0])}</div>
                 ${days.map(date => {
                     const classes = ['week-day-header', isToday(date) && 'today'].filter(Boolean).join(' ');
                     return html`
@@ -87,41 +87,39 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, config
                     `;
                 })}
             </div>
-            ${hasAnyAllDay && html`
-                <div class="week-allday-row">
-                    <div class="allday-label">
-                        all-day
-                        ${hasOverflow && html`
-                            <div class="allday-toggle" onClick=${() => setAllDayExpanded(!allDayExpanded)}>
-                                ${allDayExpanded ? '\u25B2' : '\u25BC'}
-                            </div>
-                        `}
-                    </div>
-                    ${days.map(date => {
-                        const adEvents = allDayEventsForDay(date);
-                        const visible = allDayExpanded ? adEvents : adEvents.slice(0, maxAllDay);
-                        const hidden = adEvents.length - visible.length;
-                        return html`
-                            <div class="allday-cell">
-                                ${visible.map(e => html`
-                                    <div class="allday-event"
-                                         key=${`${e.id}-${e.recurrence_index || 0}`}
-                                         title=${e.title}
-                                         style=${e.color ? `background-color: ${e.color}` : ''}
-                                         onClick=${(ev) => { ev.stopPropagation(); onEventClick(e); }}>
-                                        ${e.title}
-                                    </div>
-                                `)}
-                                ${hidden > 0 && html`
-                                    <div class="allday-more" onClick=${() => setAllDayExpanded(true)}>
-                                        +${hidden} more
-                                    </div>
-                                `}
-                            </div>
-                        `;
-                    })}
+            <div class="week-allday-row">
+                <div class="allday-label">
+                    all-day
+                    ${hasOverflow && html`
+                        <div class="allday-toggle" onClick=${() => setAllDayExpanded(!allDayExpanded)}>
+                            ${allDayExpanded ? '\u25B2' : '\u25BC'}
+                        </div>
+                    `}
                 </div>
-            `}
+                ${days.map(date => {
+                    const adEvents = allDayEventsForDay(date);
+                    const visible = allDayExpanded ? adEvents : adEvents.slice(0, maxAllDay);
+                    const hidden = adEvents.length - visible.length;
+                    return html`
+                        <div class="allday-cell" onClick=${() => onAllDayClick(date)}>
+                            ${visible.map(e => html`
+                                <div class="allday-event"
+                                     key=${`${e.id}-${e.recurrence_index || 0}`}
+                                     title=${e.title}
+                                     style=${e.color ? `background-color: ${e.color}` : ''}
+                                     onClick=${(ev) => { ev.stopPropagation(); onEventClick(e); }}>
+                                    ${e.title}
+                                </div>
+                            `)}
+                            ${hidden > 0 && html`
+                                <div class="allday-more" onClick=${(ev) => { ev.stopPropagation(); setAllDayExpanded(true); }}>
+                                    +${hidden} more
+                                </div>
+                            `}
+                        </div>
+                    `;
+                })}
+            </div>
             <div class="week-body" ref=${weekBodyRef}>
                 <div class="week-grid">
                     ${HOURS.map(hour => html`

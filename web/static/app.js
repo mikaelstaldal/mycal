@@ -20,6 +20,7 @@ function App() {
     const [showForm, setShowForm] = useState(false);
     const [selectedEvent, setSelectedEvent] = useState(null);
     const [defaultDate, setDefaultDate] = useState(null);
+    const [defaultAllDay, setDefaultAllDay] = useState(false);
     const [config, setConfig] = useState(getConfig);
     const [showImport, setShowImport] = useState(false);
     const [toast, setToast] = useState(null);
@@ -95,6 +96,14 @@ function App() {
     function handleDayClick(date) {
         setSelectedEvent(null);
         setDefaultDate(date);
+        setDefaultAllDay(false);
+        setShowForm(true);
+    }
+
+    function handleAllDayClick(date) {
+        setSelectedEvent(null);
+        setDefaultDate(date);
+        setDefaultAllDay(true);
         setShowForm(true);
     }
 
@@ -149,6 +158,11 @@ function App() {
     function handleYearWeekClick(date) {
         setCurrentDate(date);
         setViewMode('week');
+    }
+
+    function handleYearDayClick(date) {
+        setCurrentDate(date);
+        setViewMode('day');
     }
 
     function handleSearchInput(e) {
@@ -219,15 +233,15 @@ function App() {
             ` : viewMode === 'year' ? html`
                 <${YearView} currentDate=${currentDate} events=${events}
                              onMonthClick=${handleYearMonthClick} onWeekClick=${handleYearWeekClick}
-                             config=${config} />
+                             onDayClick=${handleYearDayClick} config=${config} />
             ` : viewMode === 'day' ? html`
                 <${DayView} currentDate=${currentDate} events=${events}
                             onDayClick=${handleDayClick} onEventClick=${handleEventClick}
-                            config=${config} />
+                            onAllDayClick=${handleAllDayClick} config=${config} />
             ` : viewMode === 'week' ? html`
                 <${WeekView} currentDate=${currentDate} events=${events}
                              onDayClick=${handleDayClick} onEventClick=${handleEventClick}
-                             config=${config} />
+                             onAllDayClick=${handleAllDayClick} config=${config} />
             ` : html`
                 <${Calendar} currentDate=${currentDate} events=${events}
                              onDayClick=${handleDayClick} onEventClick=${handleEventClick}
@@ -236,6 +250,7 @@ function App() {
             `}
             ${showForm && html`
                 <${EventForm} event=${selectedEvent} defaultDate=${defaultDate}
+                              defaultAllDay=${defaultAllDay}
                               onSave=${handleSave} onDelete=${handleDelete} onClose=${handleClose}
                               config=${config} />
             `}

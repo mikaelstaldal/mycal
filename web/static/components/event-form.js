@@ -11,7 +11,7 @@ function formatDatetime(isoStr, config) {
     return `${formatDate(d, config.dateFormat)} ${formatTime(isoStr, config.clockFormat)}`;
 }
 
-export function EventForm({ event, defaultDate, onSave, onDelete, onClose, config }) {
+export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete, onClose, config }) {
     const dialogRef = useRef(null);
     const [editing, setEditing] = useState(!event);
     const [title, setTitle] = useState('');
@@ -52,14 +52,22 @@ export function EventForm({ event, defaultDate, onSave, onDelete, onClose, confi
             setEditing(false);
         } else if (defaultDate) {
             const start = new Date(defaultDate);
-            start.setHours(9, 0, 0, 0);
-            const end = new Date(defaultDate);
-            end.setHours(10, 0, 0, 0);
-            setStartTime(toLocalDatetimeValue(start.toISOString()));
-            setEndTime(toLocalDatetimeValue(end.toISOString()));
+            if (defaultAllDay) {
+                const pad = n => String(n).padStart(2, '0');
+                const dateStr = `${start.getFullYear()}-${pad(start.getMonth()+1)}-${pad(start.getDate())}`;
+                setStartTime(dateStr);
+                setEndTime(dateStr);
+                setAllDay(true);
+            } else {
+                start.setHours(9, 0, 0, 0);
+                const end = new Date(defaultDate);
+                end.setHours(10, 0, 0, 0);
+                setStartTime(toLocalDatetimeValue(start.toISOString()));
+                setEndTime(toLocalDatetimeValue(end.toISOString()));
+                setAllDay(false);
+            }
             setTitle('');
             setDescription('');
-            setAllDay(false);
             setColor('');
             setRecurrenceFreq('');
             setRecurrenceCount(0);
