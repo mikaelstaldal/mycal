@@ -440,7 +440,7 @@ body {
 
 .week-header {
     display: grid;
-    grid-template-columns: 60px repeat(7, 1fr);
+    grid-template-columns: 60px repeat(7, minmax(0, 1fr));
     border-bottom: 1px solid #ddd;
     background: #fafafa;
 }
@@ -494,7 +494,7 @@ body {
 
 .week-grid {
     display: grid;
-    grid-template-columns: 60px repeat(7, 1fr);
+    grid-template-columns: 60px repeat(7, minmax(0, 1fr));
 }
 
 .time-gutter {
@@ -525,7 +525,7 @@ body {
     right: 0;
     bottom: 0;
     display: grid;
-    grid-template-columns: 60px repeat(7, 1fr);
+    grid-template-columns: 60px repeat(7, minmax(0, 1fr));
     pointer-events: none;
 }
 
@@ -572,7 +572,7 @@ body {
 /* All-day row in week view */
 .week-allday-row {
     display: grid;
-    grid-template-columns: 60px repeat(7, 1fr);
+    grid-template-columns: 60px repeat(7, minmax(0, 1fr));
     border-bottom: 1px solid #ddd;
     min-height: 28px;
 }
@@ -591,6 +591,8 @@ body {
     display: flex;
     flex-direction: column;
     gap: 2px;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .allday-cell:last-child {
@@ -788,10 +790,10 @@ body {
     .day { min-height: 60px; }
     .event-chip { font-size: 0.65rem; }
     .nav h1 { font-size: 1.1rem; }
-    .week-header { grid-template-columns: 40px repeat(7, 1fr); }
-    .week-grid { grid-template-columns: 40px repeat(7, 1fr); }
-    .week-events-overlay { grid-template-columns: 40px repeat(7, 1fr); }
-    .week-allday-row { grid-template-columns: 40px repeat(7, 1fr); }
+    .week-header { grid-template-columns: 40px repeat(7, minmax(0, 1fr)); }
+    .week-grid { grid-template-columns: 40px repeat(7, minmax(0, 1fr)); }
+    .week-events-overlay { grid-template-columns: 40px repeat(7, minmax(0, 1fr)); }
+    .week-allday-row { grid-template-columns: 40px repeat(7, minmax(0, 1fr)); }
     .time-gutter { font-size: 0.6rem; padding-right: 4px; }
     .week-day-name { font-size: 0.65rem; }
     .view-toggle button { font-size: 0.75rem; padding: 4px 8px; }

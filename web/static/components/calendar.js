@@ -53,6 +53,7 @@ export function Calendar({ currentDate, events, onDayClick, onEventClick, onWeek
                                     ${dayEvents.map(e => html`
                                         <div class="event-chip"
                                              key=${`${e.id}-${e.recurrence_index || 0}`}
+                                             title=${e.title}
                                              style=${e.color ? `background-color: ${e.color}` : ''}
                                              onClick=${(ev) => { ev.stopPropagation(); onEventClick(e); }}>
                                             ${e.all_day ? '' : formatTime(e.start_time, config.clockFormat) + ' '}${e.title}

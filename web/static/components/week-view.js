@@ -93,6 +93,7 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, config
                                 ${adEvents.map(e => html`
                                     <div class="allday-event"
                                          key=${`${e.id}-${e.recurrence_index || 0}`}
+                                         title=${e.title}
                                          style=${e.color ? `background-color: ${e.color}` : ''}
                                          onClick=${(ev) => { ev.stopPropagation(); onEventClick(e); }}>
                                         ${e.title}
@@ -126,6 +127,7 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, config
                                 ${dayEvents.map(e => html`
                                     <div class="week-event"
                                          key=${`${e.id}-${e.recurrence_index || 0}`}
+                                         title=${e.title}
                                          style=${eventStyle(e, date)}
                                          onClick=${(ev) => { ev.stopPropagation(); onEventClick(e); }}>
                                         <span class="week-event-title">${e.title}</span>
