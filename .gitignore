@@ -1,2 +1,5 @@
 mycal
 mycal.db
+.claude
+.playwright-mcp
+*.ics
