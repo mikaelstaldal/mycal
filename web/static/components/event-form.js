@@ -13,6 +13,7 @@ function formatDatetime(isoStr, config) {
 
 export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete, onClose, config }) {
     const dialogRef = useRef(null);
+    const titleRef = useRef(null);
     const [editing, setEditing] = useState(!event);
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
@@ -86,6 +87,9 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
         const dialog = dialogRef.current;
         if (dialog && !dialog.open) {
             dialog.showModal();
+            if (!event && titleRef.current) {
+                titleRef.current.focus();
+            }
         }
     });
 
@@ -196,7 +200,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
 
                 <label>
                     Title
-                    <input type="text" value=${title} disabled=${!editing}
+                    <input type="text" ref=${titleRef} value=${title} disabled=${!editing}
                            onInput=${e => setTitle(e.target.value)} />
                 </label>
 
