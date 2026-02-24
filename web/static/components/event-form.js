@@ -59,9 +59,10 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                 setEndTime(dateStr);
                 setAllDay(true);
             } else {
-                start.setHours(9, 0, 0, 0);
+                const hour = start.getHours() || 9;
+                start.setHours(hour, 0, 0, 0);
                 const end = new Date(defaultDate);
-                end.setHours(10, 0, 0, 0);
+                end.setHours(hour + 1, 0, 0, 0);
                 setStartTime(toLocalDatetimeValue(start.toISOString()));
                 setEndTime(toLocalDatetimeValue(end.toISOString()));
                 setAllDay(false);
