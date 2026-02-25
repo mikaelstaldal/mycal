@@ -57,7 +57,8 @@ All endpoints are under `/api/v1`. Datetimes use RFC 3339 format (or `YYYY-MM-DD
 | POST   | `/api/v1/events`                 | Create an event                                                                           |
 | GET    | `/api/v1/events/{id}`            | Get a single event                                                                        |
 | PUT    | `/api/v1/events/{id}`            | Update an event (partial)                                                                 |
-| DELETE | `/api/v1/events/{id}`            | Delete an event (add `?instance_start=<RFC3339>` to exclude a single recurrence instance) |
+| PUT    | `/api/v1/events/{id}?instance_start=<RFC3339>` | Override a single recurrence instance                                       |
+| DELETE | `/api/v1/events/{id}`            | Delete an event and all its overrides (add `?instance_start=<RFC3339>` to exclude a single recurrence instance) |
 | POST   | `/api/v1/import`                 | Import events from iCalendar data                                                         |
 | POST   | `/api/v1/import-single`          | Import a single event from iCalendar data                                                 |
 | GET    | `/api/v1/events.ics`             | iCalendar feed (all events)                                                               |
@@ -83,6 +84,11 @@ All endpoints are under `/api/v1`. Datetimes use RFC 3339 format (or `YYYY-MM-DD
 | `recurrence_by_month`    | string | Comma-separated months (1–12): `"1,6"`                                           |
 | `exdates`                | string | Comma-separated RFC 3339 timestamps of excluded recurrence instances             |
 | `rdates`                 | string | Comma-separated RFC 3339 timestamps of additional recurrence dates               |
+| `recurrence_parent_id`   | int    | Parent event ID for instance overrides (read-only)                               |
+| `recurrence_original_start` | string | Original start time of overridden instance (read-only)                        |
+| `duration`               | string | ISO 8601 duration (e.g. `PT1H`, `PT30M`, `P1D`) — alternative to `end_time`     |
+| `categories`             | string | Comma-separated category tags (max 500 chars)                                    |
+| `url`                    | string | Reference URL (must start with `http://` or `https://`, max 2000 chars)          |
 | `reminder_minutes`       | int    | Minutes before event to remind (0–40320)                                         |
 | `location`               | string | Location text (max 500 chars)                                                    |
 | `latitude`               | float  | Location latitude (-90 to 90)                                                    |

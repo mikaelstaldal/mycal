@@ -22,8 +22,12 @@ export async function createEvent(data) {
     return res.json();
 }
 
-export async function updateEvent(id, data) {
-    const res = await fetch(`${BASE}/${id}`, {
+export async function updateEvent(id, data, instanceStart) {
+    let url = `${BASE}/${id}`;
+    if (instanceStart) {
+        url += `?instance_start=${encodeURIComponent(instanceStart)}`;
+    }
+    const res = await fetch(url, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),

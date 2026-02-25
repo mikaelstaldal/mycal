@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -535,6 +536,362 @@ END:VCALENDAR`
 	}
 	if event.Location != "Office" {
 		t.Errorf("location = %q, want %q", event.Location, "Office")
+	}
+}
+
+// --- RECURRENCE-ID override tests ---
+
+func TestOverrideInstance(t *testing.T) {
+	ts := setupTestServer(t)
+
+	// Create a weekly recurring event
+	body := model.CreateEventRequest{
+		Title:           "Weekly Standup",
+		StartTime:       "2026-03-02T09:00:00Z",
+		EndTime:         "2026-03-02T09:30:00Z",
+		RecurrenceFreq:  "WEEKLY",
+		RecurrenceCount: 10,
+	}
+	resp := postJSON(t, ts.URL+"/api/v1/events", body)
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("create: got status %d", resp.StatusCode)
+	}
+	created := decodeJSON[model.Event](t, resp)
+
+	// Override the 2nd instance (2026-03-09)
+	newTitle := "Modified Standup"
+	resp = putJSON(t, ts.URL+"/api/v1/events/"+itoa(created.ID)+"?instance_start=2026-03-09T09:00:00Z",
+		model.UpdateEventRequest{Title: &newTitle})
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("override: got status %d, want %d", resp.StatusCode, http.StatusOK)
+	}
+	override := decodeJSON[model.Event](t, resp)
+	if override.Title != "Modified Standup" {
+		t.Errorf("override title = %q, want %q", override.Title, "Modified Standup")
+	}
+	if override.RecurrenceParentID == nil || *override.RecurrenceParentID != created.ID {
+		t.Errorf("override parent ID = %v, want %d", override.RecurrenceParentID, created.ID)
+	}
+
+	// List events and verify the override replaces the original instance
+	listResp, err := http.Get(ts.URL + "/api/v1/events?from=2026-03-01T00:00:00Z&to=2026-03-22T00:00:00Z")
+	if err != nil {
+		t.Fatal(err)
+	}
+	events := decodeJSON[[]model.Event](t, listResp)
+	found := false
+	for _, e := range events {
+		if e.Title == "Modified Standup" {
+			found = true
+		}
+		// The original "Weekly Standup" at 2026-03-09 should be replaced
+		if e.Title == "Weekly Standup" && e.StartTime == "2026-03-09T09:00:00Z" {
+			t.Error("original instance at 2026-03-09 should have been replaced by override")
+		}
+	}
+	if !found {
+		t.Error("expected to find 'Modified Standup' in list")
+	}
+}
+
+func TestDeleteParentDeletesOverrides(t *testing.T) {
+	ts := setupTestServer(t)
+
+	body := model.CreateEventRequest{
+		Title:           "Series",
+		StartTime:       "2026-04-01T10:00:00Z",
+		EndTime:         "2026-04-01T11:00:00Z",
+		RecurrenceFreq:  "DAILY",
+		RecurrenceCount: 5,
+	}
+	resp := postJSON(t, ts.URL+"/api/v1/events", body)
+	created := decodeJSON[model.Event](t, resp)
+
+	// Create an override
+	newTitle := "Override"
+	putJSON(t, ts.URL+"/api/v1/events/"+itoa(created.ID)+"?instance_start=2026-04-02T10:00:00Z",
+		model.UpdateEventRequest{Title: &newTitle})
+
+	// Delete the parent
+	delResp := doDelete(t, ts.URL+"/api/v1/events/"+itoa(created.ID))
+	if delResp.StatusCode != http.StatusNoContent {
+		t.Fatalf("delete parent: got status %d", delResp.StatusCode)
+	}
+	delResp.Body.Close()
+
+	// Verify override is also gone
+	listResp, _ := http.Get(ts.URL + "/api/v1/events?from=2026-04-01T00:00:00Z&to=2026-04-10T00:00:00Z")
+	events := decodeJSON[[]model.Event](t, listResp)
+	for _, e := range events {
+		if e.Title == "Override" {
+			t.Error("override should have been deleted with parent")
+		}
+	}
+}
+
+func TestDeleteInstanceWithOverride(t *testing.T) {
+	ts := setupTestServer(t)
+
+	body := model.CreateEventRequest{
+		Title:           "Series",
+		StartTime:       "2026-04-01T10:00:00Z",
+		EndTime:         "2026-04-01T11:00:00Z",
+		RecurrenceFreq:  "DAILY",
+		RecurrenceCount: 5,
+	}
+	resp := postJSON(t, ts.URL+"/api/v1/events", body)
+	created := decodeJSON[model.Event](t, resp)
+
+	// Create an override for Apr 2
+	newTitle := "Override"
+	putJSON(t, ts.URL+"/api/v1/events/"+itoa(created.ID)+"?instance_start=2026-04-02T10:00:00Z",
+		model.UpdateEventRequest{Title: &newTitle})
+
+	// Delete that instance via EXDATE
+	delResp := doDelete(t, ts.URL+"/api/v1/events/"+itoa(created.ID)+"?instance_start=2026-04-02T10:00:00Z")
+	if delResp.StatusCode != http.StatusOK {
+		t.Fatalf("delete instance: got status %d", delResp.StatusCode)
+	}
+	delResp.Body.Close()
+
+	// Verify override is gone and instance is excluded
+	listResp, _ := http.Get(ts.URL + "/api/v1/events?from=2026-04-01T00:00:00Z&to=2026-04-10T00:00:00Z")
+	events := decodeJSON[[]model.Event](t, listResp)
+	for _, e := range events {
+		if e.Title == "Override" {
+			t.Error("override should have been deleted when instance was excluded")
+		}
+	}
+}
+
+// --- Duration tests ---
+
+func TestCreateEventWithDuration(t *testing.T) {
+	ts := setupTestServer(t)
+	body := model.CreateEventRequest{
+		Title:     "Quick Meeting",
+		StartTime: "2026-03-15T10:00:00Z",
+		Duration:  "PT1H30M",
+	}
+	resp := postJSON(t, ts.URL+"/api/v1/events", body)
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("got status %d, want %d", resp.StatusCode, http.StatusCreated)
+	}
+	event := decodeJSON[model.Event](t, resp)
+	if event.EndTime != "2026-03-15T11:30:00Z" {
+		t.Errorf("end_time = %q, want %q", event.EndTime, "2026-03-15T11:30:00Z")
+	}
+	if event.Duration != "PT1H30M" {
+		t.Errorf("duration = %q, want %q", event.Duration, "PT1H30M")
+	}
+}
+
+func TestCreateEventDurationAndEndTimeConflict(t *testing.T) {
+	ts := setupTestServer(t)
+	body := model.CreateEventRequest{
+		Title:     "Conflict",
+		StartTime: "2026-03-15T10:00:00Z",
+		EndTime:   "2026-03-15T11:00:00Z",
+		Duration:  "PT1H",
+	}
+	resp := postJSON(t, ts.URL+"/api/v1/events", body)
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("got status %d, want %d", resp.StatusCode, http.StatusBadRequest)
+	}
+}
+
+// --- Categories tests ---
+
+func TestCreateEventWithCategories(t *testing.T) {
+	ts := setupTestServer(t)
+	body := model.CreateEventRequest{
+		Title:      "Tagged Event",
+		StartTime:  "2026-03-15T10:00:00Z",
+		EndTime:    "2026-03-15T11:00:00Z",
+		Categories: "Work,Meeting",
+	}
+	resp := postJSON(t, ts.URL+"/api/v1/events", body)
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("got status %d, want %d", resp.StatusCode, http.StatusCreated)
+	}
+	event := decodeJSON[model.Event](t, resp)
+	if event.Categories != "Work,Meeting" {
+		t.Errorf("categories = %q, want %q", event.Categories, "Work,Meeting")
+	}
+
+	// Update categories
+	newCats := "Personal"
+	resp = putJSON(t, ts.URL+"/api/v1/events/"+itoa(event.ID), model.UpdateEventRequest{
+		Categories: &newCats,
+	})
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("update: got status %d", resp.StatusCode)
+	}
+	updated := decodeJSON[model.Event](t, resp)
+	if updated.Categories != "Personal" {
+		t.Errorf("updated categories = %q, want %q", updated.Categories, "Personal")
+	}
+}
+
+// --- URL tests ---
+
+func TestCreateEventWithURL(t *testing.T) {
+	ts := setupTestServer(t)
+	body := model.CreateEventRequest{
+		Title:     "Linked Event",
+		StartTime: "2026-03-15T10:00:00Z",
+		EndTime:   "2026-03-15T11:00:00Z",
+		URL:       "https://example.com/meeting",
+	}
+	resp := postJSON(t, ts.URL+"/api/v1/events", body)
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("got status %d, want %d", resp.StatusCode, http.StatusCreated)
+	}
+	event := decodeJSON[model.Event](t, resp)
+	if event.URL != "https://example.com/meeting" {
+		t.Errorf("url = %q, want %q", event.URL, "https://example.com/meeting")
+	}
+}
+
+func TestCreateEventWithBadURL(t *testing.T) {
+	ts := setupTestServer(t)
+	body := model.CreateEventRequest{
+		Title:     "Bad URL",
+		StartTime: "2026-03-15T10:00:00Z",
+		EndTime:   "2026-03-15T11:00:00Z",
+		URL:       "ftp://example.com",
+	}
+	resp := postJSON(t, ts.URL+"/api/v1/events", body)
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("got status %d, want %d", resp.StatusCode, http.StatusBadRequest)
+	}
+}
+
+// --- iCal import/export with new properties ---
+
+func TestImportExportWithRecurrenceID(t *testing.T) {
+	ts := setupTestServer(t)
+	ics := `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Test//Test//EN
+BEGIN:VEVENT
+UID:recurring-1@test
+DTSTART:20260401T100000Z
+DTEND:20260401T110000Z
+SUMMARY:Weekly
+RRULE:FREQ=WEEKLY;COUNT=4
+END:VEVENT
+BEGIN:VEVENT
+UID:recurring-1@test
+RECURRENCE-ID:20260408T100000Z
+DTSTART:20260408T140000Z
+DTEND:20260408T150000Z
+SUMMARY:Weekly (moved)
+END:VEVENT
+END:VCALENDAR`
+
+	resp := postJSON(t, ts.URL+"/api/v1/import", map[string]string{"ics_content": ics})
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("import: got status %d", resp.StatusCode)
+	}
+	result := decodeJSON[map[string]int](t, resp)
+	if result["imported"] != 2 {
+		t.Errorf("imported = %d, want 2", result["imported"])
+	}
+
+	// Export and verify RECURRENCE-ID in output
+	exportResp, _ := http.Get(ts.URL + "/api/v1/events.ics")
+	defer exportResp.Body.Close()
+	body, _ := io.ReadAll(exportResp.Body)
+	icsStr := string(body)
+	if !strings.Contains(icsStr, "RECURRENCE-ID:") {
+		t.Error("expected RECURRENCE-ID in exported iCal")
+	}
+}
+
+func TestImportExportDuration(t *testing.T) {
+	ts := setupTestServer(t)
+	ics := `BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+DTSTART:20260501T100000Z
+DURATION:PT2H
+SUMMARY:Duration Event
+END:VEVENT
+END:VCALENDAR`
+
+	resp := postJSON(t, ts.URL+"/api/v1/import", map[string]string{"ics_content": ics})
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("import: got status %d", resp.StatusCode)
+	}
+	result := decodeJSON[map[string]int](t, resp)
+	if result["imported"] != 1 {
+		t.Errorf("imported = %d, want 1", result["imported"])
+	}
+
+	// Export and verify DURATION in output
+	exportResp, _ := http.Get(ts.URL + "/api/v1/events.ics")
+	defer exportResp.Body.Close()
+	body, _ := io.ReadAll(exportResp.Body)
+	icsStr := string(body)
+	if !strings.Contains(icsStr, "DURATION:PT2H") {
+		t.Error("expected DURATION:PT2H in exported iCal")
+	}
+}
+
+func TestImportExportCategories(t *testing.T) {
+	ts := setupTestServer(t)
+	ics := `BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+DTSTART:20260501T100000Z
+DTEND:20260501T110000Z
+SUMMARY:Categorized
+CATEGORIES:Work,Meeting
+END:VEVENT
+END:VCALENDAR`
+
+	resp := postJSON(t, ts.URL+"/api/v1/import", map[string]string{"ics_content": ics})
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("import: got status %d", resp.StatusCode)
+	}
+
+	// Export and verify CATEGORIES in output
+	exportResp, _ := http.Get(ts.URL + "/api/v1/events.ics")
+	defer exportResp.Body.Close()
+	body, _ := io.ReadAll(exportResp.Body)
+	icsStr := string(body)
+	if !strings.Contains(icsStr, "CATEGORIES:") {
+		t.Error("expected CATEGORIES in exported iCal")
+	}
+}
+
+func TestImportExportURL(t *testing.T) {
+	ts := setupTestServer(t)
+	ics := `BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+DTSTART:20260501T100000Z
+DTEND:20260501T110000Z
+SUMMARY:Linked
+URL:https://example.com/event
+END:VEVENT
+END:VCALENDAR`
+
+	resp := postJSON(t, ts.URL+"/api/v1/import", map[string]string{"ics_content": ics})
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("import: got status %d", resp.StatusCode)
+	}
+
+	// Export and verify URL in output
+	exportResp, _ := http.Get(ts.URL + "/api/v1/events.ics")
+	defer exportResp.Body.Close()
+	body, _ := io.ReadAll(exportResp.Body)
+	icsStr := string(body)
+	if !strings.Contains(icsStr, "URL:https://example.com/event") {
+		t.Error("expected URL in exported iCal")
 	}
 }
 

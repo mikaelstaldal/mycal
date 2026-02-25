@@ -33,13 +33,39 @@ func Encode(w io.Writer, events []model.Event) error {
 		}
 
 		b.WriteString("BEGIN:VEVENT\r\n")
-		b.WriteString(fmt.Sprintf("UID:event-%d@mycal\r\n", e.ID))
+
+		// UID: overrides share parent's UID
+		if e.RecurrenceParentID != nil {
+			b.WriteString(fmt.Sprintf("UID:event-%d@mycal\r\n", *e.RecurrenceParentID))
+		} else {
+			b.WriteString(fmt.Sprintf("UID:event-%d@mycal\r\n", e.ID))
+		}
+
+		// RECURRENCE-ID for overrides
+		if e.RecurrenceParentID != nil && e.RecurrenceOriginalStart != "" {
+			if origTime, err := time.Parse(time.RFC3339, e.RecurrenceOriginalStart); err == nil {
+				if e.AllDay {
+					b.WriteString(fmt.Sprintf("RECURRENCE-ID;VALUE=DATE:%s\r\n", origTime.UTC().Format("20060102")))
+				} else {
+					b.WriteString(fmt.Sprintf("RECURRENCE-ID:%s\r\n", formatICalTime(origTime)))
+				}
+			}
+		}
+
 		if e.AllDay {
 			b.WriteString(fmt.Sprintf("DTSTART;VALUE=DATE:%s\r\n", start.UTC().Format("20060102")))
-			b.WriteString(fmt.Sprintf("DTEND;VALUE=DATE:%s\r\n", end.UTC().Format("20060102")))
+			if e.Duration != "" {
+				b.WriteString(fmt.Sprintf("DURATION:%s\r\n", e.Duration))
+			} else {
+				b.WriteString(fmt.Sprintf("DTEND;VALUE=DATE:%s\r\n", end.UTC().Format("20060102")))
+			}
 		} else {
 			b.WriteString(fmt.Sprintf("DTSTART:%s\r\n", formatICalTime(start)))
-			b.WriteString(fmt.Sprintf("DTEND:%s\r\n", formatICalTime(end)))
+			if e.Duration != "" {
+				b.WriteString(fmt.Sprintf("DURATION:%s\r\n", e.Duration))
+			} else {
+				b.WriteString(fmt.Sprintf("DTEND:%s\r\n", formatICalTime(end)))
+			}
 		}
 		b.WriteString(fmt.Sprintf("SUMMARY:%s\r\n", escapeText(e.Title)))
 		if e.Description != "" {
@@ -50,6 +76,12 @@ func Encode(w io.Writer, events []model.Event) error {
 		}
 		if e.Latitude != nil && e.Longitude != nil {
 			b.WriteString(fmt.Sprintf("GEO:%f;%f\r\n", *e.Latitude, *e.Longitude))
+		}
+		if e.Categories != "" {
+			b.WriteString(fmt.Sprintf("CATEGORIES:%s\r\n", escapeText(e.Categories)))
+		}
+		if e.URL != "" {
+			b.WriteString(fmt.Sprintf("URL:%s\r\n", e.URL))
 		}
 		if e.RecurrenceFreq != "" {
 			rrule := "RRULE:FREQ=" + e.RecurrenceFreq
@@ -301,24 +333,23 @@ func unfoldLines(r io.Reader) ([]string, error) {
 }
 
 func parseEvent(props []string, alarmProps []string, tzMap map[string]*time.Location) (model.Event, bool) {
-	// Skip override instances — we can't represent RECURRENCE-ID yet
-	for _, prop := range props {
-		name, _, _ := parsePropLine(prop)
-		if strings.ToUpper(name) == "RECURRENCE-ID" {
-			return model.Event{}, false
-		}
-	}
-
 	var summary, description, dtstart, dtend string
+	var uid string
+	var recurrenceID string
 	var rrule rruleResult
 	var location string
 	var latitude, longitude *float64
 	var exdates, rdates []string
+	var categories string
+	var eventURL string
+	var duration string
 	allDay := false
 
 	for _, prop := range props {
 		name, params, value := parsePropLine(prop)
 		switch strings.ToUpper(name) {
+		case "UID":
+			uid = value
 		case "SUMMARY":
 			summary = unescapeText(value)
 		case "DESCRIPTION":
@@ -336,6 +367,10 @@ func parseEvent(props []string, alarmProps []string, tzMap map[string]*time.Loca
 					}
 				}
 			}
+		case "CATEGORIES":
+			categories = unescapeText(value)
+		case "URL":
+			eventURL = value
 		case "DTSTART":
 			upperParams := strings.ToUpper(params)
 			if strings.Contains(upperParams, "VALUE=DATE") {
@@ -344,6 +379,8 @@ func parseEvent(props []string, alarmProps []string, tzMap map[string]*time.Loca
 			dtstart = parseICalTime(value, params, tzMap)
 		case "DTEND":
 			dtend = parseICalTime(value, params, tzMap)
+		case "DURATION":
+			duration = value
 		case "RRULE":
 			rrule = parseRRule(value, tzMap)
 		case "EXDATE":
@@ -356,16 +393,33 @@ func parseEvent(props []string, alarmProps []string, tzMap map[string]*time.Loca
 			if parsed != "" {
 				rdates = append(rdates, parsed)
 			}
+		case "RECURRENCE-ID":
+			recurrenceID = parseICalTime(value, params, tzMap)
 		}
 	}
 
-	if summary == "" || dtstart == "" || dtend == "" {
+	if summary == "" || dtstart == "" {
+		return model.Event{}, false
+	}
+
+	// If DURATION is set and no DTEND, compute DTEND
+	if dtend == "" && duration != "" {
+		dur, err := model.ParseDuration(duration)
+		if err == nil {
+			start, err := time.Parse(time.RFC3339, dtstart)
+			if err == nil {
+				dtend = start.Add(dur).Format(time.RFC3339)
+			}
+		}
+	}
+
+	if dtend == "" {
 		return model.Event{}, false
 	}
 
 	reminderMinutes := parseTriggerMinutes(alarmProps)
 
-	return model.Event{
+	ev := model.Event{
 		Title:              summary,
 		Description:        description,
 		StartTime:          dtstart,
@@ -380,11 +434,22 @@ func parseEvent(props []string, alarmProps []string, tzMap map[string]*time.Loca
 		RecurrenceByMonth:  rrule.ByMonth,
 		ExDates:            strings.Join(exdates, ","),
 		RDates:             strings.Join(rdates, ","),
+		Duration:           duration,
+		Categories:         categories,
+		URL:                eventURL,
 		ReminderMinutes:    reminderMinutes,
 		Location:           location,
 		Latitude:           latitude,
 		Longitude:          longitude,
-	}, true
+		ImportUID:          uid,
+	}
+
+	// If this has a RECURRENCE-ID, mark it as an override
+	if recurrenceID != "" {
+		ev.RecurrenceOriginalStart = recurrenceID
+	}
+
+	return ev, true
 }
 
 // parseTriggerMinutes extracts reminder minutes from VALARM TRIGGER property.

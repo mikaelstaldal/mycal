@@ -108,15 +108,37 @@ function App() {
     }
 
     async function handleEventClick(event) {
+        if (event.recurrence_parent_id) {
+            // This is an override instance - edit it directly
+            setSelectedEvent(event);
+            setDefaultDate(null);
+            setShowForm(true);
+            return;
+        }
         if (event.recurrence_freq && event.recurrence_index > 0) {
-            // Fetch parent event for editing, but remember the instance start time
-            try {
-                const parent = await getEvent(event.id);
-                parent._instanceStart = event.start_time;
-                setSelectedEvent(parent);
-            } catch (err) {
-                console.error('Failed to fetch parent event:', err);
-                setSelectedEvent(event);
+            // Recurring instance (not the first one) - ask user what to edit
+            const choice = confirm('Edit this instance only?\n\nOK = Edit this instance\nCancel = Edit all instances');
+            if (choice) {
+                // Edit single instance - pass instance start for override
+                try {
+                    const parent = await getEvent(event.id);
+                    parent._instanceStart = event.start_time;
+                    parent._editInstance = true;
+                    setSelectedEvent(parent);
+                } catch (err) {
+                    console.error('Failed to fetch parent event:', err);
+                    setSelectedEvent(event);
+                }
+            } else {
+                // Edit all - fetch parent
+                try {
+                    const parent = await getEvent(event.id);
+                    parent._instanceStart = event.start_time;
+                    setSelectedEvent(parent);
+                } catch (err) {
+                    console.error('Failed to fetch parent event:', err);
+                    setSelectedEvent(event);
+                }
             }
         } else if (event.recurrence_freq && event.recurrence_index === 0) {
             setSelectedEvent(event);
@@ -127,12 +149,12 @@ function App() {
         setShowForm(true);
     }
 
-    async function handleSave(id, data) {
+    async function handleSave(id, data, instanceStart) {
         if (data.reminder_minutes > 0) {
             requestPermission();
         }
         if (id) {
-            await updateEvent(id, data);
+            await updateEvent(id, data, instanceStart);
         } else {
             await createEvent(data);
         }

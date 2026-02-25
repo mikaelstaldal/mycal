@@ -10,18 +10,18 @@
 - [x] Support RRULE BYDAY, BYMONTH, BYMONTHDAY and other BY* parameters for complex patterns
 - [x] Support EXDATE, removing instances of recurring events
 - [x] Support RDATE for explicit additional recurrence dates
-- [ ] Support RECURRENCE-ID for identifying and editing individual instances of recurring events
+- [x] Support RECURRENCE-ID for identifying and editing individual instances of recurring events
 
 ### Event properties
 - [ ] Support STATUS property (TENTATIVE, CONFIRMED, CANCELLED)
 - [ ] Support CLASS property (PUBLIC, PRIVATE, CONFIDENTIAL)
 - [ ] Support TRANSP property (OPAQUE, TRANSPARENT)
 - [ ] Support SEQUENCE property for revision tracking
-- [ ] Support CATEGORIES property for event tagging
-- [ ] Support URL property for reference links
+- [x] Support CATEGORIES property for event tagging
+- [x] Support URL property for reference links
 - [ ] Support ATTACH property for file attachments or URLs
 - [ ] Support PRIORITY property (0-9)
-- [ ] Support DURATION as alternative to DTEND
+- [x] Support DURATION as alternative to DTEND
 - [ ] Support RELATED-TO property for parent/child event relationships
 
 ### Multi-user

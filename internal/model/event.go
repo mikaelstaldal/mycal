@@ -2,6 +2,8 @@ package model
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -23,12 +25,18 @@ type Event struct {
 	ExDates            string   `json:"exdates"`
 	RDates             string   `json:"rdates"`
 	RecurrenceIndex    int      `json:"recurrence_index,omitempty"`
+	RecurrenceParentID    *int64 `json:"recurrence_parent_id,omitempty"`
+	RecurrenceOriginalStart string `json:"recurrence_original_start,omitempty"`
+	Duration        string   `json:"duration,omitempty"`
+	Categories      string   `json:"categories,omitempty"`
+	URL             string   `json:"url,omitempty"`
 	ReminderMinutes int      `json:"reminder_minutes"`
 	Location        string   `json:"location"`
 	Latitude        *float64 `json:"latitude"`
 	Longitude       *float64 `json:"longitude"`
 	CreatedAt       string   `json:"created_at"`
 	UpdatedAt       string   `json:"updated_at"`
+	ImportUID       string   `json:"-"` // transient field for iCal import UID matching
 }
 
 func (e *Event) IsRecurring() bool {
@@ -59,6 +67,9 @@ type CreateEventRequest struct {
 	RecurrenceByMonth  string   `json:"recurrence_by_month"`
 	ExDates            string   `json:"exdates"`
 	RDates             string   `json:"rdates"`
+	Duration           string   `json:"duration"`
+	Categories         string   `json:"categories"`
+	URL                string   `json:"url"`
 	ReminderMinutes    int      `json:"reminder_minutes"`
 	Location           string   `json:"location"`
 	Latitude           *float64 `json:"latitude"`
@@ -71,6 +82,8 @@ const (
 	maxTitleLength       = 500
 	maxDescriptionLength = 10000
 	maxLocationLength    = 500
+	maxCategoriesLength  = 500
+	maxURLLength         = 2000
 	maxReminderMinutes   = 40320 // 4 weeks
 	maxRecurrenceCount   = 1000
 	maxEventDuration     = 366 * 24 * time.Hour // 366 days
@@ -81,6 +94,78 @@ const (
 func validateDateRange(t time.Time) error {
 	if t.Year() < minYear || t.Year() > maxYear {
 		return fmt.Errorf("date must be between year %d and %d", minYear, maxYear)
+	}
+	return nil
+}
+
+// ParseDuration parses an ISO 8601 duration string like PT1H, PT30M, P1D, P1DT2H30M.
+func ParseDuration(s string) (time.Duration, error) {
+	if s == "" {
+		return 0, fmt.Errorf("empty duration")
+	}
+	s = strings.ToUpper(s)
+	if !strings.HasPrefix(s, "P") {
+		return 0, fmt.Errorf("duration must start with P")
+	}
+	s = s[1:] // strip "P"
+
+	var total time.Duration
+	inTime := false
+
+	num := ""
+	for _, c := range s {
+		if c == 'T' {
+			inTime = true
+			continue
+		}
+		if c >= '0' && c <= '9' {
+			num += string(c)
+			continue
+		}
+		n, err := strconv.Atoi(num)
+		if err != nil {
+			return 0, fmt.Errorf("invalid duration number: %s", num)
+		}
+		num = ""
+
+		if inTime {
+			switch c {
+			case 'H':
+				total += time.Duration(n) * time.Hour
+			case 'M':
+				total += time.Duration(n) * time.Minute
+			case 'S':
+				total += time.Duration(n) * time.Second
+			default:
+				return 0, fmt.Errorf("unknown time unit: %c", c)
+			}
+		} else {
+			switch c {
+			case 'D':
+				total += time.Duration(n) * 24 * time.Hour
+			case 'W':
+				total += time.Duration(n) * 7 * 24 * time.Hour
+			default:
+				return 0, fmt.Errorf("unknown date unit: %c", c)
+			}
+		}
+	}
+
+	if total <= 0 {
+		return 0, fmt.Errorf("duration must be positive")
+	}
+	return total, nil
+}
+
+func validateURL(u string) error {
+	if u == "" {
+		return nil
+	}
+	if len(u) > maxURLLength {
+		return fmt.Errorf("url must be at most %d characters", maxURLLength)
+	}
+	if !strings.HasPrefix(u, "http://") && !strings.HasPrefix(u, "https://") {
+		return fmt.Errorf("url must start with http:// or https://")
 	}
 	return nil
 }
@@ -98,8 +183,40 @@ func (r *CreateEventRequest) Validate() error {
 	if len(r.Location) > maxLocationLength {
 		return fmt.Errorf("location must be at most %d characters", maxLocationLength)
 	}
+	if len(r.Categories) > maxCategoriesLength {
+		return fmt.Errorf("categories must be at most %d characters", maxCategoriesLength)
+	}
+	if err := validateURL(r.URL); err != nil {
+		return err
+	}
 	if r.StartTime == "" {
 		return fmt.Errorf("start_time is required")
+	}
+
+	// Duration and EndTime conflict
+	if r.Duration != "" && r.EndTime != "" {
+		return fmt.Errorf("cannot specify both duration and end_time")
+	}
+
+	// If Duration is set, compute EndTime
+	if r.Duration != "" {
+		dur, err := ParseDuration(r.Duration)
+		if err != nil {
+			return fmt.Errorf("invalid duration: %s", err.Error())
+		}
+		if r.AllDay {
+			start, err := time.Parse(dateOnly, r.StartTime)
+			if err != nil {
+				return fmt.Errorf("start_time must be YYYY-MM-DD format for all-day events")
+			}
+			r.EndTime = start.Add(dur).Format(dateOnly)
+		} else {
+			start, err := time.Parse(time.RFC3339, r.StartTime)
+			if err != nil {
+				return fmt.Errorf("start_time must be RFC 3339 format")
+			}
+			r.EndTime = start.Add(dur).Format(time.RFC3339)
+		}
 	}
 
 	if r.AllDay {
@@ -227,6 +344,9 @@ type UpdateEventRequest struct {
 	RecurrenceByMonth  *string  `json:"recurrence_by_month"`
 	ExDates            *string  `json:"exdates"`
 	RDates             *string  `json:"rdates"`
+	Duration           *string  `json:"duration"`
+	Categories         *string  `json:"categories"`
+	URL                *string  `json:"url"`
 	ReminderMinutes    *int     `json:"reminder_minutes"`
 	Location           *string  `json:"location"`
 	Latitude           *float64 `json:"latitude"`
@@ -245,6 +365,19 @@ func (r *UpdateEventRequest) Validate() error {
 	}
 	if r.Location != nil && len(*r.Location) > maxLocationLength {
 		return fmt.Errorf("location must be at most %d characters", maxLocationLength)
+	}
+	if r.Categories != nil && len(*r.Categories) > maxCategoriesLength {
+		return fmt.Errorf("categories must be at most %d characters", maxCategoriesLength)
+	}
+	if r.URL != nil {
+		if err := validateURL(*r.URL); err != nil {
+			return err
+		}
+	}
+	if r.Duration != nil && *r.Duration != "" {
+		if _, err := ParseDuration(*r.Duration); err != nil {
+			return fmt.Errorf("invalid duration: %s", err.Error())
+		}
 	}
 
 	allDay := r.AllDay != nil && *r.AllDay

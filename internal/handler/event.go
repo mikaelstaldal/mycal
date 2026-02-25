@@ -106,6 +106,27 @@ func updateEvent(svc *service.EventService) http.HandlerFunc {
 			writeError(w, http.StatusBadRequest, "invalid JSON")
 			return
 		}
+
+		// Check for instance_start query param (override a single instance)
+		instanceStart := r.URL.Query().Get("instance_start")
+		if instanceStart != "" {
+			event, err := svc.CreateOrUpdateOverride(id, instanceStart, &req)
+			if err != nil {
+				if errors.Is(err, service.ErrNotFound) {
+					writeError(w, http.StatusNotFound, "event not found")
+					return
+				}
+				if errors.Is(err, service.ErrValidation) {
+					writeError(w, http.StatusBadRequest, err.Error())
+					return
+				}
+				writeError(w, http.StatusInternalServerError, "failed to update instance")
+				return
+			}
+			writeJSON(w, http.StatusOK, event)
+			return
+		}
+
 		event, err := svc.Update(id, &req)
 		if err != nil {
 			if errors.Is(err, service.ErrNotFound) {

@@ -59,11 +59,74 @@ func (s *EventService) List(from, to string) ([]model.Event, error) {
 		expanded = append(expanded, expandRecurring(re, fromTime, toTime)...)
 	}
 
+	// Fetch overrides for recurring parents and apply them
+	if len(recurring) > 0 {
+		parentIDs := make([]int64, len(recurring))
+		for i, re := range recurring {
+			parentIDs[i] = re.ID
+		}
+		overrides, err := s.repo.ListOverrides(parentIDs)
+		if err != nil {
+			return nil, err
+		}
+		if len(overrides) > 0 {
+			expanded = applyOverrides(expanded, overrides, fromTime, toTime)
+		}
+	}
+
 	if len(expanded) > 0 {
 		events = mergeEvents(events, expanded)
 	}
 
 	return events, nil
+}
+
+// applyOverrides replaces expanded instances with their overrides.
+// An override matches an expanded instance when parentID matches and
+// RecurrenceOriginalStart matches the instance's StartTime.
+func applyOverrides(expanded []model.Event, overrides []model.Event, from, to time.Time) []model.Event {
+	// Build lookup: parentID+originalStart -> override
+	type overrideKey struct {
+		parentID      int64
+		originalStart string
+	}
+	overrideMap := make(map[overrideKey]model.Event, len(overrides))
+	for _, o := range overrides {
+		if o.RecurrenceParentID != nil {
+			overrideMap[overrideKey{*o.RecurrenceParentID, o.RecurrenceOriginalStart}] = o
+		}
+	}
+
+	var result []model.Event
+	replaced := make(map[overrideKey]bool)
+
+	for _, inst := range expanded {
+		key := overrideKey{inst.ID, inst.StartTime}
+		if override, ok := overrideMap[key]; ok {
+			// Replace with override if it falls in the query window
+			oStart, _ := time.Parse(time.RFC3339, override.StartTime)
+			oEnd, _ := time.Parse(time.RFC3339, override.EndTime)
+			if oEnd.After(from) && oStart.Before(to) {
+				result = append(result, override)
+			}
+			replaced[key] = true
+		} else {
+			result = append(result, inst)
+		}
+	}
+
+	// Include any overrides not matched to expanded instances (edge case: override moved outside normal expansion)
+	for key, override := range overrideMap {
+		if !replaced[key] {
+			oStart, _ := time.Parse(time.RFC3339, override.StartTime)
+			oEnd, _ := time.Parse(time.RFC3339, override.EndTime)
+			if oEnd.After(from) && oStart.Before(to) {
+				result = append(result, override)
+			}
+		}
+	}
+
+	return result
 }
 
 func (s *EventService) Search(query, from, to string) ([]model.Event, error) {
@@ -108,6 +171,9 @@ func (s *EventService) Create(req *model.CreateEventRequest) (*model.Event, erro
 		RecurrenceByMonth:  req.RecurrenceByMonth,
 		ExDates:            req.ExDates,
 		RDates:             req.RDates,
+		Duration:           req.Duration,
+		Categories:         req.Categories,
+		URL:                req.URL,
 		ReminderMinutes:    req.ReminderMinutes,
 		Location:           req.Location,
 		Latitude:           req.Latitude,
@@ -172,6 +238,15 @@ func (s *EventService) Update(id int64, req *model.UpdateEventRequest) (*model.E
 	if req.RDates != nil {
 		existing.RDates = *req.RDates
 	}
+	if req.Duration != nil {
+		existing.Duration = *req.Duration
+	}
+	if req.Categories != nil {
+		existing.Categories = *req.Categories
+	}
+	if req.URL != nil {
+		existing.URL = *req.URL
+	}
 	if req.ReminderMinutes != nil {
 		existing.ReminderMinutes = *req.ReminderMinutes
 	}
@@ -183,6 +258,19 @@ func (s *EventService) Update(id int64, req *model.UpdateEventRequest) (*model.E
 	}
 	if req.Longitude != nil {
 		existing.Longitude = req.Longitude
+	}
+
+	// If Duration is set, recompute EndTime
+	if req.Duration != nil && *req.Duration != "" {
+		dur, err := model.ParseDuration(*req.Duration)
+		if err != nil {
+			return nil, fmt.Errorf("%w: invalid duration: %s", ErrValidation, err.Error())
+		}
+		start, err := time.Parse(time.RFC3339, existing.StartTime)
+		if err != nil {
+			return nil, fmt.Errorf("%w: invalid start_time for duration computation", ErrValidation)
+		}
+		existing.EndTime = start.Add(dur).Format(time.RFC3339)
 	}
 
 	if existing.AllDay {
@@ -237,15 +325,136 @@ func (s *EventService) Update(id int64, req *model.UpdateEventRequest) (*model.E
 	return existing, nil
 }
 
+func (s *EventService) CreateOrUpdateOverride(parentID int64, instanceStart string, req *model.UpdateEventRequest) (*model.Event, error) {
+	if _, err := time.Parse(time.RFC3339, instanceStart); err != nil {
+		return nil, fmt.Errorf("%w: instance_start must be RFC 3339 format", ErrValidation)
+	}
+	if err := req.Validate(); err != nil {
+		return nil, fmt.Errorf("%w: %s", ErrValidation, err.Error())
+	}
+
+	parent, err := s.repo.GetByID(parentID)
+	if err != nil {
+		return nil, err
+	}
+	if parent == nil {
+		return nil, ErrNotFound
+	}
+	if !parent.IsRecurring() {
+		return nil, fmt.Errorf("%w: event is not recurring", ErrValidation)
+	}
+
+	// Check for existing override
+	existing, err := s.repo.GetOverride(parentID, instanceStart)
+	if err != nil {
+		return nil, err
+	}
+
+	if existing != nil {
+		// Update existing override
+		return s.Update(existing.ID, req)
+	}
+
+	// Create new override as copy of parent with updates applied
+	override := &model.Event{
+		Title:              parent.Title,
+		Description:        parent.Description,
+		StartTime:          instanceStart,
+		EndTime:            "", // will be computed
+		AllDay:             parent.AllDay,
+		Color:              parent.Color,
+		Duration:           parent.Duration,
+		Categories:         parent.Categories,
+		URL:                parent.URL,
+		ReminderMinutes:    parent.ReminderMinutes,
+		Location:           parent.Location,
+		Latitude:           parent.Latitude,
+		Longitude:          parent.Longitude,
+		RecurrenceParentID:    &parentID,
+		RecurrenceOriginalStart: instanceStart,
+	}
+
+	// Compute EndTime from parent's duration
+	parentStart, _ := time.Parse(time.RFC3339, parent.StartTime)
+	parentEnd, _ := time.Parse(time.RFC3339, parent.EndTime)
+	dur := parentEnd.Sub(parentStart)
+	instStart, _ := time.Parse(time.RFC3339, instanceStart)
+	override.EndTime = instStart.Add(dur).Format(time.RFC3339)
+
+	// Apply updates
+	if req.Title != nil {
+		override.Title = *req.Title
+	}
+	if req.Description != nil {
+		override.Description = sanitize.HTML(*req.Description)
+	}
+	if req.StartTime != nil {
+		override.StartTime = *req.StartTime
+	}
+	if req.EndTime != nil {
+		override.EndTime = *req.EndTime
+	}
+	if req.AllDay != nil {
+		override.AllDay = *req.AllDay
+	}
+	if req.Color != nil {
+		override.Color = *req.Color
+	}
+	if req.Duration != nil {
+		override.Duration = *req.Duration
+		if *req.Duration != "" {
+			d, err := model.ParseDuration(*req.Duration)
+			if err != nil {
+				return nil, fmt.Errorf("%w: invalid duration: %s", ErrValidation, err.Error())
+			}
+			s2, _ := time.Parse(time.RFC3339, override.StartTime)
+			override.EndTime = s2.Add(d).Format(time.RFC3339)
+		}
+	}
+	if req.Categories != nil {
+		override.Categories = *req.Categories
+	}
+	if req.URL != nil {
+		override.URL = *req.URL
+	}
+	if req.ReminderMinutes != nil {
+		override.ReminderMinutes = *req.ReminderMinutes
+	}
+	if req.Location != nil {
+		override.Location = *req.Location
+	}
+	if req.Latitude != nil {
+		override.Latitude = req.Latitude
+	}
+	if req.Longitude != nil {
+		override.Longitude = req.Longitude
+	}
+
+	if err := s.repo.Create(override); err != nil {
+		return nil, err
+	}
+	return override, nil
+}
+
 func (s *EventService) ImportSingle(events []model.Event) (*model.Event, error) {
 	if len(events) == 0 {
 		return nil, fmt.Errorf("%w: iCal source contains no events", ErrValidation)
 	}
-	if len(events) > 1 {
-		return nil, fmt.Errorf("%w: iCal source contains %d events, expected exactly one", ErrValidation, len(events))
+	// Filter out overrides for single import
+	var parents []model.Event
+	for _, e := range events {
+		if e.RecurrenceOriginalStart == "" {
+			parents = append(parents, e)
+		}
+	}
+	if len(parents) == 0 {
+		return nil, fmt.Errorf("%w: iCal source contains no parent events", ErrValidation)
+	}
+	if len(parents) > 1 {
+		return nil, fmt.Errorf("%w: iCal source contains %d events, expected exactly one", ErrValidation, len(parents))
 	}
 
-	e := events[0]
+	e := parents[0]
 	startTime := e.StartTime
 	endTime := e.EndTime
 	if e.AllDay {
@@ -256,6 +465,7 @@ func (s *EventService) ImportSingle(events []model.Event) (*model.Event, error) 
 			endTime = t.Format(dateOnly)
 		}
 	}
+	// Don't pass Duration to CreateEventRequest when EndTime is already computed
 	req := &model.CreateEventRequest{
 		Title:              e.Title,
 		Description:        e.Description,
@@ -271,6 +481,8 @@ func (s *EventService) ImportSingle(events []model.Event) (*model.Event, error) 
 		RecurrenceByMonth:  e.RecurrenceByMonth,
 		ExDates:            e.ExDates,
 		RDates:             e.RDates,
+		Categories:         e.Categories,
+		URL:                e.URL,
 		ReminderMinutes:    e.ReminderMinutes,
 		Location:           e.Location,
 		Latitude:           e.Latitude,
@@ -294,6 +506,9 @@ func (s *EventService) ImportSingle(events []model.Event) (*model.Event, error) 
 		RecurrenceByMonth:  e.RecurrenceByMonth,
 		ExDates:            e.ExDates,
 		RDates:             e.RDates,
+		Duration:           e.Duration,
+		Categories:         e.Categories,
+		URL:                e.URL,
 		ReminderMinutes:    e.ReminderMinutes,
 		Location:           e.Location,
 		Latitude:           e.Latitude,
@@ -307,11 +522,24 @@ func (s *EventService) ImportSingle(events []model.Event) (*model.Event, error) 
 
 func (s *EventService) Import(events []model.Event) (int, error) {
 	imported := 0
+
+	// Separate parents and overrides
+	var parents []model.Event
+	var overrides []model.Event
 	for _, e := range events {
+		if e.RecurrenceOriginalStart != "" {
+			overrides = append(overrides, e)
+		} else {
+			parents = append(parents, e)
+		}
+	}
+
+	// Track created parent IDs by their import UID
+	parentByUID := make(map[string]int64)
+
+	for _, e := range parents {
 		startTime := e.StartTime
 		endTime := e.EndTime
-		// All-day events: Validate() expects YYYY-MM-DD, but iCal decoder
-		// produces RFC3339. Convert back to date-only format.
 		if e.AllDay {
 			if t, err := time.Parse(time.RFC3339, startTime); err == nil {
 				startTime = t.Format(dateOnly)
@@ -320,6 +548,9 @@ func (s *EventService) Import(events []model.Event) (int, error) {
 				endTime = t.Format(dateOnly)
 			}
 		}
+		// Don't pass Duration to CreateEventRequest when EndTime is already computed
+		// (iCal decoder computes EndTime from DURATION). Pass EndTime for validation,
+		// and store Duration on the Event directly.
 		req := &model.CreateEventRequest{
 			Title:              e.Title,
 			Description:        e.Description,
@@ -335,6 +566,8 @@ func (s *EventService) Import(events []model.Event) (int, error) {
 			RecurrenceByMonth:  e.RecurrenceByMonth,
 			ExDates:            e.ExDates,
 			RDates:             e.RDates,
+			Categories:         e.Categories,
+			URL:                e.URL,
 			ReminderMinutes:    e.ReminderMinutes,
 			Location:           e.Location,
 			Latitude:           e.Latitude,
@@ -358,6 +591,9 @@ func (s *EventService) Import(events []model.Event) (int, error) {
 			RecurrenceByMonth:  e.RecurrenceByMonth,
 			ExDates:            e.ExDates,
 			RDates:             e.RDates,
+			Duration:           e.Duration,
+			Categories:         e.Categories,
+			URL:                e.URL,
 			ReminderMinutes:    e.ReminderMinutes,
 			Location:           e.Location,
 			Latitude:           e.Latitude,
@@ -366,8 +602,41 @@ func (s *EventService) Import(events []model.Event) (int, error) {
 		if err := s.repo.Create(ev); err != nil {
 			continue
 		}
+		if e.ImportUID != "" {
+			parentByUID[e.ImportUID] = ev.ID
+		}
 		imported++
 	}
+
+	// Import overrides matched by ImportUID
+	for _, e := range overrides {
+		parentID, ok := parentByUID[e.ImportUID]
+		if !ok {
+			continue
+		}
+		ev := &model.Event{
+			Title:              e.Title,
+			Description:        sanitize.HTML(e.Description),
+			StartTime:          e.StartTime,
+			EndTime:            e.EndTime,
+			AllDay:             e.AllDay,
+			Color:              e.Color,
+			Duration:           e.Duration,
+			Categories:         e.Categories,
+			URL:                e.URL,
+			ReminderMinutes:    e.ReminderMinutes,
+			Location:           e.Location,
+			Latitude:           e.Latitude,
+			Longitude:          e.Longitude,
+			RecurrenceParentID:    &parentID,
+			RecurrenceOriginalStart: e.RecurrenceOriginalStart,
+		}
+		if err := s.repo.Create(ev); err != nil {
+			continue
+		}
+		imported++
+	}
+
 	return imported, nil
 }
 
@@ -396,6 +665,16 @@ func (s *EventService) AddExDate(id int64, instanceStart string) (*model.Event, 
 	if err := s.repo.Update(existing); err != nil {
 		return nil, err
 	}
+
+	// Also delete any override for this instance
+	override, err := s.repo.GetOverride(id, instanceStart)
+	if err != nil {
+		return nil, err
+	}
+	if override != nil {
+		_ = s.repo.Delete(override.ID)
+	}
+
 	return existing, nil
 }
 
@@ -425,6 +704,9 @@ func (s *EventService) RemoveExDate(id int64, instanceStart string) (*model.Even
 }
 
 func (s *EventService) Delete(id int64) error {
+	// Also delete all overrides for this parent
+	_ = s.repo.DeleteByParentID(id)
+
 	err := s.repo.Delete(id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrNotFound

@@ -191,7 +191,7 @@ func TestDecodeSkipsMalformedEvents(t *testing.T) {
 	}
 }
 
-func TestDecodeSkipsRecurrenceID(t *testing.T) {
+func TestDecodeRecurrenceID(t *testing.T) {
 	input := "BEGIN:VCALENDAR\r\n" +
 		"BEGIN:VEVENT\r\n" +
 		"DTSTART:20260302T100000Z\r\n" +
@@ -211,14 +211,25 @@ func TestDecodeSkipsRecurrenceID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(events) != 1 {
-		t.Fatalf("expected 1 event (override skipped), got %d", len(events))
+	if len(events) != 2 {
+		t.Fatalf("expected 2 events (parent + override), got %d", len(events))
 	}
+	// First event is the parent
 	if events[0].Title != "Weekly Meeting" {
-		t.Errorf("title = %q, want %q", events[0].Title, "Weekly Meeting")
+		t.Errorf("parent title = %q, want %q", events[0].Title, "Weekly Meeting")
 	}
 	if events[0].RecurrenceFreq != "WEEKLY" {
-		t.Errorf("freq = %q, want WEEKLY", events[0].RecurrenceFreq)
+		t.Errorf("parent freq = %q, want WEEKLY", events[0].RecurrenceFreq)
+	}
+	if events[0].RecurrenceOriginalStart != "" {
+		t.Errorf("parent should not have RecurrenceOriginalStart, got %q", events[0].RecurrenceOriginalStart)
+	}
+	// Second event is the override
+	if events[1].Title != "Weekly Meeting (moved)" {
+		t.Errorf("override title = %q, want %q", events[1].Title, "Weekly Meeting (moved)")
+	}
+	if events[1].RecurrenceOriginalStart != "2026-03-09T10:00:00Z" {
+		t.Errorf("override RecurrenceOriginalStart = %q, want %q", events[1].RecurrenceOriginalStart, "2026-03-09T10:00:00Z")
 	}
 }
 
