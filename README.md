@@ -1,13 +1,18 @@
 # mycal
 
-A personal calendar application with a Go backend, SQLite storage, and a Preact web frontend.
+A personal calendar application with iCalendar support. Go backend, SQLite storage, REST API, and a built-in Preact web frontend.
+
+## Status
+
+*Note:* This application has mostly been vibe coded with AI tools, it has not been properly reviewed or extensively tested,
+and is under active development. Use at your own risk, and backup your data often if you use for real.
 
 ## Features
 
 - Monthly calendar grid with event display
 - Create, view, edit, and delete events
 - Color-coded events
-- iCalendar (RFC 5545) feed for subscribing from other calendar apps
+- iCalendar (RFC 5545) import and feed for subscribing from other calendar apps
 - JSON REST API for future native clients
 - Single binary with embedded frontend — no JS build step
 

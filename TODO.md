@@ -2,9 +2,6 @@
 
 ## Current
 
-- [x] Add a progress spinner when bulk importing events
-- [x] Display past events with a lighter color
-- [x] Add support for iCalendar VTIMEZONE definitions for import and export
 
 ## iCalendar (RFC 5545) compliance
 
@@ -40,6 +37,7 @@
 - [ ] Support CONTACT property
 - [ ] Support RESOURCES property
 - [ ] Support REFRESH-INTERVAL for subscription feed optimization
+- [x] Support VTIMEZONE definitions for import and export
 
 ## Later
 
