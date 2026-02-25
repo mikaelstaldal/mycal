@@ -32,6 +32,7 @@ function getNthWeekdayOfMonth(date) {
 export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete, onClose, config }) {
     const dialogRef = useRef(null);
     const titleRef = useRef(null);
+    const isInstanceEdit = event && event._editInstance;
     const [editing, setEditing] = useState(!event);
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
@@ -55,6 +56,11 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
     const [longitude, setLongitude] = useState('');
     const [error, setError] = useState('');
     const [monthlyMode, setMonthlyMode] = useState('bymonthday');
+    const [useDuration, setUseDuration] = useState(false);
+    const [durationHours, setDurationHours] = useState(1);
+    const [durationMinutes, setDurationMinutes] = useState(0);
+    const [categories, setCategories] = useState('');
+    const [eventURL, setEventURL] = useState('');
 
     useEffect(() => {
         if (event) {
@@ -82,13 +88,26 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
             setLocation(event.location || '');
             setLatitude(event.latitude != null ? String(event.latitude) : '');
             setLongitude(event.longitude != null ? String(event.longitude) : '');
+            setCategories(event.categories || '');
+            setEventURL(event.url || '');
+            // Duration
+            if (event.duration) {
+                setUseDuration(true);
+                const parsed = parseDurationString(event.duration);
+                setDurationHours(parsed.hours);
+                setDurationMinutes(parsed.minutes);
+            } else {
+                setUseDuration(false);
+                setDurationHours(1);
+                setDurationMinutes(0);
+            }
             // Set monthly mode based on existing BY* params
             if (event.recurrence_by_day) {
                 setMonthlyMode('byday');
             } else {
                 setMonthlyMode('bymonthday');
             }
-            setEditing(false);
+            setEditing(isInstanceEdit ? true : false);
         } else if (defaultDate) {
             const start = new Date(defaultDate);
             if (defaultAllDay) {
@@ -123,6 +142,11 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
             setLatitude('');
             setLongitude('');
             setMonthlyMode('bymonthday');
+            setUseDuration(false);
+            setDurationHours(1);
+            setDurationMinutes(0);
+            setCategories('');
+            setEventURL('');
             setEditing(true);
         }
         setError('');
@@ -167,6 +191,16 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
         return new Date(dateStr + 'T12:00:00');
     }
 
+    function buildDurationString() {
+        const h = parseInt(durationHours) || 0;
+        const m = parseInt(durationMinutes) || 0;
+        if (h === 0 && m === 0) return '';
+        let s = 'PT';
+        if (h > 0) s += h + 'H';
+        if (m > 0) s += m + 'M';
+        return s;
+    }
+
     function handleSubmit(e) {
         e.preventDefault();
         if (!title.trim()) { setError('Title is required'); return; }
@@ -177,7 +211,12 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
             longitude: longitude !== '' ? parseFloat(longitude) : null,
         };
 
-        const recurrenceFields = {
+        const extraFields = {};
+        if (categories) extraFields.categories = categories;
+        if (eventURL) extraFields.url = eventURL;
+
+        // For instance edits, don't include recurrence fields
+        const recurrenceFields = isInstanceEdit ? {} : {
             recurrence_freq: recurrenceFreq,
             recurrence_count: recurrenceCount,
             recurrence_until: recurrenceUntil ? recurrenceUntil + 'T00:00:00Z' : '',
@@ -189,6 +228,8 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
             rdates: rdates,
         };
 
+        const instanceStart = isInstanceEdit ? event._instanceStart : undefined;
+
         if (allDay) {
             if (!startTime) { setError('Start date is required'); return; }
             const data = {
@@ -196,27 +237,35 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                 description,
                 all_day: true,
                 start_time: startTime,
-                end_time: inclusiveToExclusiveDate(endTime || startTime),
+                end_time: useDuration ? undefined : inclusiveToExclusiveDate(endTime || startTime),
                 color,
                 ...recurrenceFields,
                 reminder_minutes: 0,
                 ...locationFields,
+                ...extraFields,
             };
-            onSave(event?.id, data).catch(err => setError(err.message));
+            if (useDuration) {
+                data.duration = buildDurationString();
+            }
+            onSave(event?.id, data, instanceStart).catch(err => setError(err.message));
         } else {
-            if (!startTime || !endTime) { setError('Start and end times are required'); return; }
+            if (!startTime || (!useDuration && !endTime)) { setError('Start and end times are required'); return; }
             const data = {
                 title: title.trim(),
                 description,
                 all_day: false,
                 start_time: fromLocalDatetimeValue(startTime),
-                end_time: fromLocalDatetimeValue(endTime),
+                end_time: useDuration ? undefined : fromLocalDatetimeValue(endTime),
                 color,
                 ...recurrenceFields,
                 reminder_minutes: reminderMinutes,
                 ...locationFields,
+                ...extraFields,
             };
-            onSave(event?.id, data).catch(err => setError(err.message));
+            if (useDuration) {
+                data.duration = buildDurationString();
+            }
+            onSave(event?.id, data, instanceStart).catch(err => setError(err.message));
         }
     }
 
@@ -300,13 +349,18 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
         return rdates.split(',').map(d => d.trim()).filter(Boolean);
     }
 
+    function displayCategories() {
+        if (!categories) return [];
+        return categories.split(',').map(c => c.trim()).filter(Boolean);
+    }
+
     const startDate = getStartDate();
 
     return html`
         <dialog ref=${dialogRef} class="event-dialog" onClose=${onClose}>
             <form onSubmit=${handleSubmit}>
                 <div class="dialog-header">
-                    <h2>${event ? (editing ? 'Edit Event' : 'Event') : 'New Event'}</h2>
+                    <h2>${event ? (editing ? (isInstanceEdit ? 'Edit Instance' : 'Edit Event') : 'Event') : 'New Event'}</h2>
                     <button type="button" class="close-btn" onClick=${handleClose}>\u00D7</button>
                 </div>
 
@@ -350,17 +404,41 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                     }
                 </label>
 
-                <label>
-                    End
-                    ${editing
-                        ? allDay
-                            ? html`<input type="date" value=${endTime}
-                                          onInput=${e => setEndTime(e.target.value)} />`
-                            : html`<input type="datetime-local" value=${endTime}
-                                          onInput=${e => setEndTime(e.target.value)} />`
-                        : html`<input type="text" disabled value=${displayEnd()} />`
-                    }
-                </label>
+                ${editing && html`
+                    <label class="checkbox-label">
+                        <input type="checkbox" checked=${useDuration}
+                               onChange=${e => setUseDuration(e.target.checked)} />
+                        Use duration instead of end time
+                    </label>
+                `}
+
+                ${useDuration && editing ? html`
+                    <label>
+                        Duration
+                        <div class="duration-row">
+                            <input type="number" min="0" max="999" value=${durationHours}
+                                   style="width: 60px"
+                                   onInput=${e => setDurationHours(parseInt(e.target.value) || 0)} />
+                            <span>h</span>
+                            <input type="number" min="0" max="59" value=${durationMinutes}
+                                   style="width: 60px"
+                                   onInput=${e => setDurationMinutes(parseInt(e.target.value) || 0)} />
+                            <span>m</span>
+                        </div>
+                    </label>
+                ` : html`
+                    <label>
+                        End
+                        ${editing
+                            ? allDay
+                                ? html`<input type="date" value=${endTime}
+                                              onInput=${e => setEndTime(e.target.value)} />`
+                                : html`<input type="datetime-local" value=${endTime}
+                                              onInput=${e => setEndTime(e.target.value)} />`
+                            : html`<input type="text" disabled value=${displayEnd()} />`
+                        }
+                    </label>
+                `}
 
                 ${editing ? html`
                     ${!(config.mapProvider === 'openstreetmap' || (config.mapProvider === 'google' && /^AIza[A-Za-z0-9_-]{35}$/.test(config.googleMapsApiKey))) && html`
@@ -449,17 +527,70 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                 `}
 
                 ${editing ? html`
-                    <label>
-                        Repeat
-                        <select value=${recurrenceFreq}
-                                onChange=${e => setRecurrenceFreq(e.target.value)}>
-                            <option value="">None</option>
-                            <option value="DAILY">Daily</option>
-                            <option value="WEEKLY">Weekly</option>
-                            <option value="MONTHLY">Monthly</option>
-                            <option value="YEARLY">Yearly</option>
-                        </select>
-                    </label>
+                    <div class="form-row">
+                        <label>
+                            Categories
+                            <input type="text" value=${categories}
+                                   onInput=${e => setCategories(e.target.value)}
+                                   placeholder="e.g. Work, Meeting" />
+                        </label>
+                        <label>
+                            URL
+                            <input type="url" value=${eventURL}
+                                   onInput=${e => setEventURL(e.target.value)}
+                                   placeholder="https://example.com" />
+                        </label>
+                    </div>
+                ` : html`
+                    ${categories && html`
+                        <label>
+                            Categories
+                            <div class="categories-display">
+                                ${displayCategories().map(cat => html`
+                                    <span class="category-tag" key=${cat}>${cat}</span>
+                                `)}
+                            </div>
+                        </label>
+                    `}
+                    ${eventURL && html`
+                        <label>
+                            URL
+                            <a href=${eventURL} target="_blank" rel="noopener noreferrer"
+                               style="display: block; color: #4285f4; word-break: break-all;">
+                                ${eventURL} \u2197
+                            </a>
+                        </label>
+                    `}
+                `}
+
+                ${!isInstanceEdit && editing ? html`
+                    <div class="form-row">
+                        <label>
+                            Repeat
+                            <select value=${recurrenceFreq}
+                                    onChange=${e => setRecurrenceFreq(e.target.value)}>
+                                <option value="">None</option>
+                                <option value="DAILY">Daily</option>
+                                <option value="WEEKLY">Weekly</option>
+                                <option value="MONTHLY">Monthly</option>
+                                <option value="YEARLY">Yearly</option>
+                            </select>
+                        </label>
+                        ${!allDay && html`
+                            <label>
+                                Reminder
+                                <select value=${reminderMinutes}
+                                        onChange=${e => setReminderMinutes(parseInt(e.target.value) || 0)}>
+                                    <option value="0">None</option>
+                                    <option value="5">5 min before</option>
+                                    <option value="10">10 min before</option>
+                                    <option value="15">15 min before</option>
+                                    <option value="30">30 min before</option>
+                                    <option value="60">1 hour before</option>
+                                </select>
+                            </label>
+                        `}
+                    </div>
                     ${recurrenceFreq && html`
                         <label>
                             Every
@@ -558,7 +689,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                             </div>
                         `}
                     `}
-                ` : recurrenceFreq && html`
+                ` : !isInstanceEdit && recurrenceFreq && !editing ? html`
                     <label>
                         Repeat
                         <input type="text" disabled value=${displayRecurrence()} />
@@ -575,22 +706,9 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                             <input type="text" disabled value=${displayRdates().map(d => new Date(d).toLocaleDateString()).join(', ')} />
                         </label>
                     `}
-                `}
+                ` : null}
 
-                ${!allDay && editing ? html`
-                    <label>
-                        Reminder
-                        <select value=${reminderMinutes}
-                                onChange=${e => setReminderMinutes(parseInt(e.target.value) || 0)}>
-                            <option value="0">None</option>
-                            <option value="5">5 minutes before</option>
-                            <option value="10">10 minutes before</option>
-                            <option value="15">15 minutes before</option>
-                            <option value="30">30 minutes before</option>
-                            <option value="60">1 hour before</option>
-                        </select>
-                    </label>
-                ` : !allDay && reminderMinutes > 0 && !editing ? html`
+                ${!allDay && reminderMinutes > 0 && !editing ? html`
                     <label>
                         Reminder
                         <input type="text" disabled value=${displayReminder()} />
@@ -610,6 +728,19 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
             </form>
         </dialog>
     `;
+}
+
+function parseDurationString(s) {
+    let hours = 0, minutes = 0;
+    if (!s) return { hours, minutes };
+    s = s.toUpperCase();
+    const hMatch = s.match(/(\d+)H/);
+    const mMatch = s.match(/(\d+)M/);
+    const dMatch = s.match(/(\d+)D/);
+    if (hMatch) hours = parseInt(hMatch[1]);
+    if (mMatch) minutes = parseInt(mMatch[1]);
+    if (dMatch) hours += parseInt(dMatch[1]) * 24;
+    return { hours, minutes };
 }
 
 function ordinalLabel(n) {

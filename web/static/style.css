@@ -168,7 +168,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 16px;
+    margin-bottom: 12px;
 }
 
 .dialog-header h2 {
@@ -187,7 +187,7 @@ body {
 
 .event-dialog label {
     display: block;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
     font-size: 0.85rem;
     color: #555;
 }
@@ -242,7 +242,7 @@ body {
 .dialog-actions {
     display: flex;
     gap: 8px;
-    margin-top: 16px;
+    margin-top: 12px;
     justify-content: flex-end;
 }
 
@@ -449,7 +449,7 @@ body {
     flex-direction: row !important;
     align-items: center;
     gap: 8px;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
     font-size: 0.85rem;
     color: #555;
     cursor: pointer;
@@ -1078,6 +1078,25 @@ body {
     min-height: 80px;
 }
 
+.form-row {
+    display: flex;
+    gap: 12px;
+}
+.form-row > label {
+    flex: 1;
+    min-width: 0;
+}
+.event-dialog select {
+    display: block;
+    width: 100%;
+    margin-top: 4px;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.95rem;
+    font-family: inherit;
+}
+
 .coord-row {
     display: flex;
     gap: 12px;
@@ -1206,3 +1225,26 @@ body {
 .event-chip.past-event,
 .week-event.past-event,
 .allday-event.past-event { opacity: 0.5; }
+
+/* Duration row */
+.duration-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Categories display */
+.categories-display {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 4px 0;
+}
+.category-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    background: #e3f2fd;
+    color: #1565c0;
+    border-radius: 12px;
+    font-size: 0.85em;
+}
