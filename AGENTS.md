@@ -20,6 +20,18 @@ go test ./internal/repository/ -v       # repository tests only
 go test ./internal/repository/ -run TestList  # single test
 ```
 
+## E2E Tests
+
+Playwright end-to-end tests live in `e2e/`. The server must be running on port 8089 before running them.
+
+```bash
+# Start server for E2E tests (use a separate DB to avoid interference)
+/tmp/claude/mycal -addr :8089 -db /tmp/claude/mycal-e2e.db &
+
+# Run tests
+cd e2e && bash playwright-test
+```
+
 ## Verification
 
 Use the `playwright` MCP to verify that the web frontend looks reasonable.

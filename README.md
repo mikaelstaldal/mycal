@@ -151,6 +151,24 @@ curl 'http://localhost:8080/api/v1/events?from=2026-02-01T00:00:00Z&to=2026-03-0
 curl 'http://localhost:8080/api/v1/events?q=meeting'
 ```
 
+## E2E Tests
+
+End-to-end tests use [Playwright](https://playwright.dev/) and live in the `e2e/` directory.
+
+```bash
+# Install dependencies (first time)
+cd e2e && npm install && npx playwright install chromium && cd ..
+
+# Start the server on port 8089
+go build -o mycal . && ./mycal -addr :8089 -db /tmp/mycal-e2e.db &
+
+# Run tests
+cd e2e && bash playwright-test
+
+# Run headed (visible browser)
+cd e2e && bash playwright-test --headed
+```
+
 ## Tech Stack
 
 - **Backend:** Go with `net/http` (Go 1.22+ routing)
