@@ -3,3 +3,7 @@ mycal.db
 .claude
 .playwright-mcp
 *.ics
+!e2e/tests/fixtures/*.ics
+e2e/node_modules/
+e2e/test-results/
+e2e/playwright-report/
