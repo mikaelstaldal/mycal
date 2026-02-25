@@ -2,8 +2,9 @@
 
 ## Current
 
-- [ ] Add a progress spinner when bulk importing events
-- [ ] Display past events with a lighter color
+- [x] Add a progress spinner when bulk importing events
+- [x] Display past events with a lighter color
+- [x] Add support for iCalendar VTIMEZONE definitions for import and export
 
 ## iCalendar (RFC 5545) compliance
 
@@ -13,9 +14,6 @@
 - [x] Support EXDATE, removing instances of recurring events
 - [x] Support RDATE for explicit additional recurrence dates
 - [ ] Support RECURRENCE-ID for identifying and editing individual instances of recurring events
-
-### Timezone
-- [ ] Export VTIMEZONE definitions in .ics output
 
 ### Event properties
 - [ ] Support STATUS property (TENTATIVE, CONFIRMED, CANCELLED)

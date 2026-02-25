@@ -169,6 +169,10 @@ export function formatWeekRange(date, weekStartDay = 1) {
     return `${firstStr} – ${lastStr}, ${year}`;
 }
 
+export function isPastEvent(event) {
+    return new Date(event.end_time) < new Date();
+}
+
 export function formatDayHeading(date) {
     return date.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
 }

@@ -1,6 +1,6 @@
 import { html } from 'htm/preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
-import { isToday, formatHour, formatTime } from '../lib/date-utils.js';
+import { isToday, formatHour, formatTime, isPastEvent } from '../lib/date-utils.js';
 import { startDrag } from '../lib/drag.js';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
@@ -82,7 +82,7 @@ export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDa
                 <div class="allday-label">all-day</div>
                 <div class="day-view-allday-cell" onClick=${() => onAllDayClick(date)}>
                     ${adEvents.map(e => html`
-                        <div class="allday-event"
+                        <div class=${`allday-event${isPastEvent(e) ? ' past-event' : ''}`}
                              key=${`${e.id}-${e.recurrence_index || 0}`}
                              title=${e.title}
                              style=${e.color ? `background-color: ${e.color}` : ''}
@@ -110,7 +110,7 @@ export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDa
                         ${timedEvents().map(e => {
                             const durationMin = (new Date(e.end_time) - new Date(e.start_time)) / 60000;
                             const isShort = durationMin <= 30;
-                            const classes = ['week-event', isShort && 'short-event'].filter(Boolean).join(' ');
+                            const classes = ['week-event', isShort && 'short-event', isPastEvent(e) && 'past-event'].filter(Boolean).join(' ');
                             const canDrag = !e.recurrence_index;
                             return html`
                                 <div class=${classes}

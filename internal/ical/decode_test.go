@@ -221,3 +221,126 @@ func TestDecodeSkipsRecurrenceID(t *testing.T) {
 		t.Errorf("freq = %q, want WEEKLY", events[0].RecurrenceFreq)
 	}
 }
+
+func TestDecodePathStyleTZIDWithIANA(t *testing.T) {
+	ics := "BEGIN:VCALENDAR\r\n" +
+		"BEGIN:VTIMEZONE\r\n" +
+		"TZID:/citadel.org/20250101_1/Europe/Stockholm\r\n" +
+		"BEGIN:STANDARD\r\n" +
+		"DTSTART:19701025T030000\r\n" +
+		"TZOFFSETTO:+0100\r\n" +
+		"TZOFFSETFROM:+0200\r\n" +
+		"END:STANDARD\r\n" +
+		"BEGIN:DAYLIGHT\r\n" +
+		"DTSTART:19700329T020000\r\n" +
+		"TZOFFSETTO:+0200\r\n" +
+		"TZOFFSETFROM:+0100\r\n" +
+		"END:DAYLIGHT\r\n" +
+		"END:VTIMEZONE\r\n" +
+		"BEGIN:VEVENT\r\n" +
+		"SUMMARY:Test Event\r\n" +
+		"DTSTART;TZID=/citadel.org/20250101_1/Europe/Stockholm:20250615T100000\r\n" +
+		"DTEND;TZID=/citadel.org/20250101_1/Europe/Stockholm:20250615T110000\r\n" +
+		"END:VEVENT\r\n" +
+		"END:VCALENDAR\r\n"
+
+	events, err := Decode(strings.NewReader(ics))
+	if err != nil {
+		t.Fatalf("Decode error: %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("expected 1 event, got %d", len(events))
+	}
+	// June 15 is CEST (UTC+2): 10:00 local = 08:00 UTC
+	if events[0].StartTime != "2025-06-15T08:00:00Z" {
+		t.Errorf("start = %q, want %q", events[0].StartTime, "2025-06-15T08:00:00Z")
+	}
+	if events[0].EndTime != "2025-06-15T09:00:00Z" {
+		t.Errorf("end = %q, want %q", events[0].EndTime, "2025-06-15T09:00:00Z")
+	}
+}
+
+func TestDecodeNonIANATZIDWithOffset(t *testing.T) {
+	ics := "BEGIN:VCALENDAR\r\n" +
+		"BEGIN:VTIMEZONE\r\n" +
+		"TZID:CustomTZ-XYZ\r\n" +
+		"BEGIN:STANDARD\r\n" +
+		"DTSTART:19701025T030000\r\n" +
+		"TZOFFSETTO:+0530\r\n" +
+		"TZOFFSETFROM:+0530\r\n" +
+		"END:STANDARD\r\n" +
+		"END:VTIMEZONE\r\n" +
+		"BEGIN:VEVENT\r\n" +
+		"SUMMARY:Offset Event\r\n" +
+		"DTSTART;TZID=CustomTZ-XYZ:20250115T140000\r\n" +
+		"DTEND;TZID=CustomTZ-XYZ:20250115T150000\r\n" +
+		"END:VEVENT\r\n" +
+		"END:VCALENDAR\r\n"
+
+	events, err := Decode(strings.NewReader(ics))
+	if err != nil {
+		t.Fatalf("Decode error: %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("expected 1 event, got %d", len(events))
+	}
+	// +0530: 14:00 local = 08:30 UTC
+	if events[0].StartTime != "2025-01-15T08:30:00Z" {
+		t.Errorf("start = %q, want %q", events[0].StartTime, "2025-01-15T08:30:00Z")
+	}
+	if events[0].EndTime != "2025-01-15T09:30:00Z" {
+		t.Errorf("end = %q, want %q", events[0].EndTime, "2025-01-15T09:30:00Z")
+	}
+}
+
+func TestDecodeStandardIANATZIDWithVTimezone(t *testing.T) {
+	ics := "BEGIN:VCALENDAR\r\n" +
+		"BEGIN:VTIMEZONE\r\n" +
+		"TZID:America/New_York\r\n" +
+		"BEGIN:STANDARD\r\n" +
+		"DTSTART:19701101T020000\r\n" +
+		"TZOFFSETTO:-0500\r\n" +
+		"TZOFFSETFROM:-0400\r\n" +
+		"END:STANDARD\r\n" +
+		"END:VTIMEZONE\r\n" +
+		"BEGIN:VEVENT\r\n" +
+		"SUMMARY:NY Event\r\n" +
+		"DTSTART;TZID=America/New_York:20250115T090000\r\n" +
+		"DTEND;TZID=America/New_York:20250115T100000\r\n" +
+		"END:VEVENT\r\n" +
+		"END:VCALENDAR\r\n"
+
+	events, err := Decode(strings.NewReader(ics))
+	if err != nil {
+		t.Fatalf("Decode error: %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("expected 1 event, got %d", len(events))
+	}
+	// January EST (UTC-5): 09:00 local = 14:00 UTC
+	if events[0].StartTime != "2025-01-15T14:00:00Z" {
+		t.Errorf("start = %q, want %q", events[0].StartTime, "2025-01-15T14:00:00Z")
+	}
+}
+
+func TestDecodeUnknownTZIDNoVTimezone(t *testing.T) {
+	ics := "BEGIN:VCALENDAR\r\n" +
+		"BEGIN:VEVENT\r\n" +
+		"SUMMARY:Unknown TZ Event\r\n" +
+		"DTSTART;TZID=Unknown/Nowhere:20250115T090000\r\n" +
+		"DTEND;TZID=Unknown/Nowhere:20250115T100000\r\n" +
+		"END:VEVENT\r\n" +
+		"END:VCALENDAR\r\n"
+
+	events, err := Decode(strings.NewReader(ics))
+	if err != nil {
+		t.Fatalf("Decode error: %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("expected 1 event, got %d", len(events))
+	}
+	// No timezone info available, parsed as-is (no offset applied)
+	if events[0].StartTime != "2025-01-15T09:00:00Z" {
+		t.Errorf("start = %q, want %q", events[0].StartTime, "2025-01-15T09:00:00Z")
+	}
+}

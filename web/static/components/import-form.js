@@ -17,18 +17,18 @@ export function ImportForm({ onImported, onClose }) {
     }, []);
 
     async function handleImport() {
+        let data;
+        if (sourceMode === 'file') {
+            const file = fileRef.current?.files?.[0];
+            if (!file) { onImported('Please select a file.', true); return; }
+            const text = await file.text();
+            data = { ics_content: text };
+        } else {
+            if (!url.trim()) { onImported('Please enter a URL.', true); return; }
+            data = { url: url.trim() };
+        }
         setLoading(true);
         try {
-            let data;
-            if (sourceMode === 'file') {
-                const file = fileRef.current?.files?.[0];
-                if (!file) { onImported('Please select a file.', true); return; }
-                const text = await file.text();
-                data = { ics_content: text };
-            } else {
-                if (!url.trim()) { onImported('Please enter a URL.', true); return; }
-                data = { url: url.trim() };
-            }
             let message;
             if (importMode === 'single') {
                 await importSingleEvent(data);
@@ -40,6 +40,8 @@ export function ImportForm({ onImported, onClose }) {
             onImported(message);
         } catch (err) {
             onImported(err.message, true);
+        } finally {
+            setLoading(false);
         }
     }
 
@@ -80,7 +82,7 @@ export function ImportForm({ onImported, onClose }) {
             <div class="dialog-actions">
                 <button onClick=${onClose}>Cancel</button>
                 <button type="submit" onClick=${handleImport} disabled=${loading}>
-                    ${loading ? 'Importing...' : importMode === 'single' ? 'Import Event' : 'Import All'}
+                    ${loading ? html`<span class="spinner"></span> Importing...` : importMode === 'single' ? 'Import Event' : 'Import All'}
                 </button>
             </div>
         </dialog>

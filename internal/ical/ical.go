@@ -136,6 +136,8 @@ func Decode(r io.Reader) ([]model.Event, error) {
 		return nil, fmt.Errorf("reading ical: %w", err)
 	}
 
+	tzMap := parseVTimezones(lines)
+
 	var events []model.Event
 	var inEvent bool
 	var inAlarm bool
@@ -152,7 +154,7 @@ func Decode(r io.Reader) ([]model.Event, error) {
 		}
 		if upper == "END:VEVENT" {
 			inEvent = false
-			if ev, ok := parseEvent(props, alarmProps); ok {
+			if ev, ok := parseEvent(props, alarmProps, tzMap); ok {
 				events = append(events, ev)
 			}
 			continue
@@ -177,6 +179,106 @@ func Decode(r io.Reader) ([]model.Event, error) {
 	return events, nil
 }
 
+// parseVTimezones scans for VTIMEZONE blocks and builds a map of TZID → *time.Location.
+func parseVTimezones(lines []string) map[string]*time.Location {
+	tzMap := make(map[string]*time.Location)
+	var inTZ, inSubComp bool
+	var tzid string
+	var offsetTo string
+
+	for _, line := range lines {
+		upper := strings.ToUpper(strings.TrimSpace(line))
+		if upper == "BEGIN:VTIMEZONE" {
+			inTZ = true
+			tzid = ""
+			offsetTo = ""
+			continue
+		}
+		if upper == "END:VTIMEZONE" {
+			if tzid != "" {
+				// First try to extract an IANA name from the TZID
+				if loc := tryExtractIANAFromTZID(tzid); loc != nil {
+					tzMap[tzid] = loc
+				} else if offsetTo != "" {
+					// Fall back to fixed offset from TZOFFSETTO
+					if loc := parseUTCOffset(offsetTo); loc != nil {
+						tzMap[tzid] = loc
+					}
+				}
+			}
+			inTZ = false
+			continue
+		}
+		if !inTZ {
+			continue
+		}
+		if upper == "BEGIN:STANDARD" || upper == "BEGIN:DAYLIGHT" {
+			inSubComp = true
+			continue
+		}
+		if upper == "END:STANDARD" || upper == "END:DAYLIGHT" {
+			inSubComp = false
+			continue
+		}
+		name, _, value := parsePropLine(line)
+		switch strings.ToUpper(name) {
+		case "TZID":
+			tzid = value
+		case "TZOFFSETTO":
+			if inSubComp && offsetTo == "" {
+				// Use the first TZOFFSETTO found (typically from STANDARD)
+				offsetTo = value
+			}
+		}
+	}
+	return tzMap
+}
+
+// tryExtractIANAFromTZID tries to find an IANA timezone name within a path-style TZID
+// like "/citadel.org/20250101_1/Europe/Stockholm" by trying progressively shorter
+// suffixes with time.LoadLocation.
+func tryExtractIANAFromTZID(tzid string) *time.Location {
+	// First try the TZID directly
+	if loc, err := time.LoadLocation(tzid); err == nil {
+		return loc
+	}
+	// Try path suffixes: for "/citadel.org/20250101_1/Europe/Stockholm",
+	// try "Europe/Stockholm", then "Stockholm"
+	parts := strings.Split(tzid, "/")
+	for i := 1; i < len(parts); i++ {
+		candidate := strings.Join(parts[i:], "/")
+		if loc, err := time.LoadLocation(candidate); err == nil {
+			return loc
+		}
+	}
+	return nil
+}
+
+// parseUTCOffset parses an iCal UTC offset string like "+0100" or "-0530"
+// into a fixed-zone time.Location.
+func parseUTCOffset(offset string) *time.Location {
+	offset = strings.TrimSpace(offset)
+	if len(offset) < 5 {
+		return nil
+	}
+	sign := 1
+	if offset[0] == '-' {
+		sign = -1
+	} else if offset[0] != '+' {
+		return nil
+	}
+	hours, err := strconv.Atoi(offset[1:3])
+	if err != nil {
+		return nil
+	}
+	minutes, err := strconv.Atoi(offset[3:5])
+	if err != nil {
+		return nil
+	}
+	totalSeconds := sign * (hours*3600 + minutes*60)
+	return time.FixedZone("UTC"+offset, totalSeconds)
+}
+
 // unfoldLines reads iCal content and handles line unfolding per RFC 5545:
 // lines that start with a space or tab are continuations of the previous line.
 func unfoldLines(r io.Reader) ([]string, error) {
@@ -198,7 +300,7 @@ func unfoldLines(r io.Reader) ([]string, error) {
 	return lines, scanner.Err()
 }
 
-func parseEvent(props []string, alarmProps []string) (model.Event, bool) {
+func parseEvent(props []string, alarmProps []string, tzMap map[string]*time.Location) (model.Event, bool) {
 	// Skip override instances — we can't represent RECURRENCE-ID yet
 	for _, prop := range props {
 		name, _, _ := parsePropLine(prop)
@@ -239,18 +341,18 @@ func parseEvent(props []string, alarmProps []string) (model.Event, bool) {
 			if strings.Contains(upperParams, "VALUE=DATE") {
 				allDay = true
 			}
-			dtstart = parseICalTime(value, params)
+			dtstart = parseICalTime(value, params, tzMap)
 		case "DTEND":
-			dtend = parseICalTime(value, params)
+			dtend = parseICalTime(value, params, tzMap)
 		case "RRULE":
-			rrule = parseRRule(value)
+			rrule = parseRRule(value, tzMap)
 		case "EXDATE":
-			parsed := parseICalTime(value, params)
+			parsed := parseICalTime(value, params, tzMap)
 			if parsed != "" {
 				exdates = append(exdates, parsed)
 			}
 		case "RDATE":
-			parsed := parseICalTime(value, params)
+			parsed := parseICalTime(value, params, tzMap)
 			if parsed != "" {
 				rdates = append(rdates, parsed)
 			}
@@ -352,7 +454,7 @@ type rruleResult struct {
 	ByMonth    string
 }
 
-func parseRRule(value string) rruleResult {
+func parseRRule(value string, tzMap map[string]*time.Location) rruleResult {
 	var r rruleResult
 	for _, part := range strings.Split(value, ";") {
 		kv := strings.SplitN(part, "=", 2)
@@ -365,7 +467,7 @@ func parseRRule(value string) rruleResult {
 		case "COUNT":
 			fmt.Sscanf(kv[1], "%d", &r.Count)
 		case "UNTIL":
-			r.Until = parseICalTime(kv[1], "")
+			r.Until = parseICalTime(kv[1], "", tzMap)
 		case "INTERVAL":
 			fmt.Sscanf(kv[1], "%d", &r.Interval)
 		case "BYDAY":
@@ -402,7 +504,7 @@ func parsePropLine(line string) (name, params, value string) {
 	return name, params, value
 }
 
-func parseICalTime(value, params string) string {
+func parseICalTime(value, params string, tzMap map[string]*time.Location) string {
 	// Check for VALUE=DATE (all-day event)
 	upperParams := strings.ToUpper(params)
 	if strings.Contains(upperParams, "VALUE=DATE") {
@@ -420,6 +522,8 @@ func parseICalTime(value, params string) string {
 			tzName := part[5:]
 			if l, err := time.LoadLocation(tzName); err == nil {
 				loc = l
+			} else if tzMap != nil {
+				loc = tzMap[tzName]
 			}
 		}
 	}

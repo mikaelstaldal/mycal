@@ -1,5 +1,5 @@
 import { html } from 'htm/preact';
-import { getCalendarDays, getWeekdays, isToday, formatTime, getISOWeekNumber } from '../lib/date-utils.js';
+import { getCalendarDays, getWeekdays, isToday, formatTime, getISOWeekNumber, isPastEvent } from '../lib/date-utils.js';
 
 export function Calendar({ currentDate, events, onDayClick, onEventClick, onWeekClick, config }) {
     const weekStartDay = config.weekStartDay;
@@ -51,7 +51,7 @@ export function Calendar({ currentDate, events, onDayClick, onEventClick, onWeek
                                 <span class="day-number">${date.getDate()}</span>
                                 <div class="day-events">
                                     ${dayEvents.map(e => html`
-                                        <div class="event-chip"
+                                        <div class=${`event-chip${isPastEvent(e) ? ' past-event' : ''}`}
                                              key=${`${e.id}-${e.recurrence_index || 0}`}
                                              title=${e.title}
                                              style=${e.color ? `background-color: ${e.color}` : ''}
