@@ -2,12 +2,12 @@ import { test, expect } from '@playwright/test';
 import { clearAllEvents } from './helpers';
 import path from 'path';
 
-test.beforeEach(async ({ page, request }) => {
-  await clearAllEvents(request);
-  await page.goto('/');
-});
-
 test.describe('Import', () => {
+  test.beforeEach(async ({ page, request }) => {
+    await clearAllEvents(request);
+    await page.goto('/');
+  });
+
   test('import ICS file successfully', async ({ page }) => {
     // Click the import button (⬇ icon)
     await page.locator('.settings-btn[title="Import"]').click();
@@ -23,11 +23,9 @@ test.describe('Import', () => {
     // Click Import Event button
     await dialog.getByRole('button', { name: 'Import Event' }).click();
 
-    // Should show success message
-    await expect(dialog.locator('.import-success')).toBeVisible();
-
-    // Close dialog
-    await dialog.getByRole('button', { name: 'Close' }).click();
+    // Dialog should close and a success toast should appear
+    await expect(dialog).not.toBeVisible();
+    await expect(page.locator('.toast:not(.toast-error)')).toBeVisible();
 
     // Navigate to March 2026 to see the imported event
     const heading = page.locator('nav h1');

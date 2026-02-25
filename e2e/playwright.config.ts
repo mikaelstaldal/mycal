@@ -19,11 +19,4 @@ export default defineConfig({
       use: { browserName: 'chromium' },
     },
   ],
-  webServer: {
-    command: `go build -o /tmp/mycal-e2e-server . && /tmp/mycal-e2e-server -addr :${port} -db /tmp/mycal-e2e-$$.db`,
-    cwd: '..',
-    port,
-    reuseExistingServer: !process.env.CI,
-    timeout: 30000,
-  },
 });

@@ -1,12 +1,12 @@
 import { test, expect } from '@playwright/test';
 import { clearAllEvents, createEventViaAPI, todayDate } from './helpers';
 
-test.beforeEach(async ({ page, request }) => {
-  await clearAllEvents(request);
-  await page.goto('/');
-});
-
 test.describe('Event CRUD', () => {
+  test.beforeEach(async ({ page, request }) => {
+    await clearAllEvents(request);
+    await page.goto('/');
+  });
+
   test('create event by clicking day cell and filling form', async ({ page }) => {
     // Click on today's day number in the calendar
     const todayCell = page.locator('.day.today .day-number');

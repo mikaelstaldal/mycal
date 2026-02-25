@@ -1,11 +1,11 @@
 import { test, expect } from '@playwright/test';
 import { clearAllEvents, createEventViaAPI } from './helpers';
 
-test.beforeEach(async ({ page, request }) => {
-  await clearAllEvents(request);
-});
-
 test.describe('Search', () => {
+  test.beforeEach(async ({ request }) => {
+    await clearAllEvents(request);
+  });
+
   test('search finds matching events', async ({ page, request }) => {
     await createEventViaAPI(request, {
       title: 'Team Standup',

@@ -1,10 +1,10 @@
 import { test, expect } from '@playwright/test';
 
-test.beforeEach(async ({ page }) => {
-  await page.goto('/');
-});
-
 test.describe('Settings', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+  });
+
   test('open and close settings dialog', async ({ page }) => {
     // Click settings button (⚙ icon)
     await page.locator('.settings-btn[title="Settings"]').click();

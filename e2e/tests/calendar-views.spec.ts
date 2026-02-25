@@ -1,12 +1,12 @@
 import { test, expect } from '@playwright/test';
 import { clearAllEvents } from './helpers';
 
-test.beforeEach(async ({ page, request }) => {
-  await clearAllEvents(request);
-  await page.goto('/');
-});
-
 test.describe('Calendar Views', () => {
+  test.beforeEach(async ({ page, request }) => {
+    await clearAllEvents(request);
+    await page.goto('/');
+  });
+
   test('shows month view by default with correct heading', async ({ page }) => {
     const heading = page.locator('nav h1');
     await expect(heading).toBeVisible();
@@ -49,7 +49,7 @@ test.describe('Calendar Views', () => {
   });
 
   test('switch to Day view', async ({ page }) => {
-    await page.getByRole('button', { name: 'Day' }).click();
+    await page.getByRole('button', { name: 'Day', exact: true }).click();
     await expect(page.locator('.day-view')).toBeVisible();
   });
 
