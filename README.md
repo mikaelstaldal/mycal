@@ -52,7 +52,7 @@ All endpoints are under `/api/v1`. Datetimes use RFC 3339 format (or `YYYY-MM-DD
 | POST | `/api/v1/events` | Create an event |
 | GET | `/api/v1/events/{id}` | Get a single event |
 | PUT | `/api/v1/events/{id}` | Update an event (partial) |
-| DELETE | `/api/v1/events/{id}` | Delete an event |
+| DELETE | `/api/v1/events/{id}` | Delete an event (add `?instance_start=<RFC3339>` to exclude a single recurrence instance) |
 | POST | `/api/v1/import` | Import events from iCalendar data |
 | POST | `/api/v1/import-single` | Import a single event from iCalendar data |
 | GET | `/api/v1/events.ics` | iCalendar feed (all events) |
@@ -72,6 +72,12 @@ All endpoints are under `/api/v1`. Datetimes use RFC 3339 format (or `YYYY-MM-DD
 | `recurrence_freq` | string | `""`, `"DAILY"`, `"WEEKLY"`, `"MONTHLY"`, or `"YEARLY"` |
 | `recurrence_count` | int | Number of recurrences (0–1000) |
 | `recurrence_until` | string | Recurrence end date in RFC 3339 |
+| `recurrence_interval` | int | Repeat every N periods (0 or 1 = every, 2 = every other, etc.) |
+| `recurrence_by_day` | string | Comma-separated days: `"MO,WE,FR"` or ordinal `"2MO,-1FR"` |
+| `recurrence_by_monthday` | string | Comma-separated month days: `"15,30"` or negative `"-1"` |
+| `recurrence_by_month` | string | Comma-separated months (1–12): `"1,6"` |
+| `exdates` | string | Comma-separated RFC 3339 timestamps of excluded recurrence instances |
+| `rdates` | string | Comma-separated RFC 3339 timestamps of additional recurrence dates |
 | `reminder_minutes` | int | Minutes before event to remind (0–40320) |
 | `location` | string | Location text (max 500 chars) |
 | `latitude` | float | Location latitude (-90 to 90) |

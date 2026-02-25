@@ -1085,3 +1085,105 @@ body {
 .coord-row label {
     flex: 1;
 }
+
+.interval-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.byday-picker {
+    margin: 4px 0 8px;
+}
+.byday-picker > span {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 4px;
+    font-size: 0.9rem;
+}
+.byday-buttons {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+.byday-btn {
+    padding: 4px 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 0.8rem;
+    min-width: 36px;
+    text-align: center;
+}
+.byday-btn.active {
+    background: #4285f4;
+    color: #fff;
+    border-color: #4285f4;
+}
+.byday-btn:hover {
+    border-color: #4285f4;
+}
+
+.monthly-options {
+    margin: 4px 0 8px;
+}
+.radio-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 4px 0;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.exdates-section, .rdates-section {
+    margin: 4px 0 8px;
+}
+.exdates-section > span, .rdates-section > span {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 4px;
+    font-size: 0.9rem;
+}
+.exdates-list, .rdates-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.exdate-item, .rdate-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 8px;
+    background: #f5f5f5;
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+.rdate-add-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 4px;
+}
+.rdate-add-row input[type="date"] {
+    flex: 1;
+}
+.small-btn {
+    padding: 2px 8px;
+    font-size: 0.8rem;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    background: #fff;
+    cursor: pointer;
+}
+.small-btn:hover {
+    background: #f0f0f0;
+}
+.small-btn.danger {
+    color: #d32f2f;
+    border-color: #d32f2f;
+}
+.small-btn.danger:hover {
+    background: #ffebee;
+}

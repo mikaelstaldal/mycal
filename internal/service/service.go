@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/mikaelstaldal/mycal/internal/model"
@@ -92,19 +93,25 @@ func (s *EventService) Create(req *model.CreateEventRequest) (*model.Event, erro
 		return nil, fmt.Errorf("%w: %s", ErrValidation, err.Error())
 	}
 	e := &model.Event{
-		Title:           req.Title,
-		Description:     sanitize.HTML(req.Description),
-		StartTime:       req.StartTime,
-		EndTime:         req.EndTime,
-		AllDay:          req.AllDay,
-		Color:           req.Color,
-		RecurrenceFreq:  req.RecurrenceFreq,
-		RecurrenceCount: req.RecurrenceCount,
-		RecurrenceUntil: req.RecurrenceUntil,
-		ReminderMinutes: req.ReminderMinutes,
-		Location:        req.Location,
-		Latitude:        req.Latitude,
-		Longitude:       req.Longitude,
+		Title:              req.Title,
+		Description:        sanitize.HTML(req.Description),
+		StartTime:          req.StartTime,
+		EndTime:            req.EndTime,
+		AllDay:             req.AllDay,
+		Color:              req.Color,
+		RecurrenceFreq:     req.RecurrenceFreq,
+		RecurrenceCount:    req.RecurrenceCount,
+		RecurrenceUntil:    req.RecurrenceUntil,
+		RecurrenceInterval: req.RecurrenceInterval,
+		RecurrenceByDay:    req.RecurrenceByDay,
+		RecurrenceByMonthDay: req.RecurrenceByMonthDay,
+		RecurrenceByMonth:  req.RecurrenceByMonth,
+		ExDates:            req.ExDates,
+		RDates:             req.RDates,
+		ReminderMinutes:    req.ReminderMinutes,
+		Location:           req.Location,
+		Latitude:           req.Latitude,
+		Longitude:          req.Longitude,
 	}
 	if err := s.repo.Create(e); err != nil {
 		return nil, err
@@ -146,6 +153,24 @@ func (s *EventService) Update(id int64, req *model.UpdateEventRequest) (*model.E
 	}
 	if req.RecurrenceUntil != nil {
 		existing.RecurrenceUntil = *req.RecurrenceUntil
+	}
+	if req.RecurrenceInterval != nil {
+		existing.RecurrenceInterval = *req.RecurrenceInterval
+	}
+	if req.RecurrenceByDay != nil {
+		existing.RecurrenceByDay = *req.RecurrenceByDay
+	}
+	if req.RecurrenceByMonthDay != nil {
+		existing.RecurrenceByMonthDay = *req.RecurrenceByMonthDay
+	}
+	if req.RecurrenceByMonth != nil {
+		existing.RecurrenceByMonth = *req.RecurrenceByMonth
+	}
+	if req.ExDates != nil {
+		existing.ExDates = *req.ExDates
+	}
+	if req.RDates != nil {
+		existing.RDates = *req.RDates
 	}
 	if req.ReminderMinutes != nil {
 		existing.ReminderMinutes = *req.ReminderMinutes
@@ -232,35 +257,47 @@ func (s *EventService) ImportSingle(events []model.Event) (*model.Event, error) 
 		}
 	}
 	req := &model.CreateEventRequest{
-		Title:           e.Title,
-		Description:     e.Description,
-		StartTime:       startTime,
-		EndTime:         endTime,
-		AllDay:          e.AllDay,
-		RecurrenceFreq:  e.RecurrenceFreq,
-		RecurrenceCount: e.RecurrenceCount,
-		RecurrenceUntil: e.RecurrenceUntil,
-		ReminderMinutes: e.ReminderMinutes,
-		Location:        e.Location,
-		Latitude:        e.Latitude,
-		Longitude:       e.Longitude,
+		Title:              e.Title,
+		Description:        e.Description,
+		StartTime:          startTime,
+		EndTime:            endTime,
+		AllDay:             e.AllDay,
+		RecurrenceFreq:     e.RecurrenceFreq,
+		RecurrenceCount:    e.RecurrenceCount,
+		RecurrenceUntil:    e.RecurrenceUntil,
+		RecurrenceInterval: e.RecurrenceInterval,
+		RecurrenceByDay:    e.RecurrenceByDay,
+		RecurrenceByMonthDay: e.RecurrenceByMonthDay,
+		RecurrenceByMonth:  e.RecurrenceByMonth,
+		ExDates:            e.ExDates,
+		RDates:             e.RDates,
+		ReminderMinutes:    e.ReminderMinutes,
+		Location:           e.Location,
+		Latitude:           e.Latitude,
+		Longitude:          e.Longitude,
 	}
 	if err := req.Validate(); err != nil {
 		return nil, fmt.Errorf("%w: %s", ErrValidation, err.Error())
 	}
 	ev := &model.Event{
-		Title:           e.Title,
-		Description:     e.Description,
-		StartTime:       req.StartTime,
-		EndTime:         req.EndTime,
-		AllDay:          e.AllDay,
-		RecurrenceFreq:  e.RecurrenceFreq,
-		RecurrenceCount: e.RecurrenceCount,
-		RecurrenceUntil: e.RecurrenceUntil,
-		ReminderMinutes: e.ReminderMinutes,
-		Location:        e.Location,
-		Latitude:        e.Latitude,
-		Longitude:       e.Longitude,
+		Title:              e.Title,
+		Description:        e.Description,
+		StartTime:          req.StartTime,
+		EndTime:            req.EndTime,
+		AllDay:             e.AllDay,
+		RecurrenceFreq:     e.RecurrenceFreq,
+		RecurrenceCount:    e.RecurrenceCount,
+		RecurrenceUntil:    e.RecurrenceUntil,
+		RecurrenceInterval: e.RecurrenceInterval,
+		RecurrenceByDay:    e.RecurrenceByDay,
+		RecurrenceByMonthDay: e.RecurrenceByMonthDay,
+		RecurrenceByMonth:  e.RecurrenceByMonth,
+		ExDates:            e.ExDates,
+		RDates:             e.RDates,
+		ReminderMinutes:    e.ReminderMinutes,
+		Location:           e.Location,
+		Latitude:           e.Latitude,
+		Longitude:          e.Longitude,
 	}
 	if err := s.repo.Create(ev); err != nil {
 		return nil, err
@@ -284,35 +321,47 @@ func (s *EventService) Import(events []model.Event) (int, error) {
 			}
 		}
 		req := &model.CreateEventRequest{
-			Title:           e.Title,
-			Description:     e.Description,
-			StartTime:       startTime,
-			EndTime:         endTime,
-			AllDay:          e.AllDay,
-			RecurrenceFreq:  e.RecurrenceFreq,
-			RecurrenceCount: e.RecurrenceCount,
-			RecurrenceUntil: e.RecurrenceUntil,
-			ReminderMinutes: e.ReminderMinutes,
-			Location:        e.Location,
-			Latitude:        e.Latitude,
-			Longitude:       e.Longitude,
+			Title:              e.Title,
+			Description:        e.Description,
+			StartTime:          startTime,
+			EndTime:            endTime,
+			AllDay:             e.AllDay,
+			RecurrenceFreq:     e.RecurrenceFreq,
+			RecurrenceCount:    e.RecurrenceCount,
+			RecurrenceUntil:    e.RecurrenceUntil,
+			RecurrenceInterval: e.RecurrenceInterval,
+			RecurrenceByDay:    e.RecurrenceByDay,
+			RecurrenceByMonthDay: e.RecurrenceByMonthDay,
+			RecurrenceByMonth:  e.RecurrenceByMonth,
+			ExDates:            e.ExDates,
+			RDates:             e.RDates,
+			ReminderMinutes:    e.ReminderMinutes,
+			Location:           e.Location,
+			Latitude:           e.Latitude,
+			Longitude:          e.Longitude,
 		}
 		if err := req.Validate(); err != nil {
 			continue
 		}
 		ev := &model.Event{
-			Title:           e.Title,
-			Description:     e.Description,
-			StartTime:       req.StartTime,
-			EndTime:         req.EndTime,
-			AllDay:          e.AllDay,
-			RecurrenceFreq:  e.RecurrenceFreq,
-			RecurrenceCount: e.RecurrenceCount,
-			RecurrenceUntil: e.RecurrenceUntil,
-			ReminderMinutes: e.ReminderMinutes,
-			Location:        e.Location,
-			Latitude:        e.Latitude,
-			Longitude:       e.Longitude,
+			Title:              e.Title,
+			Description:        e.Description,
+			StartTime:          req.StartTime,
+			EndTime:            req.EndTime,
+			AllDay:             e.AllDay,
+			RecurrenceFreq:     e.RecurrenceFreq,
+			RecurrenceCount:    e.RecurrenceCount,
+			RecurrenceUntil:    e.RecurrenceUntil,
+			RecurrenceInterval: e.RecurrenceInterval,
+			RecurrenceByDay:    e.RecurrenceByDay,
+			RecurrenceByMonthDay: e.RecurrenceByMonthDay,
+			RecurrenceByMonth:  e.RecurrenceByMonth,
+			ExDates:            e.ExDates,
+			RDates:             e.RDates,
+			ReminderMinutes:    e.ReminderMinutes,
+			Location:           e.Location,
+			Latitude:           e.Latitude,
+			Longitude:          e.Longitude,
 		}
 		if err := s.repo.Create(ev); err != nil {
 			continue
@@ -320,6 +369,59 @@ func (s *EventService) Import(events []model.Event) (int, error) {
 		imported++
 	}
 	return imported, nil
+}
+
+func (s *EventService) AddExDate(id int64, instanceStart string) (*model.Event, error) {
+	if _, err := time.Parse(time.RFC3339, instanceStart); err != nil {
+		return nil, fmt.Errorf("%w: instance_start must be RFC 3339 format", ErrValidation)
+	}
+	existing, err := s.repo.GetByID(id)
+	if err != nil {
+		return nil, err
+	}
+	if existing == nil {
+		return nil, ErrNotFound
+	}
+	if !existing.IsRecurring() {
+		return nil, fmt.Errorf("%w: event is not recurring", ErrValidation)
+	}
+
+	// Append to existing EXDATE list
+	if existing.ExDates == "" {
+		existing.ExDates = instanceStart
+	} else {
+		existing.ExDates = existing.ExDates + "," + instanceStart
+	}
+
+	if err := s.repo.Update(existing); err != nil {
+		return nil, err
+	}
+	return existing, nil
+}
+
+func (s *EventService) RemoveExDate(id int64, instanceStart string) (*model.Event, error) {
+	existing, err := s.repo.GetByID(id)
+	if err != nil {
+		return nil, err
+	}
+	if existing == nil {
+		return nil, ErrNotFound
+	}
+
+	// Remove the specified EXDATE
+	var remaining []string
+	for _, exd := range strings.Split(existing.ExDates, ",") {
+		exd = strings.TrimSpace(exd)
+		if exd != "" && exd != instanceStart {
+			remaining = append(remaining, exd)
+		}
+	}
+	existing.ExDates = strings.Join(remaining, ",")
+
+	if err := s.repo.Update(existing); err != nil {
+		return nil, err
+	}
+	return existing, nil
 }
 
 func (s *EventService) Delete(id int64) error {

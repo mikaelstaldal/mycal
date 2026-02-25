@@ -138,6 +138,175 @@ END:VCALENDAR`
 	}
 }
 
+func TestEncodeDecodeRRuleInterval(t *testing.T) {
+	events := []model.Event{
+		{
+			ID:                 1,
+			Title:              "Biweekly",
+			StartTime:          "2026-02-02T10:00:00Z",
+			EndTime:            "2026-02-02T11:00:00Z",
+			RecurrenceFreq:     "WEEKLY",
+			RecurrenceInterval: 2,
+			CreatedAt:          "2026-02-01T00:00:00Z",
+			UpdatedAt:          "2026-02-01T00:00:00Z",
+		},
+	}
+
+	var buf bytes.Buffer
+	if err := Encode(&buf, events); err != nil {
+		t.Fatalf("Encode failed: %v", err)
+	}
+	output := buf.String()
+	if !strings.Contains(output, "RRULE:FREQ=WEEKLY;INTERVAL=2") {
+		t.Errorf("expected INTERVAL=2 in RRULE, got:\n%s", output)
+	}
+
+	decoded, err := Decode(strings.NewReader(output))
+	if err != nil {
+		t.Fatalf("Decode failed: %v", err)
+	}
+	if len(decoded) != 1 {
+		t.Fatalf("expected 1 event, got %d", len(decoded))
+	}
+	if decoded[0].RecurrenceFreq != "WEEKLY" {
+		t.Errorf("freq = %q", decoded[0].RecurrenceFreq)
+	}
+	if decoded[0].RecurrenceInterval != 2 {
+		t.Errorf("interval = %d, want 2", decoded[0].RecurrenceInterval)
+	}
+}
+
+func TestEncodeDecodeRRuleByDay(t *testing.T) {
+	events := []model.Event{
+		{
+			ID:              1,
+			Title:           "MWF Meeting",
+			StartTime:       "2026-02-02T10:00:00Z",
+			EndTime:         "2026-02-02T11:00:00Z",
+			RecurrenceFreq:  "WEEKLY",
+			RecurrenceByDay: "MO,WE,FR",
+			CreatedAt:       "2026-02-01T00:00:00Z",
+			UpdatedAt:       "2026-02-01T00:00:00Z",
+		},
+	}
+
+	var buf bytes.Buffer
+	if err := Encode(&buf, events); err != nil {
+		t.Fatalf("Encode failed: %v", err)
+	}
+	output := buf.String()
+	if !strings.Contains(output, ";BYDAY=MO,WE,FR") {
+		t.Errorf("expected BYDAY in RRULE, got:\n%s", output)
+	}
+
+	decoded, err := Decode(strings.NewReader(output))
+	if err != nil {
+		t.Fatalf("Decode failed: %v", err)
+	}
+	if decoded[0].RecurrenceByDay != "MO,WE,FR" {
+		t.Errorf("byDay = %q, want %q", decoded[0].RecurrenceByDay, "MO,WE,FR")
+	}
+}
+
+func TestEncodeDecodeExdate(t *testing.T) {
+	events := []model.Event{
+		{
+			ID:             1,
+			Title:          "Daily",
+			StartTime:      "2026-02-02T10:00:00Z",
+			EndTime:        "2026-02-02T11:00:00Z",
+			RecurrenceFreq: "DAILY",
+			ExDates:        "2026-02-05T10:00:00Z,2026-02-10T10:00:00Z",
+			CreatedAt:      "2026-02-01T00:00:00Z",
+			UpdatedAt:      "2026-02-01T00:00:00Z",
+		},
+	}
+
+	var buf bytes.Buffer
+	if err := Encode(&buf, events); err != nil {
+		t.Fatalf("Encode failed: %v", err)
+	}
+	output := buf.String()
+	if !strings.Contains(output, "EXDATE:20260205T100000Z") {
+		t.Errorf("expected EXDATE in output, got:\n%s", output)
+	}
+	if !strings.Contains(output, "EXDATE:20260210T100000Z") {
+		t.Errorf("expected second EXDATE in output")
+	}
+
+	decoded, err := Decode(strings.NewReader(output))
+	if err != nil {
+		t.Fatalf("Decode failed: %v", err)
+	}
+	if decoded[0].ExDates != "2026-02-05T10:00:00Z,2026-02-10T10:00:00Z" {
+		t.Errorf("exdates = %q", decoded[0].ExDates)
+	}
+}
+
+func TestEncodeDecodeRdate(t *testing.T) {
+	events := []model.Event{
+		{
+			ID:             1,
+			Title:          "Weekly",
+			StartTime:      "2026-02-02T10:00:00Z",
+			EndTime:        "2026-02-02T11:00:00Z",
+			RecurrenceFreq: "WEEKLY",
+			RDates:         "2026-02-05T10:00:00Z",
+			CreatedAt:      "2026-02-01T00:00:00Z",
+			UpdatedAt:      "2026-02-01T00:00:00Z",
+		},
+	}
+
+	var buf bytes.Buffer
+	if err := Encode(&buf, events); err != nil {
+		t.Fatalf("Encode failed: %v", err)
+	}
+	output := buf.String()
+	if !strings.Contains(output, "RDATE:20260205T100000Z") {
+		t.Errorf("expected RDATE in output, got:\n%s", output)
+	}
+
+	decoded, err := Decode(strings.NewReader(output))
+	if err != nil {
+		t.Fatalf("Decode failed: %v", err)
+	}
+	if decoded[0].RDates != "2026-02-05T10:00:00Z" {
+		t.Errorf("rdates = %q", decoded[0].RDates)
+	}
+}
+
+func TestDecodeRRuleWithByParams(t *testing.T) {
+	input := "BEGIN:VCALENDAR\r\n" +
+		"BEGIN:VEVENT\r\n" +
+		"SUMMARY:Monthly\r\n" +
+		"DTSTART:20260115T100000Z\r\n" +
+		"DTEND:20260115T110000Z\r\n" +
+		"RRULE:FREQ=MONTHLY;INTERVAL=2;BYDAY=2MO;COUNT=6\r\n" +
+		"END:VEVENT\r\n" +
+		"END:VCALENDAR\r\n"
+
+	events, err := Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode failed: %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("expected 1 event, got %d", len(events))
+	}
+	e := events[0]
+	if e.RecurrenceFreq != "MONTHLY" {
+		t.Errorf("freq = %q", e.RecurrenceFreq)
+	}
+	if e.RecurrenceInterval != 2 {
+		t.Errorf("interval = %d", e.RecurrenceInterval)
+	}
+	if e.RecurrenceByDay != "2MO" {
+		t.Errorf("byDay = %q", e.RecurrenceByDay)
+	}
+	if e.RecurrenceCount != 6 {
+		t.Errorf("count = %d", e.RecurrenceCount)
+	}
+}
+
 func TestEncodeEmpty(t *testing.T) {
 	var buf bytes.Buffer
 	if err := Encode(&buf, []model.Event{}); err != nil {

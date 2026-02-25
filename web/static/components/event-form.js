@@ -5,10 +5,28 @@ import { MapPicker } from './map-picker.js';
 import { RichEditor } from './rich-editor.js';
 
 const COLORS = ['#4285f4', '#ea4335', '#fbbc04', '#34a853', '#ff6d01', '#46bdc6', '#7baaf7', '#e67c73'];
+const WEEKDAYS = [
+    { key: 'MO', label: 'Mon' },
+    { key: 'TU', label: 'Tue' },
+    { key: 'WE', label: 'Wed' },
+    { key: 'TH', label: 'Thu' },
+    { key: 'FR', label: 'Fri' },
+    { key: 'SA', label: 'Sat' },
+    { key: 'SU', label: 'Sun' },
+];
 
 function formatDatetime(isoStr, config) {
     const d = new Date(isoStr);
     return `${formatDate(d, config.dateFormat)} ${formatTime(isoStr, config.clockFormat)}`;
+}
+
+function getWeekdayAbbr(date) {
+    const days = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
+    return days[date.getDay()];
+}
+
+function getNthWeekdayOfMonth(date) {
+    return Math.ceil(date.getDate() / 7);
 }
 
 export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete, onClose, config }) {
@@ -24,11 +42,19 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
     const [recurrenceFreq, setRecurrenceFreq] = useState('');
     const [recurrenceCount, setRecurrenceCount] = useState(0);
     const [recurrenceUntil, setRecurrenceUntil] = useState('');
+    const [recurrenceInterval, setRecurrenceInterval] = useState(1);
+    const [recurrenceByDay, setRecurrenceByDay] = useState('');
+    const [recurrenceByMonthDay, setRecurrenceByMonthDay] = useState('');
+    const [recurrenceByMonth, setRecurrenceByMonth] = useState('');
+    const [exdates, setExdates] = useState('');
+    const [rdates, setRdates] = useState('');
+    const [newRdate, setNewRdate] = useState('');
     const [reminderMinutes, setReminderMinutes] = useState(0);
     const [location, setLocation] = useState('');
     const [latitude, setLatitude] = useState('');
     const [longitude, setLongitude] = useState('');
     const [error, setError] = useState('');
+    const [monthlyMode, setMonthlyMode] = useState('bymonthday');
 
     useEffect(() => {
         if (event) {
@@ -46,10 +72,22 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
             setRecurrenceFreq(event.recurrence_freq || '');
             setRecurrenceCount(event.recurrence_count || 0);
             setRecurrenceUntil(event.recurrence_until ? event.recurrence_until.substring(0, 10) : '');
+            setRecurrenceInterval(event.recurrence_interval > 0 ? event.recurrence_interval : 1);
+            setRecurrenceByDay(event.recurrence_by_day || '');
+            setRecurrenceByMonthDay(event.recurrence_by_monthday || '');
+            setRecurrenceByMonth(event.recurrence_by_month || '');
+            setExdates(event.exdates || '');
+            setRdates(event.rdates || '');
             setReminderMinutes(event.reminder_minutes || 0);
             setLocation(event.location || '');
             setLatitude(event.latitude != null ? String(event.latitude) : '');
             setLongitude(event.longitude != null ? String(event.longitude) : '');
+            // Set monthly mode based on existing BY* params
+            if (event.recurrence_by_day) {
+                setMonthlyMode('byday');
+            } else {
+                setMonthlyMode('bymonthday');
+            }
             setEditing(false);
         } else if (defaultDate) {
             const start = new Date(defaultDate);
@@ -74,10 +112,17 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
             setRecurrenceFreq('');
             setRecurrenceCount(0);
             setRecurrenceUntil('');
+            setRecurrenceInterval(1);
+            setRecurrenceByDay('');
+            setRecurrenceByMonthDay('');
+            setRecurrenceByMonth('');
+            setExdates('');
+            setRdates('');
             setReminderMinutes(0);
             setLocation('');
             setLatitude('');
             setLongitude('');
+            setMonthlyMode('bymonthday');
             setEditing(true);
         }
         setError('');
@@ -96,15 +141,30 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
     function handleAllDayToggle(checked) {
         setAllDay(checked);
         if (checked && startTime) {
-            // Convert datetime-local to date (inclusive end = same day)
             const dateStr = startTime.substring(0, 10);
             setStartTime(dateStr);
             setEndTime(dateStr);
         } else if (!checked && startTime) {
-            // Convert date to datetime-local
             setStartTime(startTime + 'T09:00');
             setEndTime(endTime ? endTime + 'T10:00' : '');
         }
+    }
+
+    function toggleByDay(dayKey) {
+        const current = recurrenceByDay ? recurrenceByDay.split(',') : [];
+        const idx = current.indexOf(dayKey);
+        if (idx >= 0) {
+            current.splice(idx, 1);
+        } else {
+            current.push(dayKey);
+        }
+        setRecurrenceByDay(current.filter(Boolean).join(','));
+    }
+
+    function getStartDate() {
+        const dateStr = startTime ? startTime.substring(0, 10) : '';
+        if (!dateStr) return null;
+        return new Date(dateStr + 'T12:00:00');
     }
 
     function handleSubmit(e) {
@@ -117,6 +177,18 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
             longitude: longitude !== '' ? parseFloat(longitude) : null,
         };
 
+        const recurrenceFields = {
+            recurrence_freq: recurrenceFreq,
+            recurrence_count: recurrenceCount,
+            recurrence_until: recurrenceUntil ? recurrenceUntil + 'T00:00:00Z' : '',
+            recurrence_interval: recurrenceFreq ? recurrenceInterval : 0,
+            recurrence_by_day: recurrenceFreq ? recurrenceByDay : '',
+            recurrence_by_monthday: recurrenceFreq ? recurrenceByMonthDay : '',
+            recurrence_by_month: recurrenceFreq ? recurrenceByMonth : '',
+            exdates: exdates,
+            rdates: rdates,
+        };
+
         if (allDay) {
             if (!startTime) { setError('Start date is required'); return; }
             const data = {
@@ -126,9 +198,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                 start_time: startTime,
                 end_time: inclusiveToExclusiveDate(endTime || startTime),
                 color,
-                recurrence_freq: recurrenceFreq,
-                recurrence_count: recurrenceCount,
-                recurrence_until: recurrenceUntil ? recurrenceUntil + 'T00:00:00Z' : '',
+                ...recurrenceFields,
                 reminder_minutes: 0,
                 ...locationFields,
             };
@@ -142,9 +212,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                 start_time: fromLocalDatetimeValue(startTime),
                 end_time: fromLocalDatetimeValue(endTime),
                 color,
-                recurrence_freq: recurrenceFreq,
-                recurrence_count: recurrenceCount,
-                recurrence_until: recurrenceUntil ? recurrenceUntil + 'T00:00:00Z' : '',
+                ...recurrenceFields,
                 reminder_minutes: reminderMinutes,
                 ...locationFields,
             };
@@ -161,6 +229,27 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
     function handleClose(e) {
         e.preventDefault();
         onClose();
+    }
+
+    function handleRestoreExdate(exdate) {
+        const remaining = exdates.split(',').filter(d => d.trim() !== exdate).join(',');
+        setExdates(remaining);
+    }
+
+    function handleAddRdate() {
+        if (!newRdate) return;
+        const rfc3339 = newRdate + 'T00:00:00Z';
+        const current = rdates ? rdates.split(',') : [];
+        if (!current.includes(rfc3339)) {
+            current.push(rfc3339);
+        }
+        setRdates(current.filter(Boolean).join(','));
+        setNewRdate('');
+    }
+
+    function handleRemoveRdate(rdate) {
+        const remaining = rdates.split(',').filter(d => d.trim() !== rdate).join(',');
+        setRdates(remaining);
     }
 
     function displayStart() {
@@ -183,10 +272,35 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
     function displayRecurrence() {
         if (!recurrenceFreq) return 'None';
         const freqLabels = { DAILY: 'Daily', WEEKLY: 'Weekly', MONTHLY: 'Monthly', YEARLY: 'Yearly' };
-        const label = freqLabels[recurrenceFreq] || recurrenceFreq;
+        let label = freqLabels[recurrenceFreq] || recurrenceFreq;
+        if (recurrenceInterval > 1) {
+            const units = { DAILY: 'days', WEEKLY: 'weeks', MONTHLY: 'months', YEARLY: 'years' };
+            label = `Every ${recurrenceInterval} ${units[recurrenceFreq] || recurrenceFreq}`;
+        }
+        if (recurrenceByDay) {
+            label += ` on ${recurrenceByDay}`;
+        }
+        if (recurrenceByMonthDay) {
+            label += ` on day ${recurrenceByMonthDay}`;
+        }
+        if (recurrenceByMonth) {
+            label += ` in month ${recurrenceByMonth}`;
+        }
         if (recurrenceUntil) return `${label}, until ${recurrenceUntil}`;
         return recurrenceCount > 0 ? `${label}, ${recurrenceCount} times` : `${label}, forever`;
     }
+
+    function displayExdates() {
+        if (!exdates) return [];
+        return exdates.split(',').map(d => d.trim()).filter(Boolean);
+    }
+
+    function displayRdates() {
+        if (!rdates) return [];
+        return rdates.split(',').map(d => d.trim()).filter(Boolean);
+    }
+
+    const startDate = getStartDate();
 
     return html`
         <dialog ref=${dialogRef} class="event-dialog" onClose=${onClose}>
@@ -348,6 +462,59 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                     </label>
                     ${recurrenceFreq && html`
                         <label>
+                            Every
+                            <div class="interval-row">
+                                <input type="number" min="1" max="99" value=${recurrenceInterval}
+                                       style="width: 60px"
+                                       onInput=${e => setRecurrenceInterval(parseInt(e.target.value) || 1)} />
+                                <span>${{DAILY:'day(s)',WEEKLY:'week(s)',MONTHLY:'month(s)',YEARLY:'year(s)'}[recurrenceFreq]}</span>
+                            </div>
+                        </label>
+                        ${recurrenceFreq === 'WEEKLY' && html`
+                            <div class="byday-picker">
+                                <span>On days</span>
+                                <div class="byday-buttons">
+                                    ${WEEKDAYS.map(wd => html`
+                                        <button type="button"
+                                                class="byday-btn ${recurrenceByDay.split(',').includes(wd.key) ? 'active' : ''}"
+                                                onClick=${() => toggleByDay(wd.key)}>
+                                            ${wd.label}
+                                        </button>
+                                    `)}
+                                </div>
+                            </div>
+                        `}
+                        ${recurrenceFreq === 'MONTHLY' && html`
+                            <div class="monthly-options">
+                                <label class="radio-label">
+                                    <input type="radio" name="monthly-mode" value="bymonthday"
+                                           checked=${monthlyMode === 'bymonthday'}
+                                           onChange=${() => {
+                                               setMonthlyMode('bymonthday');
+                                               setRecurrenceByDay('');
+                                               if (startDate) {
+                                                   setRecurrenceByMonthDay(String(startDate.getDate()));
+                                               }
+                                           }} />
+                                    On day ${startDate ? startDate.getDate() : '...'}
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="monthly-mode" value="byday"
+                                           checked=${monthlyMode === 'byday'}
+                                           onChange=${() => {
+                                               setMonthlyMode('byday');
+                                               setRecurrenceByMonthDay('');
+                                               if (startDate) {
+                                                   const nth = getNthWeekdayOfMonth(startDate);
+                                                   const dayAbbr = getWeekdayAbbr(startDate);
+                                                   setRecurrenceByDay(`${nth}${dayAbbr}`);
+                                               }
+                                           }} />
+                                    On the ${startDate ? ordinalLabel(getNthWeekdayOfMonth(startDate)) : '...'} ${startDate ? WEEKDAYS.find(w => w.key === getWeekdayAbbr(startDate))?.label : '...'}
+                                </label>
+                            </div>
+                        `}
+                        <label>
                             Occurrences (0 = unlimited)
                             <input type="number" min="0" value=${recurrenceCount}
                                    onInput=${e => setRecurrenceCount(parseInt(e.target.value) || 0)} />
@@ -357,12 +524,57 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                             <input type="date" value=${recurrenceUntil}
                                    onInput=${e => setRecurrenceUntil(e.target.value)} />
                         </label>
+                        ${displayExdates().length > 0 && html`
+                            <div class="exdates-section">
+                                <span>Excluded dates</span>
+                                <div class="exdates-list">
+                                    ${displayExdates().map(exd => html`
+                                        <div class="exdate-item" key=${exd}>
+                                            <span>${new Date(exd).toLocaleDateString()}</span>
+                                            <button type="button" class="small-btn" onClick=${() => handleRestoreExdate(exd)}>Restore</button>
+                                        </div>
+                                    `)}
+                                </div>
+                            </div>
+                        `}
+                        ${html`
+                            <div class="rdates-section">
+                                <span>Additional dates</span>
+                                <div class="rdate-add-row">
+                                    <input type="date" value=${newRdate}
+                                           onInput=${e => setNewRdate(e.target.value)} />
+                                    <button type="button" class="small-btn" onClick=${handleAddRdate}>Add</button>
+                                </div>
+                                ${displayRdates().length > 0 && html`
+                                    <div class="rdates-list">
+                                        ${displayRdates().map(rd => html`
+                                            <div class="rdate-item" key=${rd}>
+                                                <span>${new Date(rd).toLocaleDateString()}</span>
+                                                <button type="button" class="small-btn danger" onClick=${() => handleRemoveRdate(rd)}>Remove</button>
+                                            </div>
+                                        `)}
+                                    </div>
+                                `}
+                            </div>
+                        `}
                     `}
                 ` : recurrenceFreq && html`
                     <label>
                         Repeat
                         <input type="text" disabled value=${displayRecurrence()} />
                     </label>
+                    ${displayExdates().length > 0 && html`
+                        <label>
+                            Excluded dates
+                            <input type="text" disabled value=${displayExdates().map(d => new Date(d).toLocaleDateString()).join(', ')} />
+                        </label>
+                    `}
+                    ${displayRdates().length > 0 && html`
+                        <label>
+                            Additional dates
+                            <input type="text" disabled value=${displayRdates().map(d => new Date(d).toLocaleDateString()).join(', ')} />
+                        </label>
+                    `}
                 `}
 
                 ${!allDay && editing ? html`
@@ -398,4 +610,11 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
             </form>
         </dialog>
     `;
+}
+
+function ordinalLabel(n) {
+    if (n === 1) return '1st';
+    if (n === 2) return '2nd';
+    if (n === 3) return '3rd';
+    return n + 'th';
 }

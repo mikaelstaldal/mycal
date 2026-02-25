@@ -14,9 +14,15 @@ type Event struct {
 	AllDay          bool     `json:"all_day"`
 	Color           string   `json:"color"`
 	RecurrenceFreq  string   `json:"recurrence_freq"`
-	RecurrenceCount int      `json:"recurrence_count"`
-	RecurrenceUntil string   `json:"recurrence_until"`
-	RecurrenceIndex int      `json:"recurrence_index,omitempty"`
+	RecurrenceCount    int      `json:"recurrence_count"`
+	RecurrenceUntil    string   `json:"recurrence_until"`
+	RecurrenceInterval int      `json:"recurrence_interval"`
+	RecurrenceByDay    string   `json:"recurrence_by_day"`
+	RecurrenceByMonthDay string `json:"recurrence_by_monthday"`
+	RecurrenceByMonth  string   `json:"recurrence_by_month"`
+	ExDates            string   `json:"exdates"`
+	RDates             string   `json:"rdates"`
+	RecurrenceIndex    int      `json:"recurrence_index,omitempty"`
 	ReminderMinutes int      `json:"reminder_minutes"`
 	Location        string   `json:"location"`
 	Latitude        *float64 `json:"latitude"`
@@ -44,13 +50,19 @@ type CreateEventRequest struct {
 	EndTime         string   `json:"end_time"`
 	AllDay          bool     `json:"all_day"`
 	Color           string   `json:"color"`
-	RecurrenceFreq  string   `json:"recurrence_freq"`
-	RecurrenceCount int      `json:"recurrence_count"`
-	RecurrenceUntil string   `json:"recurrence_until"`
-	ReminderMinutes int      `json:"reminder_minutes"`
-	Location        string   `json:"location"`
-	Latitude        *float64 `json:"latitude"`
-	Longitude       *float64 `json:"longitude"`
+	RecurrenceFreq     string   `json:"recurrence_freq"`
+	RecurrenceCount    int      `json:"recurrence_count"`
+	RecurrenceUntil    string   `json:"recurrence_until"`
+	RecurrenceInterval int      `json:"recurrence_interval"`
+	RecurrenceByDay    string   `json:"recurrence_by_day"`
+	RecurrenceByMonthDay string `json:"recurrence_by_monthday"`
+	RecurrenceByMonth  string   `json:"recurrence_by_month"`
+	ExDates            string   `json:"exdates"`
+	RDates             string   `json:"rdates"`
+	ReminderMinutes    int      `json:"reminder_minutes"`
+	Location           string   `json:"location"`
+	Latitude           *float64 `json:"latitude"`
+	Longitude          *float64 `json:"longitude"`
 }
 
 const dateOnly = "2006-01-02"
@@ -206,13 +218,19 @@ type UpdateEventRequest struct {
 	EndTime         *string  `json:"end_time"`
 	AllDay          *bool    `json:"all_day"`
 	Color           *string  `json:"color"`
-	RecurrenceFreq  *string  `json:"recurrence_freq"`
-	RecurrenceCount *int     `json:"recurrence_count"`
-	RecurrenceUntil *string  `json:"recurrence_until"`
-	ReminderMinutes *int     `json:"reminder_minutes"`
-	Location        *string  `json:"location"`
-	Latitude        *float64 `json:"latitude"`
-	Longitude       *float64 `json:"longitude"`
+	RecurrenceFreq     *string  `json:"recurrence_freq"`
+	RecurrenceCount    *int     `json:"recurrence_count"`
+	RecurrenceUntil    *string  `json:"recurrence_until"`
+	RecurrenceInterval *int     `json:"recurrence_interval"`
+	RecurrenceByDay    *string  `json:"recurrence_by_day"`
+	RecurrenceByMonthDay *string `json:"recurrence_by_monthday"`
+	RecurrenceByMonth  *string  `json:"recurrence_by_month"`
+	ExDates            *string  `json:"exdates"`
+	RDates             *string  `json:"rdates"`
+	ReminderMinutes    *int     `json:"reminder_minutes"`
+	Location           *string  `json:"location"`
+	Latitude           *float64 `json:"latitude"`
+	Longitude          *float64 `json:"longitude"`
 }
 
 func (r *UpdateEventRequest) Validate() error {

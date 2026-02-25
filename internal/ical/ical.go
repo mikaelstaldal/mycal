@@ -53,6 +53,9 @@ func Encode(w io.Writer, events []model.Event) error {
 		}
 		if e.RecurrenceFreq != "" {
 			rrule := "RRULE:FREQ=" + e.RecurrenceFreq
+			if e.RecurrenceInterval > 1 {
+				rrule += fmt.Sprintf(";INTERVAL=%d", e.RecurrenceInterval)
+			}
 			if e.RecurrenceCount > 0 {
 				rrule += fmt.Sprintf(";COUNT=%d", e.RecurrenceCount)
 			}
@@ -61,7 +64,40 @@ func Encode(w io.Writer, events []model.Event) error {
 					rrule += ";UNTIL=" + formatICalTime(t)
 				}
 			}
+			if e.RecurrenceByDay != "" {
+				rrule += ";BYDAY=" + e.RecurrenceByDay
+			}
+			if e.RecurrenceByMonthDay != "" {
+				rrule += ";BYMONTHDAY=" + e.RecurrenceByMonthDay
+			}
+			if e.RecurrenceByMonth != "" {
+				rrule += ";BYMONTH=" + e.RecurrenceByMonth
+			}
 			b.WriteString(rrule + "\r\n")
+		}
+		if e.ExDates != "" {
+			for _, exd := range strings.Split(e.ExDates, ",") {
+				exd = strings.TrimSpace(exd)
+				if t, err := time.Parse(time.RFC3339, exd); err == nil {
+					if e.AllDay {
+						b.WriteString(fmt.Sprintf("EXDATE;VALUE=DATE:%s\r\n", t.UTC().Format("20060102")))
+					} else {
+						b.WriteString(fmt.Sprintf("EXDATE:%s\r\n", formatICalTime(t)))
+					}
+				}
+			}
+		}
+		if e.RDates != "" {
+			for _, rd := range strings.Split(e.RDates, ",") {
+				rd = strings.TrimSpace(rd)
+				if t, err := time.Parse(time.RFC3339, rd); err == nil {
+					if e.AllDay {
+						b.WriteString(fmt.Sprintf("RDATE;VALUE=DATE:%s\r\n", t.UTC().Format("20060102")))
+					} else {
+						b.WriteString(fmt.Sprintf("RDATE:%s\r\n", formatICalTime(t)))
+					}
+				}
+			}
 		}
 		if e.ReminderMinutes > 0 {
 			b.WriteString("BEGIN:VALARM\r\n")
@@ -164,11 +200,10 @@ func unfoldLines(r io.Reader) ([]string, error) {
 
 func parseEvent(props []string, alarmProps []string) (model.Event, bool) {
 	var summary, description, dtstart, dtend string
-	var recurrenceFreq string
-	var recurrenceCount int
-	var recurrenceUntil string
+	var rrule rruleResult
 	var location string
 	var latitude, longitude *float64
+	var exdates, rdates []string
 	allDay := false
 
 	for _, prop := range props {
@@ -200,7 +235,17 @@ func parseEvent(props []string, alarmProps []string) (model.Event, bool) {
 		case "DTEND":
 			dtend = parseICalTime(value, params)
 		case "RRULE":
-			recurrenceFreq, recurrenceCount, recurrenceUntil = parseRRule(value)
+			rrule = parseRRule(value)
+		case "EXDATE":
+			parsed := parseICalTime(value, params)
+			if parsed != "" {
+				exdates = append(exdates, parsed)
+			}
+		case "RDATE":
+			parsed := parseICalTime(value, params)
+			if parsed != "" {
+				rdates = append(rdates, parsed)
+			}
 		}
 	}
 
@@ -211,18 +256,24 @@ func parseEvent(props []string, alarmProps []string) (model.Event, bool) {
 	reminderMinutes := parseTriggerMinutes(alarmProps)
 
 	return model.Event{
-		Title:           summary,
-		Description:     description,
-		StartTime:       dtstart,
-		EndTime:         dtend,
-		AllDay:          allDay,
-		RecurrenceFreq:  recurrenceFreq,
-		RecurrenceCount: recurrenceCount,
-		RecurrenceUntil: recurrenceUntil,
-		ReminderMinutes: reminderMinutes,
-		Location:        location,
-		Latitude:        latitude,
-		Longitude:       longitude,
+		Title:              summary,
+		Description:        description,
+		StartTime:          dtstart,
+		EndTime:            dtend,
+		AllDay:             allDay,
+		RecurrenceFreq:     rrule.Freq,
+		RecurrenceCount:    rrule.Count,
+		RecurrenceUntil:    rrule.Until,
+		RecurrenceInterval: rrule.Interval,
+		RecurrenceByDay:    rrule.ByDay,
+		RecurrenceByMonthDay: rrule.ByMonthDay,
+		RecurrenceByMonth:  rrule.ByMonth,
+		ExDates:            strings.Join(exdates, ","),
+		RDates:             strings.Join(rdates, ","),
+		ReminderMinutes:    reminderMinutes,
+		Location:           location,
+		Latitude:           latitude,
+		Longitude:          longitude,
 	}, true
 }
 
@@ -283,7 +334,18 @@ func parseDurationToMinutes(s string) int {
 	return minutes
 }
 
-func parseRRule(value string) (freq string, count int, until string) {
+type rruleResult struct {
+	Freq       string
+	Count      int
+	Until      string
+	Interval   int
+	ByDay      string
+	ByMonthDay string
+	ByMonth    string
+}
+
+func parseRRule(value string) rruleResult {
+	var r rruleResult
 	for _, part := range strings.Split(value, ";") {
 		kv := strings.SplitN(part, "=", 2)
 		if len(kv) != 2 {
@@ -291,14 +353,22 @@ func parseRRule(value string) (freq string, count int, until string) {
 		}
 		switch strings.ToUpper(kv[0]) {
 		case "FREQ":
-			freq = strings.ToUpper(kv[1])
+			r.Freq = strings.ToUpper(kv[1])
 		case "COUNT":
-			fmt.Sscanf(kv[1], "%d", &count)
+			fmt.Sscanf(kv[1], "%d", &r.Count)
 		case "UNTIL":
-			until = parseICalTime(kv[1], "")
+			r.Until = parseICalTime(kv[1], "")
+		case "INTERVAL":
+			fmt.Sscanf(kv[1], "%d", &r.Interval)
+		case "BYDAY":
+			r.ByDay = strings.ToUpper(kv[1])
+		case "BYMONTHDAY":
+			r.ByMonthDay = kv[1]
+		case "BYMONTH":
+			r.ByMonth = kv[1]
 		}
 	}
-	return
+	return r
 }
 
 // parsePropLine splits "DTSTART;TZID=Europe/Stockholm:20060102T150405" into

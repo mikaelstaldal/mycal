@@ -4,13 +4,14 @@
 
 - [ ] Add a progress spinner when bulk importing events
 - [ ] Display past events with a lighter color
+
 ## iCalendar (RFC 5545) compliance
 
 ### Recurrence
-- [ ] Support recurring events every N day/week/month/year (iCalendar: RRULE:INTERVAL=N)
-- [ ] Support removing instances of recurring events (iCalendar: EXDATE)
-- [ ] Support RRULE BYDAY, BYMONTH, BYMONTHDAY and other BY* parameters for complex patterns
-- [ ] Support RDATE for explicit additional recurrence dates
+- [x] Support RRULE:INTERVAL=N, recurring events every N day/week/month/year
+- [x] Support RRULE BYDAY, BYMONTH, BYMONTHDAY and other BY* parameters for complex patterns
+- [x] Support EXDATE, removing instances of recurring events
+- [x] Support RDATE for explicit additional recurrence dates
 - [ ] Support RECURRENCE-ID for identifying and editing individual instances of recurring events
 
 ### Timezone

@@ -108,15 +108,18 @@ function App() {
     }
 
     async function handleEventClick(event) {
-        if (event.recurrence_index > 0) {
-            // Fetch parent event for editing
+        if (event.recurrence_freq && event.recurrence_index > 0) {
+            // Fetch parent event for editing, but remember the instance start time
             try {
                 const parent = await getEvent(event.id);
+                parent._instanceStart = event.start_time;
                 setSelectedEvent(parent);
             } catch (err) {
                 console.error('Failed to fetch parent event:', err);
                 setSelectedEvent(event);
             }
+        } else if (event.recurrence_freq && event.recurrence_index === 0) {
+            setSelectedEvent(event);
         } else {
             setSelectedEvent(event);
         }
@@ -138,8 +141,8 @@ function App() {
         await loadEvents();
     }
 
-    async function handleDelete(id) {
-        await deleteEvent(id);
+    async function handleDelete(id, instanceStart) {
+        await deleteEvent(id, instanceStart);
         setShowForm(false);
         setSelectedEvent(null);
         await loadEvents();

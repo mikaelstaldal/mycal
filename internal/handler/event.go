@@ -130,6 +130,27 @@ func deleteEvent(svc *service.EventService) http.HandlerFunc {
 			writeError(w, http.StatusBadRequest, "invalid id")
 			return
 		}
+
+		// If instance_start is provided, add EXDATE instead of deleting
+		instanceStart := r.URL.Query().Get("instance_start")
+		if instanceStart != "" {
+			event, err := svc.AddExDate(id, instanceStart)
+			if err != nil {
+				if errors.Is(err, service.ErrNotFound) {
+					writeError(w, http.StatusNotFound, "event not found")
+					return
+				}
+				if errors.Is(err, service.ErrValidation) {
+					writeError(w, http.StatusBadRequest, err.Error())
+					return
+				}
+				writeError(w, http.StatusInternalServerError, "failed to add exception date")
+				return
+			}
+			writeJSON(w, http.StatusOK, event)
+			return
+		}
+
 		if err := svc.Delete(id); err != nil {
 			if errors.Is(err, service.ErrNotFound) {
 				writeError(w, http.StatusNotFound, "event not found")

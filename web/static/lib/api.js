@@ -32,8 +32,16 @@ export async function updateEvent(id, data) {
     return res.json();
 }
 
-export async function deleteEvent(id) {
-    const res = await fetch(`${BASE}/${id}`, { method: 'DELETE' });
+export async function deleteEvent(id, instanceStart) {
+    let url = `${BASE}/${id}`;
+    if (instanceStart) {
+        url += `?instance_start=${encodeURIComponent(instanceStart)}`;
+    }
+    const res = await fetch(url, { method: 'DELETE' });
+    if (instanceStart) {
+        if (!res.ok) throw new Error((await res.json()).error);
+        return res.json();
+    }
     if (!res.ok) throw new Error((await res.json()).error);
 }
 
