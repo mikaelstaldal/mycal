@@ -199,6 +199,14 @@ func unfoldLines(r io.Reader) ([]string, error) {
 }
 
 func parseEvent(props []string, alarmProps []string) (model.Event, bool) {
+	// Skip override instances — we can't represent RECURRENCE-ID yet
+	for _, prop := range props {
+		name, _, _ := parsePropLine(prop)
+		if strings.ToUpper(name) == "RECURRENCE-ID" {
+			return model.Event{}, false
+		}
+	}
+
 	var summary, description, dtstart, dtend string
 	var rrule rruleResult
 	var location string

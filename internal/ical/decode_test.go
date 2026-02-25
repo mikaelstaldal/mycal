@@ -190,3 +190,34 @@ func TestDecodeSkipsMalformedEvents(t *testing.T) {
 		t.Errorf("title = %q, want %q", events[0].Title, "Valid Event")
 	}
 }
+
+func TestDecodeSkipsRecurrenceID(t *testing.T) {
+	input := "BEGIN:VCALENDAR\r\n" +
+		"BEGIN:VEVENT\r\n" +
+		"DTSTART:20260302T100000Z\r\n" +
+		"DTEND:20260302T110000Z\r\n" +
+		"RRULE:FREQ=WEEKLY\r\n" +
+		"SUMMARY:Weekly Meeting\r\n" +
+		"END:VEVENT\r\n" +
+		"BEGIN:VEVENT\r\n" +
+		"RECURRENCE-ID:20260309T100000Z\r\n" +
+		"DTSTART:20260309T140000Z\r\n" +
+		"DTEND:20260309T150000Z\r\n" +
+		"SUMMARY:Weekly Meeting (moved)\r\n" +
+		"END:VEVENT\r\n" +
+		"END:VCALENDAR\r\n"
+
+	events, err := Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("expected 1 event (override skipped), got %d", len(events))
+	}
+	if events[0].Title != "Weekly Meeting" {
+		t.Errorf("title = %q, want %q", events[0].Title, "Weekly Meeting")
+	}
+	if events[0].RecurrenceFreq != "WEEKLY" {
+		t.Errorf("freq = %q, want WEEKLY", events[0].RecurrenceFreq)
+	}
+}
