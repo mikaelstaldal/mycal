@@ -51,6 +51,15 @@ func postJSON(t *testing.T, url string, body any) *http.Response {
 	return resp
 }
 
+func postICS(t *testing.T, url string, icsContent string) *http.Response {
+	t.Helper()
+	resp, err := http.Post(url, "text/calendar", strings.NewReader(icsContent))
+	if err != nil {
+		t.Fatalf("post: %v", err)
+	}
+	return resp
+}
+
 func putJSON(t *testing.T, url string, body any) *http.Response {
 	t.Helper()
 	data, err := json.Marshal(body)
@@ -503,7 +512,7 @@ SUMMARY:Imported Event 2
 END:VEVENT
 END:VCALENDAR`
 
-	resp := postJSON(t, ts.URL+"/api/v1/import", map[string]string{"ics_content": ics})
+	resp := postICS(t, ts.URL+"/api/v1/import", ics)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("got status %d, want %d", resp.StatusCode, http.StatusOK)
 	}
@@ -526,7 +535,7 @@ LOCATION:Office
 END:VEVENT
 END:VCALENDAR`
 
-	resp := postJSON(t, ts.URL+"/api/v1/import-single", map[string]string{"ics_content": ics})
+	resp := postICS(t, ts.URL+"/api/v1/import-single", ics)
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("got status %d, want %d", resp.StatusCode, http.StatusCreated)
 	}
@@ -792,7 +801,7 @@ SUMMARY:Weekly (moved)
 END:VEVENT
 END:VCALENDAR`
 
-	resp := postJSON(t, ts.URL+"/api/v1/import", map[string]string{"ics_content": ics})
+	resp := postICS(t, ts.URL+"/api/v1/import", ics)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("import: got status %d", resp.StatusCode)
 	}
@@ -822,7 +831,7 @@ SUMMARY:Duration Event
 END:VEVENT
 END:VCALENDAR`
 
-	resp := postJSON(t, ts.URL+"/api/v1/import", map[string]string{"ics_content": ics})
+	resp := postICS(t, ts.URL+"/api/v1/import", ics)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("import: got status %d", resp.StatusCode)
 	}
@@ -853,7 +862,7 @@ CATEGORIES:Work,Meeting
 END:VEVENT
 END:VCALENDAR`
 
-	resp := postJSON(t, ts.URL+"/api/v1/import", map[string]string{"ics_content": ics})
+	resp := postICS(t, ts.URL+"/api/v1/import", ics)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("import: got status %d", resp.StatusCode)
 	}
@@ -880,7 +889,7 @@ URL:https://example.com/event
 END:VEVENT
 END:VCALENDAR`
 
-	resp := postJSON(t, ts.URL+"/api/v1/import", map[string]string{"ics_content": ics})
+	resp := postICS(t, ts.URL+"/api/v1/import", ics)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("import: got status %d", resp.StatusCode)
 	}

@@ -100,13 +100,17 @@ For `PUT` updates, all fields are optional — only included fields are changed.
 
 ### Import
 
-The import endpoints accept either iCalendar content directly or a URL to fetch it from:
+The import endpoints accept iCalendar data in two ways:
 
-```json
-{"ics_content": "BEGIN:VCALENDAR..."}
+**Direct iCalendar content** — send the raw `.ics` data as the request body with `Content-Type: text/calendar`:
+
+```bash
+curl -X POST http://localhost:8080/api/v1/import \
+  -H 'Content-Type: text/calendar' \
+  --data-binary @events.ics
 ```
 
-or
+**URL import** — send a JSON body with `Content-Type: application/json`:
 
 ```json
 {"url": "https://example.com/calendar.ics"}

@@ -55,21 +55,23 @@ export async function searchEvents(query) {
     return res.json();
 }
 
-export async function importEvents(data) {
+export async function importEvents(icsContentOrUrl) {
+    const isUrl = typeof icsContentOrUrl === 'string' && icsContentOrUrl.startsWith('http');
     const res = await fetch('/api/v1/import', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        headers: { 'Content-Type': isUrl ? 'application/json' : 'text/calendar' },
+        body: isUrl ? JSON.stringify({ url: icsContentOrUrl }) : icsContentOrUrl,
     });
     if (!res.ok) throw new Error((await res.json()).error);
     return res.json();
 }
 
-export async function importSingleEvent(data) {
+export async function importSingleEvent(icsContentOrUrl) {
+    const isUrl = typeof icsContentOrUrl === 'string' && icsContentOrUrl.startsWith('http');
     const res = await fetch('/api/v1/import-single', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        headers: { 'Content-Type': isUrl ? 'application/json' : 'text/calendar' },
+        body: isUrl ? JSON.stringify({ url: icsContentOrUrl }) : icsContentOrUrl,
     });
     if (!res.ok) throw new Error((await res.json()).error);
     return res.json();

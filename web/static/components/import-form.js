@@ -17,24 +17,23 @@ export function ImportForm({ onImported, onClose }) {
     }, []);
 
     async function handleImport() {
-        let data;
+        let input;
         if (sourceMode === 'file') {
             const file = fileRef.current?.files?.[0];
             if (!file) { onImported('Please select a file.', true); return; }
-            const text = await file.text();
-            data = { ics_content: text };
+            input = await file.text();
         } else {
             if (!url.trim()) { onImported('Please enter a URL.', true); return; }
-            data = { url: url.trim() };
+            input = url.trim();
         }
         setLoading(true);
         try {
             let message;
             if (importMode === 'single') {
-                await importSingleEvent(data);
+                await importSingleEvent(input);
                 message = 'Event imported successfully.';
             } else {
-                const res = await importEvents(data);
+                const res = await importEvents(input);
                 message = `Imported ${res.imported} event${res.imported !== 1 ? 's' : ''}.`;
             }
             onImported(message);

@@ -191,43 +191,53 @@ func NewCalendarFeedHandler(svc *service.EventService) http.Handler {
 
 const maxImportSize = 5 * 1024 * 1024 // 5MB
 
-func importSingleEvent(svc *service.EventService) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+// importReader returns an io.Reader for iCalendar data based on the request's Content-Type.
+// For text/calendar, the request body is used directly.
+// For application/json, a URL is expected in the JSON body and fetched.
+// The caller must call the returned cleanup function when done.
+func importReader(w http.ResponseWriter, r *http.Request) (io.Reader, func(), bool) {
+	ct := r.Header.Get("Content-Type")
+	if strings.HasPrefix(ct, "text/calendar") {
+		return io.LimitReader(r.Body, maxImportSize), func() {}, true
+	}
+	if strings.HasPrefix(ct, "application/json") {
 		var req struct {
-			ICSContent string `json:"ics_content"`
-			URL        string `json:"url"`
+			URL string `json:"url"`
 		}
 		if err := readJSON(r, &req); err != nil {
 			writeError(w, http.StatusBadRequest, "invalid JSON")
+			return nil, nil, false
+		}
+		if req.URL == "" {
+			writeError(w, http.StatusBadRequest, "url is required")
+			return nil, nil, false
+		}
+		client := &http.Client{Timeout: 10 * time.Second}
+		resp, err := client.Get(req.URL)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "failed to fetch URL")
+			return nil, nil, false
+		}
+		if resp.StatusCode != http.StatusOK {
+			resp.Body.Close()
+			writeError(w, http.StatusBadRequest, "URL returned non-200 status")
+			return nil, nil, false
+		}
+		return io.LimitReader(resp.Body, maxImportSize), func() { resp.Body.Close() }, true
+	}
+	writeError(w, http.StatusUnsupportedMediaType, "Content-Type must be text/calendar or application/json")
+	return nil, nil, false
+}
+
+func importSingleEvent(svc *service.EventService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		reader, cleanup, ok := importReader(w, r)
+		if !ok {
 			return
 		}
+		defer cleanup()
 
-		var icsReader io.Reader
-		if req.ICSContent != "" {
-			if len(req.ICSContent) > maxImportSize {
-				writeError(w, http.StatusBadRequest, "content too large (max 5MB)")
-				return
-			}
-			icsReader = strings.NewReader(req.ICSContent)
-		} else if req.URL != "" {
-			client := &http.Client{Timeout: 10 * time.Second}
-			resp, err := client.Get(req.URL)
-			if err != nil {
-				writeError(w, http.StatusBadRequest, "failed to fetch URL")
-				return
-			}
-			defer resp.Body.Close()
-			if resp.StatusCode != http.StatusOK {
-				writeError(w, http.StatusBadRequest, "URL returned non-200 status")
-				return
-			}
-			icsReader = io.LimitReader(resp.Body, maxImportSize)
-		} else {
-			writeError(w, http.StatusBadRequest, "ics_content or url is required")
-			return
-		}
-
-		events, err := ical.Decode(icsReader)
+		events, err := ical.Decode(reader)
 		if err != nil {
 			writeError(w, http.StatusBadRequest, "failed to parse iCal data")
 			return
@@ -249,41 +259,13 @@ func importSingleEvent(svc *service.EventService) http.HandlerFunc {
 
 func importEvents(svc *service.EventService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req struct {
-			ICSContent string `json:"ics_content"`
-			URL        string `json:"url"`
-		}
-		if err := readJSON(r, &req); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid JSON")
+		reader, cleanup, ok := importReader(w, r)
+		if !ok {
 			return
 		}
+		defer cleanup()
 
-		var icsReader io.Reader
-		if req.ICSContent != "" {
-			if len(req.ICSContent) > maxImportSize {
-				writeError(w, http.StatusBadRequest, "content too large (max 5MB)")
-				return
-			}
-			icsReader = strings.NewReader(req.ICSContent)
-		} else if req.URL != "" {
-			client := &http.Client{Timeout: 10 * time.Second}
-			resp, err := client.Get(req.URL)
-			if err != nil {
-				writeError(w, http.StatusBadRequest, "failed to fetch URL")
-				return
-			}
-			defer resp.Body.Close()
-			if resp.StatusCode != http.StatusOK {
-				writeError(w, http.StatusBadRequest, "URL returned non-200 status")
-				return
-			}
-			icsReader = io.LimitReader(resp.Body, maxImportSize)
-		} else {
-			writeError(w, http.StatusBadRequest, "ics_content or url is required")
-			return
-		}
-
-		events, err := ical.Decode(icsReader)
+		events, err := ical.Decode(reader)
 		if err != nil {
 			writeError(w, http.StatusBadRequest, "failed to parse iCal data")
 			return
