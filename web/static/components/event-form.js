@@ -4,7 +4,16 @@ import { toLocalDatetimeValue, fromLocalDatetimeValue, formatDate, formatTime, t
 import { MapPicker } from './map-picker.js';
 import { RichEditor } from './rich-editor.js';
 
-const COLORS = ['#4285f4', '#ea4335', '#fbbc04', '#34a853', '#ff6d01', '#46bdc6', '#7baaf7', '#e67c73'];
+const COLORS = [
+    { name: 'dodgerblue', hex: '#1e90ff' },
+    { name: 'red', hex: '#ff0000' },
+    { name: 'gold', hex: '#ffd700' },
+    { name: 'green', hex: '#008000' },
+    { name: 'orange', hex: '#ffa500' },
+    { name: 'mediumturquoise', hex: '#48d1cc' },
+    { name: 'cornflowerblue', hex: '#6495ed' },
+    { name: 'salmon', hex: '#fa8072' },
+];
 const WEEKDAYS = [
     { key: 'MO', label: 'Mon' },
     { key: 'TU', label: 'Tue' },
@@ -518,9 +527,9 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                                  style="background-color: #9e9e9e"
                                  onClick=${() => setColor('')} />
                             ${COLORS.map(c => html`
-                                <div class="color-swatch ${color === c ? 'selected' : ''}"
-                                     style="background-color: ${c}"
-                                     onClick=${() => setColor(c)} />
+                                <div class="color-swatch ${color === c.name ? 'selected' : ''}"
+                                     style="background-color: ${c.name}"
+                                     onClick=${() => setColor(c.name)} />
                             `)}
                         </div>
                     </div>

@@ -2,6 +2,7 @@
 
 ## Current
 
+- [ ] Support COLOR: aqua, black, blue, fuchsia, gray, green, lime, maroon, navy, olive, purple, red, silver, teal, white, yellow
 
 ## iCalendar (RFC 5545) compliance
 

@@ -52,7 +52,7 @@ export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDa
         return {
             top: `${top}px`,
             height: `${height}px`,
-            backgroundColor: event.color || '#4285f4'
+            backgroundColor: event.color || 'dodgerblue'
         };
     }
 

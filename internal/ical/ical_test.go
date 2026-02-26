@@ -16,7 +16,7 @@ func TestEncode(t *testing.T) {
 			Description: "Weekly sync",
 			StartTime:   "2026-02-17T14:00:00Z",
 			EndTime:     "2026-02-17T15:00:00Z",
-			Color:       "#4285f4",
+			Color:       "dodgerblue",
 			CreatedAt:   "2026-02-17T10:00:00Z",
 			UpdatedAt:   "2026-02-17T10:00:00Z",
 		},

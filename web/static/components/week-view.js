@@ -54,7 +54,7 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, onAllD
         return {
             top: `${top}px`,
             height: `${height}px`,
-            backgroundColor: event.color || '#4285f4'
+            backgroundColor: event.color || 'dodgerblue'
         };
     }
 

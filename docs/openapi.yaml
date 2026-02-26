@@ -347,7 +347,7 @@ components:
           type: boolean
         color:
           type: string
-          description: Hex color code
+          description: CSS3 color name per RFC 7986 (e.g. dodgerblue, red, gold)
         recurrence_freq:
           type: string
           enum: ["", DAILY, WEEKLY, MONTHLY, YEARLY]

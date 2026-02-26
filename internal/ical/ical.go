@@ -83,6 +83,9 @@ func Encode(w io.Writer, events []model.Event) error {
 		if e.URL != "" {
 			b.WriteString(fmt.Sprintf("URL:%s\r\n", e.URL))
 		}
+		if e.Color != "" {
+			b.WriteString(fmt.Sprintf("COLOR:%s\r\n", e.Color))
+		}
 		if e.RecurrenceFreq != "" {
 			rrule := "RRULE:FREQ=" + e.RecurrenceFreq
 			if e.RecurrenceInterval > 1 {
@@ -343,6 +346,7 @@ func parseEvent(props []string, alarmProps []string, tzMap map[string]*time.Loca
 	var categories string
 	var eventURL string
 	var duration string
+	var color string
 	allDay := false
 
 	for _, prop := range props {
@@ -371,6 +375,8 @@ func parseEvent(props []string, alarmProps []string, tzMap map[string]*time.Loca
 			categories = unescapeText(value)
 		case "URL":
 			eventURL = value
+		case "COLOR":
+			color = strings.ToLower(strings.TrimSpace(value))
 		case "DTSTART":
 			upperParams := strings.ToUpper(params)
 			if strings.Contains(upperParams, "VALUE=DATE") {
@@ -425,6 +431,7 @@ func parseEvent(props []string, alarmProps []string, tzMap map[string]*time.Loca
 		StartTime:          dtstart,
 		EndTime:            dtend,
 		AllDay:             allDay,
+		Color:              color,
 		RecurrenceFreq:     rrule.Freq,
 		RecurrenceCount:    rrule.Count,
 		RecurrenceUntil:    rrule.Until,

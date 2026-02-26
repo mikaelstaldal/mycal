@@ -26,7 +26,7 @@ All endpoints are under `/api/v1`. Datetimes use RFC 3339 format (or `YYYY-MM-DD
 | `start_time`             | string | Start time in RFC 3339 or `YYYY-MM-DD` for all-day (required)                    |
 | `end_time`               | string | End time in RFC 3339 or `YYYY-MM-DD` for all-day (required, must be after start) |
 | `all_day`                | bool   | Whether this is an all-day event                                                 |
-| `color`                  | string | Color hex code                                                                   |
+| `color`                  | string | CSS3 color name per RFC 7986 (e.g. `dodgerblue`, `red`, `gold`)                  |
 | `recurrence_freq`        | string | `""`, `"DAILY"`, `"WEEKLY"`, `"MONTHLY"`, or `"YEARLY"`                          |
 | `recurrence_count`       | int    | Number of recurrences (0–1000)                                                   |
 | `recurrence_until`       | string | Recurrence end date in RFC 3339                                                  |
@@ -86,7 +86,7 @@ curl -X POST http://localhost:8080/api/v1/events \
     "title": "Team Meeting",
     "start_time": "2026-02-17T14:00:00Z",
     "end_time": "2026-02-17T15:00:00Z",
-    "color": "#4285f4"
+    "color": "dodgerblue"
   }'
 
 # Create an all-day event
@@ -97,7 +97,7 @@ curl -X POST http://localhost:8080/api/v1/events \
     "start_time": "2026-06-06",
     "end_time": "2026-06-07",
     "all_day": true,
-    "color": "#0b8043"
+    "color": "green"
   }'
 
 # List events for February 2026
