@@ -1,0 +1,576 @@
+openapi: 3.0.3
+info:
+  title: MyCal API
+  description: Calendar API with event management and iCalendar support.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+paths:
+  /api/v1/events:
+    get:
+      summary: List or search events
+      description: >
+        List events in a time range (requires `from` and `to`), or search events by text (requires `q`).
+      parameters:
+        - name: from
+          in: query
+          description: Start of time range (RFC 3339). Required when not searching.
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          description: End of time range (RFC 3339). Required when not searching.
+          schema:
+            type: string
+            format: date-time
+        - name: q
+          in: query
+          description: Search query text. When provided, `from` and `to` are optional filters.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Event"
+        "400":
+          description: Missing required query parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    post:
+      summary: Create an event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEventRequest"
+      responses:
+        "201":
+          description: Event created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+        "400":
+          description: Invalid JSON or validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/events/{id}:
+    get:
+      summary: Get a single event
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      responses:
+        "200":
+          description: The event
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+        "400":
+          description: Invalid ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    put:
+      summary: Update an event
+      description: >
+        Partial update — only included fields are changed.
+        When `instance_start` is provided, creates or updates a single recurrence instance override.
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+        - name: instance_start
+          in: query
+          description: RFC 3339 timestamp of the recurrence instance to override.
+          schema:
+            type: string
+            format: date-time
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateEventRequest"
+      responses:
+        "200":
+          description: Updated event
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+        "400":
+          description: Invalid ID, JSON, or validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      summary: Delete an event
+      description: >
+        Deletes an event and all its overrides.
+        When `instance_start` is provided, excludes a single recurrence instance instead of deleting the whole event.
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+        - name: instance_start
+          in: query
+          description: RFC 3339 timestamp of the recurrence instance to exclude.
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "204":
+          description: Event deleted (no `instance_start`)
+        "200":
+          description: Recurrence instance excluded (with `instance_start`)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+        "400":
+          description: Invalid ID or validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/import:
+    post:
+      summary: Import events from iCalendar data
+      description: >
+        Accepts iCalendar data either as raw `text/calendar` body or as a JSON body with a URL to fetch.
+      requestBody:
+        required: true
+        content:
+          text/calendar:
+            schema:
+              type: string
+              format: binary
+              description: Raw iCalendar (.ics) data
+          application/json:
+            schema:
+              type: object
+              required:
+                - url
+              properties:
+                url:
+                  type: string
+                  format: uri
+                  description: URL to fetch iCalendar data from
+      responses:
+        "200":
+          description: Import result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  imported:
+                    type: integer
+                    description: Number of events imported
+        "400":
+          description: Invalid data or URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "415":
+          description: Unsupported Content-Type
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/import-single:
+    post:
+      summary: Import a single event from iCalendar data
+      description: >
+        Accepts iCalendar data either as raw `text/calendar` body or as a JSON body with a URL to fetch.
+        The iCalendar data must contain exactly one event.
+      requestBody:
+        required: true
+        content:
+          text/calendar:
+            schema:
+              type: string
+              format: binary
+              description: Raw iCalendar (.ics) data with a single event
+          application/json:
+            schema:
+              type: object
+              required:
+                - url
+              properties:
+                url:
+                  type: string
+                  format: uri
+                  description: URL to fetch iCalendar data from
+      responses:
+        "201":
+          description: Event imported
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+        "400":
+          description: Invalid data, URL, or validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "415":
+          description: Unsupported Content-Type
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/events.ics:
+    get:
+      summary: iCalendar feed
+      description: Returns all events as an iCalendar feed.
+      responses:
+        "200":
+          description: iCalendar data
+          content:
+            text/calendar:
+              schema:
+                type: string
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /calendar.ics:
+    get:
+      summary: iCalendar feed (convenience URL)
+      description: Same as `/api/v1/events.ics`.
+      responses:
+        "200":
+          description: iCalendar data
+          content:
+            text/calendar:
+              schema:
+                type: string
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+components:
+  parameters:
+    EventId:
+      name: id
+      in: path
+      required: true
+      description: Event ID
+      schema:
+        type: integer
+        format: int64
+
+  responses:
+    NotFound:
+      description: Event not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    Event:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          readOnly: true
+        title:
+          type: string
+          maxLength: 500
+        description:
+          type: string
+          maxLength: 10000
+        start_time:
+          type: string
+          description: RFC 3339 datetime or YYYY-MM-DD for all-day events
+        end_time:
+          type: string
+          description: RFC 3339 datetime or YYYY-MM-DD for all-day events
+        all_day:
+          type: boolean
+        color:
+          type: string
+          description: Hex color code
+        recurrence_freq:
+          type: string
+          enum: ["", DAILY, WEEKLY, MONTHLY, YEARLY]
+        recurrence_count:
+          type: integer
+          minimum: 0
+          maximum: 1000
+        recurrence_until:
+          type: string
+          format: date-time
+        recurrence_interval:
+          type: integer
+          description: Repeat every N periods (0 or 1 = every, 2 = every other, etc.)
+        recurrence_by_day:
+          type: string
+          description: 'Comma-separated days, e.g. "MO,WE,FR" or "2MO,-1FR"'
+        recurrence_by_monthday:
+          type: string
+          description: 'Comma-separated month days, e.g. "15,30" or "-1"'
+        recurrence_by_month:
+          type: string
+          description: 'Comma-separated months (1-12), e.g. "1,6"'
+        exdates:
+          type: string
+          description: Comma-separated RFC 3339 timestamps of excluded recurrence instances
+        rdates:
+          type: string
+          description: Comma-separated RFC 3339 timestamps of additional recurrence dates
+        recurrence_parent_id:
+          type: integer
+          format: int64
+          readOnly: true
+          nullable: true
+          description: Parent event ID for instance overrides
+        recurrence_original_start:
+          type: string
+          readOnly: true
+          description: Original start time of overridden instance
+        duration:
+          type: string
+          description: 'ISO 8601 duration (e.g. PT1H, PT30M, P1D)'
+        categories:
+          type: string
+          maxLength: 500
+          description: Comma-separated category tags
+        url:
+          type: string
+          format: uri
+          maxLength: 2000
+          description: Reference URL (must start with http:// or https://)
+        reminder_minutes:
+          type: integer
+          minimum: 0
+          maximum: 40320
+        location:
+          type: string
+          maxLength: 500
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+          nullable: true
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+        - id
+        - title
+        - start_time
+        - end_time
+
+    CreateEventRequest:
+      type: object
+      required:
+        - title
+        - start_time
+      properties:
+        title:
+          type: string
+          maxLength: 500
+        description:
+          type: string
+          maxLength: 10000
+        start_time:
+          type: string
+          description: RFC 3339 datetime or YYYY-MM-DD for all-day events
+        end_time:
+          type: string
+          description: RFC 3339 datetime or YYYY-MM-DD for all-day events. Required unless `duration` is provided.
+        all_day:
+          type: boolean
+          default: false
+        color:
+          type: string
+        recurrence_freq:
+          type: string
+          enum: ["", DAILY, WEEKLY, MONTHLY, YEARLY]
+        recurrence_count:
+          type: integer
+          minimum: 0
+          maximum: 1000
+        recurrence_until:
+          type: string
+          format: date-time
+        recurrence_interval:
+          type: integer
+        recurrence_by_day:
+          type: string
+        recurrence_by_monthday:
+          type: string
+        recurrence_by_month:
+          type: string
+        exdates:
+          type: string
+        rdates:
+          type: string
+        duration:
+          type: string
+          description: 'ISO 8601 duration (e.g. PT1H, PT30M, P1D). Alternative to end_time.'
+        categories:
+          type: string
+          maxLength: 500
+        url:
+          type: string
+          format: uri
+          maxLength: 2000
+        reminder_minutes:
+          type: integer
+          minimum: 0
+          maximum: 40320
+        location:
+          type: string
+          maxLength: 500
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+          nullable: true
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+          nullable: true
+
+    UpdateEventRequest:
+      type: object
+      description: All fields are optional. Only included fields are changed.
+      properties:
+        title:
+          type: string
+          maxLength: 500
+        description:
+          type: string
+          maxLength: 10000
+        start_time:
+          type: string
+        end_time:
+          type: string
+        all_day:
+          type: boolean
+        color:
+          type: string
+        recurrence_freq:
+          type: string
+          enum: ["", DAILY, WEEKLY, MONTHLY, YEARLY]
+        recurrence_count:
+          type: integer
+          minimum: 0
+          maximum: 1000
+        recurrence_until:
+          type: string
+          format: date-time
+        recurrence_interval:
+          type: integer
+        recurrence_by_day:
+          type: string
+        recurrence_by_monthday:
+          type: string
+        recurrence_by_month:
+          type: string
+        exdates:
+          type: string
+        rdates:
+          type: string
+        duration:
+          type: string
+        categories:
+          type: string
+          maxLength: 500
+        url:
+          type: string
+          format: uri
+          maxLength: 2000
+        reminder_minutes:
+          type: integer
+          minimum: 0
+          maximum: 40320
+        location:
+          type: string
+          maxLength: 500
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+          nullable: true
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+          nullable: true
