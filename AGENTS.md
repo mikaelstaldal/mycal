@@ -61,7 +61,8 @@ Go backend with embedded Preact+HTM frontend (no JS build step). Single binary s
 
 ## API
 
-Update the API section of `README.md` whenever the API is changed.
+The API docs are in `docs/API.md`, update them whenever the API is changed. 
+Disregard backwards compatibility, there are no other users of the API than the internal web frontend.
 
 ## Database
 
