@@ -2,8 +2,6 @@
 
 ## Current
 
-- [ ] Support COLOR: aqua, black, blue, fuchsia, gray, green, lime, maroon, navy, olive, purple, red, silver, teal, white, yellow
-
 ## iCalendar (RFC 5545) compliance
 
 ### Recurrence
@@ -24,6 +22,7 @@
 - [ ] Support PRIORITY property (0-9)
 - [x] Support DURATION as alternative to DTEND
 - [ ] Support RELATED-TO property for parent/child event relationships
+- [x] Support COLOR according to RFC 7986
 
 ### Multi-user
 - [ ] Support ORGANIZER property
