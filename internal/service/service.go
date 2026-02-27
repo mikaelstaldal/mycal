@@ -440,21 +440,17 @@ func (s *EventService) ImportSingle(events []model.Event) (*model.Event, error) 
 	if len(events) == 0 {
 		return nil, fmt.Errorf("%w: iCal source contains no events", ErrValidation)
 	}
-	// Filter out overrides for single import
-	var parents []model.Event
+	// Reject recurrence overrides — importing a modification without the parent recurring event doesn't make sense
 	for _, e := range events {
-		if e.RecurrenceOriginalStart == "" {
-			parents = append(parents, e)
+		if e.RecurrenceOriginalStart != "" {
+			return nil, fmt.Errorf("%w: iCal source contains a recurrence override (RECURRENCE-ID), which is not supported for single event import", ErrValidation)
 		}
 	}
-	if len(parents) == 0 {
-		return nil, fmt.Errorf("%w: iCal source contains no parent events", ErrValidation)
-	}
-	if len(parents) > 1 {
-		return nil, fmt.Errorf("%w: iCal source contains %d events, expected exactly one", ErrValidation, len(parents))
+	if len(events) > 1 {
+		return nil, fmt.Errorf("%w: iCal source contains %d events, expected exactly one", ErrValidation, len(events))
 	}
 
-	e := parents[0]
+	e := events[0]
 	startTime := e.StartTime
 	endTime := e.EndTime
 	if e.AllDay {

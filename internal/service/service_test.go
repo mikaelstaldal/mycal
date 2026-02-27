@@ -1073,27 +1073,33 @@ func TestImportSingle_MultipleParents(t *testing.T) {
 	}
 }
 
-func TestImportSingle_SkipsOverrides(t *testing.T) {
+func TestImportSingle_RejectsOverrides(t *testing.T) {
 	parentID := int64(5)
-	repo := &mockRepo{
-		createFn: func(event *model.Event) error {
-			event.ID = 1
-			return nil
-		},
-	}
+	repo := &mockRepo{}
 	svc := NewEventService(repo)
-	events := []model.Event{
-		{Title: "Parent", StartTime: "2026-02-15T10:00:00Z", EndTime: "2026-02-15T11:00:00Z"},
-		{Title: "Override", StartTime: "2026-02-22T10:00:00Z", EndTime: "2026-02-22T11:00:00Z",
-			RecurrenceParentID: &parentID, RecurrenceOriginalStart: "2026-02-22T10:00:00Z"},
-	}
-	e, err := svc.ImportSingle(events)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if e.Title != "Parent" {
-		t.Fatalf("expected parent event, got %q", e.Title)
-	}
+
+	t.Run("parent with override", func(t *testing.T) {
+		events := []model.Event{
+			{Title: "Parent", StartTime: "2026-02-15T10:00:00Z", EndTime: "2026-02-15T11:00:00Z"},
+			{Title: "Override", StartTime: "2026-02-22T10:00:00Z", EndTime: "2026-02-22T11:00:00Z",
+				RecurrenceParentID: &parentID, RecurrenceOriginalStart: "2026-02-22T10:00:00Z"},
+		}
+		_, err := svc.ImportSingle(events)
+		if !errors.Is(err, ErrValidation) {
+			t.Fatalf("expected ErrValidation, got: %v", err)
+		}
+	})
+
+	t.Run("only override", func(t *testing.T) {
+		events := []model.Event{
+			{Title: "Override Only", StartTime: "2026-02-22T10:00:00Z", EndTime: "2026-02-22T11:00:00Z",
+				RecurrenceParentID: &parentID, RecurrenceOriginalStart: "2026-02-22T10:00:00Z"},
+		}
+		_, err := svc.ImportSingle(events)
+		if !errors.Is(err, ErrValidation) {
+			t.Fatalf("expected ErrValidation, got: %v", err)
+		}
+	})
 }
 
 func TestImportSingle_AllDayFormatConversion(t *testing.T) {
