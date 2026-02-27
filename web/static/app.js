@@ -9,7 +9,7 @@ import { EventForm } from './components/event-form.js';
 import { ImportForm } from './components/import-form.js';
 import { Toast } from './components/toast.js';
 import { Settings } from './components/settings.js';
-import { listEvents, searchEvents, createEvent, updateEvent, deleteEvent, getEvent } from './lib/api.js';
+import { listEvents, searchEvents, createEvent, updateEvent, deleteEvent, getEvent, importSingleEvent } from './lib/api.js';
 import { addMonths, addWeeks, startOfWeek, toRFC3339 } from './lib/date-utils.js';
 import { getConfig } from './lib/config.js';
 import { checkAndNotify, requestPermission } from './lib/notifications.js';
@@ -29,6 +29,8 @@ function App() {
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState(null);
     const searchTimer = useRef(null);
+    const [isDragging, setIsDragging] = useState(false);
+    const dragCounter = useRef(0);
 
     const loadEvents = useCallback(async () => {
         let from, to;
@@ -217,6 +219,41 @@ function App() {
         }, 300);
     }
 
+    function handleDragOver(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+    }
+
+    function handleDragEnter(e) {
+        e.preventDefault();
+        dragCounter.current++;
+        if (dragCounter.current === 1) setIsDragging(true);
+    }
+
+    function handleDragLeave(e) {
+        e.preventDefault();
+        dragCounter.current--;
+        if (dragCounter.current === 0) setIsDragging(false);
+    }
+
+    async function handleDrop(e) {
+        e.preventDefault();
+        dragCounter.current = 0;
+        setIsDragging(false);
+        const file = e.dataTransfer.files[0];
+        if (!file || !file.name.endsWith('.ics')) return;
+        try {
+            const text = await file.text();
+            await importSingleEvent(text);
+            setToastError(false);
+            setToast('Event imported successfully');
+            await loadEvents();
+        } catch (err) {
+            setToastError(true);
+            setToast(err.message || 'Import failed');
+        }
+    }
+
     function handleClearSearch() {
         setSearchQuery('');
         setSearchResults(null);
@@ -235,7 +272,9 @@ function App() {
     }
 
     return html`
-        <div class="app">
+        <div class="app${isDragging ? ' drag-over' : ''}"
+             onDragOver=${handleDragOver} onDragEnter=${handleDragEnter}
+             onDragLeave=${handleDragLeave} onDrop=${handleDrop}>
             <div class="top-bar">
                 <${Nav} currentDate=${currentDate}
                         onPrev=${handlePrev} onNext=${handleNext} onToday=${handleToday}
