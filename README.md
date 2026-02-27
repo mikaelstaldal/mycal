@@ -5,7 +5,7 @@ A personal calendar application with iCalendar support. Go backend, SQLite stora
 ## Status
 
 *Note:* This application has mostly been vibe coded with AI tools, it has not been properly reviewed or extensively tested,
-and is under active development. Use at your own risk, and backup your data often if you use for real.
+and is under active development. Use at your own risk and backup your data often if you use for real.
 
 ## Features
 
@@ -26,11 +26,13 @@ Open http://localhost:8080 in your browser.
 
 ### Options
 
-| Flag               | Default      | Description                                         |
-|--------------------|--------------|-----------------------------------------------------|
-| `-addr`            | `:8080`      | Listen address                                      |
-| `-db`              | `mycal.db`   | SQLite database file path                           |
-| `-basic-auth-file` | *(disabled)* | Path to htpasswd file for HTTP basic authentication |
+| Flag                | Default      | Description                                                       |
+|---------------------|--------------|-------------------------------------------------------------------|
+| `-addr`             | `:8080`      | Listen address                                                    |
+| `-db`               | `mycal.db`   | SQLite database file path                                         |
+| `-basic-auth-file`  | *(disabled)* | path to htpasswd file for HTTP basic authentication (bcrypt only) |
+| `-basic-auth-realm` | `mycal`      | HTTP basic authentication realm                                   |
+| `-export-ics`       |              | export all events to an .ics file and exit                        |
 
 ### Authentication
 

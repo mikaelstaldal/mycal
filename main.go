@@ -18,10 +18,10 @@ import (
 
 func main() {
 	addr := flag.String("addr", ":8080", "listen address")
-	dbPath := flag.String("db", "mycal.db", "database file path")
-	exportICS := flag.String("export-ics", "", "export all events to an .ics file and exit")
+	dbPath := flag.String("db", "mycal.db", "SQLite database file path")
 	basicAuthFile := flag.String("basic-auth-file", "", "path to htpasswd file for HTTP basic authentication (bcrypt only)")
-	basicAuthRealm := flag.String("basic-auth-realm", "mycal", "HTTP basic auth realm")
+	basicAuthRealm := flag.String("basic-auth-realm", "mycal", "HTTP basic authentication realm")
+	exportICS := flag.String("export-ics", "", "export all events to an .ics file and exit")
 	flag.Parse()
 
 	if *exportICS != "" {
