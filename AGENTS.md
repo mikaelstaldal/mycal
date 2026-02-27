@@ -68,6 +68,10 @@ Disregard backwards compatibility, there are no other users of the API than the 
 
 Do not do database migrations, assume that we will start with an empty database.
 
+## Version control
+
+Git is used for version control. When creating new files, make sure to add them to Git.
+
 ## Feature Backlog
 
 See `TODO.md` for the list of planned features.
