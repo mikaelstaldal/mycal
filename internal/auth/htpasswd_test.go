@@ -89,7 +89,7 @@ func TestMiddleware(t *testing.T) {
 	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
-	handler := htpasswd.Middleware(inner)
+	handler := htpasswd.Middleware("mycal")(inner)
 
 	t.Run("no credentials", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/", nil)

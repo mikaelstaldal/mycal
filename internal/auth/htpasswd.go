@@ -52,14 +52,16 @@ func (h *HtpasswdFile) Check(username, password string) bool {
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)) == nil
 }
 
-func (h *HtpasswdFile) Middleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		username, password, ok := r.BasicAuth()
-		if !ok || !h.Check(username, password) {
-			w.Header().Set("WWW-Authenticate", `Basic realm="mycal"`)
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
+func (h *HtpasswdFile) Middleware(realm string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			username, password, ok := r.BasicAuth()
+			if !ok || !h.Check(username, password) {
+				w.Header().Set("WWW-Authenticate", fmt.Sprintf(`Basic realm=%q`, realm))
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
 }

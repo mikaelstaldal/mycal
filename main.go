@@ -18,6 +18,7 @@ func main() {
 	addr := flag.String("addr", ":8080", "listen address")
 	dbPath := flag.String("db", "mycal.db", "database file path")
 	basicAuthFile := flag.String("basic-auth-file", "", "path to htpasswd file for HTTP basic authentication (bcrypt only)")
+	basicAuthRealm := flag.String("basic-auth-realm", "mycal", "HTTP basic auth realm")
 	flag.Parse()
 
 	var authMiddleware func(http.Handler) http.Handler
@@ -26,7 +27,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("load htpasswd: %v", err)
 		}
-		authMiddleware = htpasswd.Middleware
+		authMiddleware = htpasswd.Middleware(*basicAuthRealm)
 		log.Printf("basic authentication enabled")
 	}
 
