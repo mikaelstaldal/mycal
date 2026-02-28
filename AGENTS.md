@@ -7,7 +7,7 @@ This file provides guidance to AI coding agents when working with code in this r
 ```bash
 go build -tags netgo -o /tmp/claude/mycal .       # build single binary
 /tmp/claude/mycal                     # serves on :8080, uses mycal.db
-/tmp/claude/mycal -addr :3000 -db /path/to/cal.db  # custom address and DB path
+/tmp/claude/mycal -port 3000 -db /path/to/cal.db  # custom address and DB path
 ```
 
 The coding agent should always compile the application into `/tmp/claude` and run it from there.
@@ -26,7 +26,7 @@ Playwright end-to-end tests live in `e2e/`. The server must be running on port 8
 
 ```bash
 # Start server for E2E tests (use a separate DB to avoid interference)
-/tmp/claude/mycal -addr :8089 -db /tmp/claude/mycal-e2e.db &
+/tmp/claude/mycal -port 8089 -db /tmp/claude/mycal-e2e.db &
 
 # Run tests
 cd e2e && bash playwright-test

@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"flag"
+	"fmt"
 	"io/fs"
 	"log"
 	"net/http"
@@ -17,12 +18,17 @@ import (
 )
 
 func main() {
-	addr := flag.String("addr", ":8080", "listen address")
+	port := flag.Int("port", 8080, "port to listen on")
+	addr := flag.String("addr", "", "address to listen on")
 	dbPath := flag.String("db", "mycal.db", "SQLite database file path")
-	basicAuthFile := flag.String("basic-auth-file", "", "path to htpasswd file for HTTP basic authentication (bcrypt only)")
-	basicAuthRealm := flag.String("basic-auth-realm", "mycal", "HTTP basic authentication realm")
+	basicAuthFile := flag.String("basic-auth-file", "", "enable HTTP basic auth with username and password from given file in htpasswd format (bcrypt only)")
+	basicAuthRealm := flag.String("basic-auth-realm", "mycal", "realm for HTTP basic auth")
 	exportICS := flag.String("export-ics", "", "export all events to an .ics file and exit")
 	flag.Parse()
+
+	if *port < 1 || *port > 65535 {
+		log.Fatalf("Invalid port number: %d. Must be between 1 and 65535", *port)
+	}
 
 	if *exportICS != "" {
 		// Open database read-only so this can run concurrently with a server
@@ -100,8 +106,9 @@ func main() {
 		root = authMiddleware(mux)
 	}
 
-	log.Printf("listening on %s", *addr)
-	if err := http.ListenAndServe(*addr, root); err != nil {
-		log.Fatalf("server: %v", err)
+	serverAddr := fmt.Sprintf("%s:%d", *addr, *port)
+	log.Printf("Starting server on %s", serverAddr)
+	if err := http.ListenAndServe(serverAddr, root); err != nil {
+		log.Fatalf("Failed to start server: %v", err)
 	}
 }
