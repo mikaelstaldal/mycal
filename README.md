@@ -19,7 +19,7 @@ and is under active development. Use at your own risk and backup your data often
 ## Getting Started
 
 ```bash
-go build -o mycal . && ./mycal
+go build -tags netgo -v . && ./mycal
 ```
 
 Open http://localhost:8080 in your browser.
@@ -65,7 +65,7 @@ End-to-end tests use [Playwright](https://playwright.dev/) and live in the `e2e/
 cd e2e && npm install && npx playwright install chromium && cd ..
 
 # Start the server on port 8089
-go build -o mycal . && ./mycal -addr :8089 -db /tmp/mycal-e2e.db &
+go build -tags netgo -v . && ./mycal -addr :8089 -db /tmp/mycal-e2e.db &
 
 # Run tests
 cd e2e && bash playwright-test
