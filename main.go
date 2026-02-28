@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"flag"
 	"fmt"
@@ -111,6 +112,10 @@ func main() {
 		log.Fatalf("open database: %v", err)
 	}
 	defer db.Close()
+	err = ensureWritable(db)
+	if err != nil {
+		log.Fatalf("open database: %v", err)
+	}
 
 	repo, err := repository.NewSQLiteRepository(db)
 	if err != nil {
@@ -149,4 +154,30 @@ func main() {
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
+}
+
+func ensureWritable(db *sql.DB) error {
+	conn, err := db.Conn(context.Background())
+	if err != nil {
+		return err
+	}
+	defer func(conn *sql.Conn) {
+		_ = conn.Close()
+	}(conn)
+
+	return conn.Raw(func(c any) error {
+		if d, ok := c.(interface{ IsReadOnly(string) (bool, error) }); ok {
+			// Use "main" for the primary database schema
+			isReadOnly, err := d.IsReadOnly("main")
+			if err != nil {
+				return err
+			}
+			if isReadOnly {
+				return fmt.Errorf("database is read-only")
+			}
+			return nil
+		}
+
+		return fmt.Errorf("cannot check if database is read-only")
+	})
 }
