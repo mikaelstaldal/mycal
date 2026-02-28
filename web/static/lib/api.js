@@ -1,4 +1,6 @@
-const BASE = '/api/v1/events';
+// Derive base path from document base URI so the app works behind a reverse proxy on a sub-path.
+const APP_BASE = new URL('.', document.baseURI).pathname.replace(/\/$/, '');
+const BASE = APP_BASE + '/api/v1/events';
 
 export async function listEvents(from, to) {
     const res = await fetch(`${BASE}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
@@ -57,7 +59,7 @@ export async function searchEvents(query) {
 
 export async function importEvents(icsContentOrUrl) {
     const isUrl = typeof icsContentOrUrl === 'string' && icsContentOrUrl.startsWith('http');
-    const res = await fetch('/api/v1/import', {
+    const res = await fetch(APP_BASE + '/api/v1/import', {
         method: 'POST',
         headers: { 'Content-Type': isUrl ? 'application/json' : 'text/calendar' },
         body: isUrl ? JSON.stringify({ url: icsContentOrUrl }) : icsContentOrUrl,
@@ -68,7 +70,7 @@ export async function importEvents(icsContentOrUrl) {
 
 export async function importSingleEvent(icsContentOrUrl) {
     const isUrl = typeof icsContentOrUrl === 'string' && icsContentOrUrl.startsWith('http');
-    const res = await fetch('/api/v1/import-single', {
+    const res = await fetch(APP_BASE + '/api/v1/import-single', {
         method: 'POST',
         headers: { 'Content-Type': isUrl ? 'application/json' : 'text/calendar' },
         body: isUrl ? JSON.stringify({ url: icsContentOrUrl }) : icsContentOrUrl,
