@@ -30,7 +30,7 @@ Open http://localhost:8080 in your browser.
 |---------------------|----------------|----------------------------------------------------------------------------------------------------|
 | `-port`             | 8080           | port to listen on                                                                                  |
 | `-addr`             | all interfaces | address to listen on                                                                               |
-| `-db`               | `mycal.db`     | SQLite database file path                                                                          |
+| `-data`             | `data`         | directory to store data in                                                                         |
 | `-basic-auth-file`  | *(disabled)*   | enable HTTP basic auth with username and password from given file in htpasswd format (bcrypt only) |
 | `-basic-auth-realm` | `mycal`        | realm for HTTP basic auth                                                                          |
 | `-export-ics`       |                | export all events to an .ics file and exit                                                         |
@@ -66,7 +66,7 @@ End-to-end tests use [Playwright](https://playwright.dev/) and live in the `e2e/
 cd e2e && npm install && npx playwright install chromium && cd ..
 
 # Start the server on port 8089
-go build -tags netgo -v . && ./mycal -port 8089 -db /tmp/mycal-e2e.db &
+go build -tags netgo -v . && ./mycal -port 8089 -data /tmp/ &
 
 # Run tests
 cd e2e && bash playwright-test

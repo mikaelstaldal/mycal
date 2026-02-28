@@ -1,5 +1,5 @@
 mycal
-mycal.db
+data/
 .claude
 .playwright-mcp
 *.ics

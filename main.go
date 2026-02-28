@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/mikaelstaldal/mycal/internal/auth"
@@ -18,10 +19,12 @@ import (
 	"github.com/mikaelstaldal/mycal/web"
 )
 
+const databaseName = "mycal.sqlite"
+
 func main() {
 	port := flag.Int("port", 8080, "port to listen on")
 	addr := flag.String("addr", "", "address to listen on")
-	dbPath := flag.String("db", "mycal.db", "SQLite database file path")
+	dataDir := flag.String("data", "data", "directory to store data in")
 	basicAuthFile := flag.String("basic-auth-file", "", "enable HTTP basic auth with username and password from given file in htpasswd format (bcrypt only)")
 	basicAuthRealm := flag.String("basic-auth-realm", "mycal", "realm for HTTP basic auth")
 	exportICS := flag.String("export-ics", "", "export all events to an .ics file and exit")
@@ -31,9 +34,36 @@ func main() {
 		log.Fatalf("Invalid port number: %d. Must be between 1 and 65535", *port)
 	}
 
+	info, err := os.Stat(*dataDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			if err := os.MkdirAll(*dataDir, 0755); err != nil {
+				log.Fatalf("Could not create data directory: %s", *dataDir)
+			}
+		} else {
+			log.Fatalf("Failed to access data directory %s: %v", *dataDir, err)
+		}
+	} else {
+		if !info.IsDir() {
+			log.Fatalf("Data directory path is not a directory: %s", *dataDir)
+		}
+	}
+	databaseFile := filepath.Join(*dataDir, databaseName)
+
+	info, err = os.Stat(databaseFile)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			log.Fatalf("Failed to access database file %s: %v", databaseFile, err)
+		}
+	} else {
+		if !info.Mode().IsRegular() {
+			log.Fatalf("Database file is not a regular file: %s", databaseFile)
+		}
+	}
+
 	if *exportICS != "" {
 		// Open database read-only so this can run concurrently with a server
-		db, err := sql.Open("sqlite", *dbPath+"?mode=ro")
+		db, err := sql.Open("sqlite", databaseFile+"?mode=ro")
 		if err != nil {
 			log.Fatalf("open database: %v", err)
 		}
@@ -76,7 +106,7 @@ func main() {
 		log.Printf("basic authentication enabled")
 	}
 
-	db, err := sql.Open("sqlite", *dbPath)
+	db, err := sql.Open("sqlite", databaseFile)
 	if err != nil {
 		log.Fatalf("open database: %v", err)
 	}
