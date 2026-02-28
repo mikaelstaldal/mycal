@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/mikaelstaldal/mycal/internal/auth"
 	"github.com/mikaelstaldal/mycal/internal/handler"
@@ -108,7 +109,14 @@ func main() {
 
 	serverAddr := fmt.Sprintf("%s:%d", *addr, *port)
 	log.Printf("Starting server on %s", serverAddr)
-	if err := http.ListenAndServe(serverAddr, root); err != nil {
+	server := http.Server{
+		Addr:         serverAddr,
+		Handler:      root,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 20 * time.Second,
+		IdleTimeout:  time.Minute,
+	}
+	if err := server.ListenAndServe(); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
 }
