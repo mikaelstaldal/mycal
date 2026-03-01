@@ -59,6 +59,10 @@ Go backend with embedded Preact+HTM frontend (no JS build step). Single binary s
 - List endpoint requires `from`/`to` query params; uses overlapping range query (`start_time < to AND end_time > from`)
 - iCalendar (RFC 5545) feed at `/calendar.ics` and `/api/v1/events.ics` — `internal/ical` package encodes events, no external dependency
 
+## Go development
+
+Always run `go mod tidy` after modifying the `go.mod` file.
+
 ## API
 
 The API docs are in `docs/API.md`, update them whenever the API is changed. 
@@ -71,10 +75,3 @@ Do not do database migrations, assume that we will start with an empty database.
 ## Version control
 
 Git is used for version control. When creating new files, make sure to add them to Git.
-
-## Feature Backlog
-
-See `TODO.md` for the list of planned features.
-
-**Important**: Always read `TODO.md` at the start of a session and take note of the not yet done features in the "Current" section. 
-When implementing a new feature from the list, mark it as complete (`[x]`) in TODO.md after the implementation is done, tested, verified and commited.
