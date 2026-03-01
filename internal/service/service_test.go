@@ -479,7 +479,7 @@ func TestCreate_HTMLSanitization(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if created.Description != "<b>bold</b>alert('xss')" {
+	if created.Description != "<b>bold</b>" {
 		t.Fatalf("expected sanitized description, got: %q", created.Description)
 	}
 }
@@ -744,7 +744,7 @@ func TestUpdate_HTMLSanitization(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if e.Description != "<em>hi</em>bad" {
+	if e.Description != "<em>hi</em>" {
 		t.Fatalf("expected sanitized description, got %q", e.Description)
 	}
 }
@@ -957,7 +957,7 @@ func TestCreateOrUpdateOverride_NewOverrideWithAllFields(t *testing.T) {
 	if e.Title != "New Title" {
 		t.Fatalf("expected title 'New Title', got %q", e.Title)
 	}
-	if e.Description != "<b>bold</b>bad" {
+	if e.Description != "<b>bold</b>" {
 		t.Fatalf("expected sanitized description, got %q", e.Description)
 	}
 	if e.Color != "red" {

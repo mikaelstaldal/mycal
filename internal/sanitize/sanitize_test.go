@@ -21,7 +21,7 @@ func TestHTML(t *testing.T) {
 		{
 			name: "script tag removed",
 			in:   `<script>alert("xss")</script>`,
-			want: `alert("xss")`,
+			want: ``,
 		},
 		{
 			name: "iframe removed",
@@ -31,7 +31,7 @@ func TestHTML(t *testing.T) {
 		{
 			name: "style tag removed",
 			in:   `<style>body{display:none}</style>`,
-			want: `body{display:none}`,
+			want: ``,
 		},
 		{
 			name: "event handler attributes stripped",
@@ -41,22 +41,22 @@ func TestHTML(t *testing.T) {
 		{
 			name: "safe link preserved",
 			in:   `<a href="https://example.com" title="Example">link</a>`,
-			want: `<a href="https://example.com" title="Example" target="_blank" rel="noopener noreferrer">link</a>`,
+			want: `<a href="https://example.com" title="Example" rel="noreferrer noopener" target="_blank">link</a>`,
 		},
 		{
 			name: "javascript href removed",
 			in:   `<a href="javascript:alert(1)">link</a>`,
-			want: `<a target="_blank" rel="noopener noreferrer">link</a>`,
+			want: `link`,
 		},
 		{
 			name: "mixed content",
 			in:   `<p>Hello</p><script>evil()</script><ul><li>item</li></ul>`,
-			want: `<p>Hello</p>evil()<ul><li>item</li></ul>`,
+			want: `<p>Hello</p><ul><li>item</li></ul>`,
 		},
 		{
 			name: "br self-closing",
 			in:   `line one<br>line two<br/>line three`,
-			want: `line one<br />line two<br />line three`,
+			want: `line one<br>line two<br/>line three`,
 		},
 		{
 			name: "img tag removed",
@@ -72,6 +72,11 @@ func TestHTML(t *testing.T) {
 			name: "nested formatting",
 			in:   `<p><strong>bold <em>and italic</em></strong></p>`,
 			want: `<p><strong>bold <em>and italic</em></strong></p>`,
+		},
+		{
+			name: "data URI blocked",
+			in:   `<a href="data:text/html,<script>alert(1)</script>">click</a>`,
+			want: `click`,
 		},
 	}
 	for _, tt := range tests {
