@@ -89,8 +89,8 @@ const (
 	maxRecurrenceInterval  = 999
 	maxRecurrenceListLen   = 5000 // max length for comma-separated recurrence fields
 	maxEventDuration       = 366 * 24 * time.Hour // 366 days
-	minYear                = 1900
-	maxYear                = 2200
+	minYear                = 1970
+	maxYearOffset          = 100 // max year is current year + this offset
 )
 
 var validWeekdays = map[string]bool{
@@ -222,6 +222,7 @@ func validateRecurrenceFields(freq string, count int, until string, interval int
 }
 
 func validateDateRange(t time.Time) error {
+	maxYear := time.Now().Year() + maxYearOffset
 	if t.Year() < minYear || t.Year() > maxYear {
 		return fmt.Errorf("date must be between year %d and %d", minYear, maxYear)
 	}
