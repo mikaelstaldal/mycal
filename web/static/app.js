@@ -283,6 +283,9 @@ function App() {
                 <div class="top-bar-actions">
                     <input type="search" class="search-input" placeholder="Search events..."
                            value=${searchQuery} onInput=${handleSearchInput} />
+                    <button class="settings-btn" onClick=${loadEvents} title="Refresh">
+                        \u21BB
+                    </button>
                     <button class="settings-btn" onClick=${() => setShowImport(true)} title="Import">
                         \u2B07
                     </button>
