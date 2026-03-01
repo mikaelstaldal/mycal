@@ -11,7 +11,8 @@ import (
 )
 
 type HtpasswdFile struct {
-	users map[string]string // username -> bcrypt hash
+	users     map[string]string // username -> bcrypt hash
+	dummyHash []byte
 }
 
 func LoadHtpasswd(path string) (*HtpasswdFile, error) {
@@ -22,6 +23,7 @@ func LoadHtpasswd(path string) (*HtpasswdFile, error) {
 	defer f.Close()
 
 	users := make(map[string]string)
+	var dummyHash []byte
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
@@ -33,6 +35,7 @@ func LoadHtpasswd(path string) (*HtpasswdFile, error) {
 			continue
 		}
 		users[parts[0]] = parts[1]
+		dummyHash = []byte(parts[1])
 	}
 	if err := scanner.Err(); err != nil {
 		return nil, fmt.Errorf("read htpasswd file: %w", err)
@@ -41,12 +44,13 @@ func LoadHtpasswd(path string) (*HtpasswdFile, error) {
 		return nil, fmt.Errorf("htpasswd file contains no valid entries")
 	}
 
-	return &HtpasswdFile{users: users}, nil
+	return &HtpasswdFile{dummyHash: dummyHash, users: users}, nil
 }
 
 func (h *HtpasswdFile) Check(username, password string) bool {
 	hash, ok := h.users[username]
 	if !ok {
+		_ = bcrypt.CompareHashAndPassword(h.dummyHash, []byte(password)) // avoid timing attacks
 		return false
 	}
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)) == nil
