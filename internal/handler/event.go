@@ -29,11 +29,18 @@ func registerEventRoutes(mux *http.ServeMux, svc *service.EventService) {
 	mux.HandleFunc("POST /api/v1/import-single", importSingleEvent(svc))
 }
 
+const maxSearchQueryLength = 200
+
 func listEvents(svc *service.EventService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query().Get("q")
 		from := r.URL.Query().Get("from")
 		to := r.URL.Query().Get("to")
+
+		if len(q) > maxSearchQueryLength {
+			writeError(w, http.StatusBadRequest, "search query too long")
+			return
+		}
 
 		if q != "" {
 			events, err := svc.Search(q, from, to)
