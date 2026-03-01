@@ -1,10 +1,14 @@
 package handler
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -191,6 +195,43 @@ func NewCalendarFeedHandler(svc *service.EventService) http.Handler {
 
 const maxImportSize = 5 * 1024 * 1024 // 5MB
 
+// validateExternalURL checks that the URL is safe to fetch (not localhost or private IPs).
+func validateExternalURL(rawURL string) error {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return fmt.Errorf("invalid URL")
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return fmt.Errorf("URL scheme must be http or https")
+	}
+	hostname := u.Hostname()
+	if hostname == "" {
+		return fmt.Errorf("URL must have a hostname")
+	}
+	// Block localhost names
+	lower := strings.ToLower(hostname)
+	if lower == "localhost" || strings.HasSuffix(lower, ".localhost") {
+		return fmt.Errorf("URL must not point to localhost")
+	}
+
+	// Resolve hostname through DNS with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	ips, err := net.DefaultResolver.LookupIPAddr(ctx, hostname)
+	if err != nil {
+		return fmt.Errorf("DNS lookup failed for %s: %v", hostname, err)
+	}
+
+	// Check if any resolved IP is private
+	for _, ip := range ips {
+		if ip.IP.IsLoopback() || ip.IP.IsPrivate() || ip.IP.IsLinkLocalUnicast() || ip.IP.IsLinkLocalMulticast() || ip.IP.IsUnspecified() {
+			return fmt.Errorf("URL must not point to a private or local address")
+		}
+	}
+	return nil
+}
+
 // importReader returns an io.Reader for iCalendar data based on the request's Content-Type.
 // For text/calendar, the request body is used directly.
 // For application/json, a URL is expected in the JSON body and fetched.
@@ -210,6 +251,10 @@ func importReader(w http.ResponseWriter, r *http.Request) (io.Reader, func(), bo
 		}
 		if req.URL == "" {
 			writeError(w, http.StatusBadRequest, "url is required")
+			return nil, nil, false
+		}
+		if err := validateExternalURL(req.URL); err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
 			return nil, nil, false
 		}
 		client := &http.Client{Timeout: 10 * time.Second}
