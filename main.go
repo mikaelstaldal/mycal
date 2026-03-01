@@ -137,9 +137,9 @@ func main() {
 	}
 	mux.Handle("/", http.FileServer(http.FS(staticFS)))
 
-	var root http.Handler = mux
+	var root http.Handler = handler.SecurityHeadersMiddleware(mux)
 	if authMiddleware != nil {
-		root = authMiddleware(mux)
+		root = authMiddleware(root)
 	}
 
 	serverAddr := fmt.Sprintf("%s:%d", *addr, *port)

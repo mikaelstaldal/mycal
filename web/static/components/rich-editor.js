@@ -12,11 +12,15 @@ function loadQuill() {
         const link = document.createElement('link');
         link.rel = 'stylesheet';
         link.href = 'https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css';
+        link.integrity = 'sha384-ecIckRi4QlKYya/FQUbBUjS4qp65jF/J87Guw5uzTbO1C1Jfa/6kYmd6dXUF6D7i';
+        link.crossOrigin = 'anonymous';
         document.head.appendChild(link);
 
         // Load JS
         const script = document.createElement('script');
         script.src = 'https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js';
+        script.integrity = 'sha384-utBUCeG4SYaCm4m7GQZYr8Hy8Fpy3V4KGjBZaf4WTKOcwhCYpt/0PfeEe3HNlwx8';
+        script.crossOrigin = 'anonymous';
         script.async = true;
         script.onload = () => { quillLoaded = true; resolve(); };
         script.onerror = () => { quillLoadPromise = null; reject(new Error('Failed to load Quill')); };
