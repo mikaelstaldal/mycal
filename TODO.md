@@ -2,11 +2,6 @@
 
 ## Current
 
-- [x] Add a command line option to set HTTP basic auth realm
-- [x] Validate that a single event import is not modifying an existing event (e.g. RECURRENCE-ID)
-- [x] Add a command line option to export all events to an .ics file
-- [x] Sometimes you get a meeting invitation as an email with an .ics file attached or an iCalendar link. Have a way to quickly import that as a single event.
-
 ## iCalendar (RFC 5545) compliance
 
 ### Recurrence
