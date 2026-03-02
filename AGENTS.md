@@ -65,8 +65,8 @@ Always run `go mod tidy` after modifying the `go.mod` file.
 
 ## API
 
-The API docs are in `docs/API.md`, update them whenever the API is changed. 
-Disregard backwards compatibility, there are no other users of the API than the internal web frontend.
+The API docs are in `docs/API.md`, update them whenever the API is changed. The API is used by mobile clients, 
+so make sure to keep it backwards compatible.
 
 ## Database
 
