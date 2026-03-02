@@ -103,7 +103,7 @@ func applyOverrides(expanded []model.Event, overrides []model.Event, from, to ti
 	for _, inst := range expanded {
 		key := overrideKey{inst.ID, inst.StartTime}
 		if override, ok := overrideMap[key]; ok {
-			// Replace with override if it falls in the query window
+			// Replace it with override if it falls in the query window
 			oStart, _ := time.Parse(time.RFC3339, override.StartTime)
 			oEnd, _ := time.Parse(time.RFC3339, override.EndTime)
 			if oEnd.After(from) && oStart.Before(to) {
@@ -156,28 +156,28 @@ func (s *EventService) Create(req *model.CreateEventRequest) (*model.Event, erro
 		return nil, fmt.Errorf("%w: %s", ErrValidation, err.Error())
 	}
 	e := &model.Event{
-		Title:              req.Title,
-		Description:        sanitize.HTML(req.Description),
-		StartTime:          req.StartTime,
-		EndTime:            req.EndTime,
-		AllDay:             req.AllDay,
-		Color:              req.Color,
-		RecurrenceFreq:     req.RecurrenceFreq,
-		RecurrenceCount:    req.RecurrenceCount,
-		RecurrenceUntil:    req.RecurrenceUntil,
-		RecurrenceInterval: req.RecurrenceInterval,
-		RecurrenceByDay:    req.RecurrenceByDay,
+		Title:                req.Title,
+		Description:          sanitize.HTML(req.Description),
+		StartTime:            req.StartTime,
+		EndTime:              req.EndTime,
+		AllDay:               req.AllDay,
+		Color:                req.Color,
+		RecurrenceFreq:       req.RecurrenceFreq,
+		RecurrenceCount:      req.RecurrenceCount,
+		RecurrenceUntil:      req.RecurrenceUntil,
+		RecurrenceInterval:   req.RecurrenceInterval,
+		RecurrenceByDay:      req.RecurrenceByDay,
 		RecurrenceByMonthDay: req.RecurrenceByMonthDay,
-		RecurrenceByMonth:  req.RecurrenceByMonth,
-		ExDates:            req.ExDates,
-		RDates:             req.RDates,
-		Duration:           req.Duration,
-		Categories:         req.Categories,
-		URL:                req.URL,
-		ReminderMinutes:    req.ReminderMinutes,
-		Location:           req.Location,
-		Latitude:           req.Latitude,
-		Longitude:          req.Longitude,
+		RecurrenceByMonth:    req.RecurrenceByMonth,
+		ExDates:              req.ExDates,
+		RDates:               req.RDates,
+		Duration:             req.Duration,
+		Categories:           req.Categories,
+		URL:                  req.URL,
+		ReminderMinutes:      req.ReminderMinutes,
+		Location:             req.Location,
+		Latitude:             req.Latitude,
+		Longitude:            req.Longitude,
 	}
 	if err := s.repo.Create(e); err != nil {
 		return nil, err
@@ -287,7 +287,7 @@ func (s *EventService) Update(id int64, req *model.UpdateEventRequest) (*model.E
 			if err != nil {
 				return nil, fmt.Errorf("%w: end_time must be YYYY-MM-DD for all-day events", ErrValidation)
 			}
-			// Same date as start means single-day: advance end to next day
+			// The same date as start means single-day: advance end to next day
 			startParsed, _ := time.Parse(time.RFC3339, existing.StartTime)
 			if !end.After(startParsed) {
 				end = startParsed.AddDate(0, 0, 1)
@@ -355,22 +355,22 @@ func (s *EventService) CreateOrUpdateOverride(parentID int64, instanceStart stri
 		return s.Update(existing.ID, req)
 	}
 
-	// Create new override as copy of parent with updates applied
+	// Create a new override as a copy of the parent with updates applied
 	override := &model.Event{
-		Title:              parent.Title,
-		Description:        parent.Description,
-		StartTime:          instanceStart,
-		EndTime:            "", // will be computed
-		AllDay:             parent.AllDay,
-		Color:              parent.Color,
-		Duration:           parent.Duration,
-		Categories:         parent.Categories,
-		URL:                parent.URL,
-		ReminderMinutes:    parent.ReminderMinutes,
-		Location:           parent.Location,
-		Latitude:           parent.Latitude,
-		Longitude:          parent.Longitude,
-		RecurrenceParentID:    &parentID,
+		Title:                   parent.Title,
+		Description:             parent.Description,
+		StartTime:               instanceStart,
+		EndTime:                 "", // will be computed
+		AllDay:                  parent.AllDay,
+		Color:                   parent.Color,
+		Duration:                parent.Duration,
+		Categories:              parent.Categories,
+		URL:                     parent.URL,
+		ReminderMinutes:         parent.ReminderMinutes,
+		Location:                parent.Location,
+		Latitude:                parent.Latitude,
+		Longitude:               parent.Longitude,
+		RecurrenceParentID:      &parentID,
 		RecurrenceOriginalStart: instanceStart,
 	}
 
@@ -463,54 +463,54 @@ func (s *EventService) ImportSingle(events []model.Event) (*model.Event, error) 
 	}
 	// Don't pass Duration to CreateEventRequest when EndTime is already computed
 	req := &model.CreateEventRequest{
-		Title:              e.Title,
-		Description:        e.Description,
-		StartTime:          startTime,
-		EndTime:            endTime,
-		AllDay:             e.AllDay,
-		Color:              e.Color,
-		RecurrenceFreq:     e.RecurrenceFreq,
-		RecurrenceCount:    e.RecurrenceCount,
-		RecurrenceUntil:    e.RecurrenceUntil,
-		RecurrenceInterval: e.RecurrenceInterval,
-		RecurrenceByDay:    e.RecurrenceByDay,
+		Title:                e.Title,
+		Description:          e.Description,
+		StartTime:            startTime,
+		EndTime:              endTime,
+		AllDay:               e.AllDay,
+		Color:                e.Color,
+		RecurrenceFreq:       e.RecurrenceFreq,
+		RecurrenceCount:      e.RecurrenceCount,
+		RecurrenceUntil:      e.RecurrenceUntil,
+		RecurrenceInterval:   e.RecurrenceInterval,
+		RecurrenceByDay:      e.RecurrenceByDay,
 		RecurrenceByMonthDay: e.RecurrenceByMonthDay,
-		RecurrenceByMonth:  e.RecurrenceByMonth,
-		ExDates:            e.ExDates,
-		RDates:             e.RDates,
-		Categories:         e.Categories,
-		URL:                e.URL,
-		ReminderMinutes:    e.ReminderMinutes,
-		Location:           e.Location,
-		Latitude:           e.Latitude,
-		Longitude:          e.Longitude,
+		RecurrenceByMonth:    e.RecurrenceByMonth,
+		ExDates:              e.ExDates,
+		RDates:               e.RDates,
+		Categories:           e.Categories,
+		URL:                  e.URL,
+		ReminderMinutes:      e.ReminderMinutes,
+		Location:             e.Location,
+		Latitude:             e.Latitude,
+		Longitude:            e.Longitude,
 	}
 	if err := req.Validate(); err != nil {
 		return nil, fmt.Errorf("%w: %s", ErrValidation, err.Error())
 	}
 	ev := &model.Event{
-		Title:              e.Title,
-		Description:        e.Description,
-		StartTime:          req.StartTime,
-		EndTime:            req.EndTime,
-		AllDay:             e.AllDay,
-		Color:              e.Color,
-		RecurrenceFreq:     e.RecurrenceFreq,
-		RecurrenceCount:    e.RecurrenceCount,
-		RecurrenceUntil:    e.RecurrenceUntil,
-		RecurrenceInterval: e.RecurrenceInterval,
-		RecurrenceByDay:    e.RecurrenceByDay,
+		Title:                e.Title,
+		Description:          e.Description,
+		StartTime:            req.StartTime,
+		EndTime:              req.EndTime,
+		AllDay:               e.AllDay,
+		Color:                e.Color,
+		RecurrenceFreq:       e.RecurrenceFreq,
+		RecurrenceCount:      e.RecurrenceCount,
+		RecurrenceUntil:      e.RecurrenceUntil,
+		RecurrenceInterval:   e.RecurrenceInterval,
+		RecurrenceByDay:      e.RecurrenceByDay,
 		RecurrenceByMonthDay: e.RecurrenceByMonthDay,
-		RecurrenceByMonth:  e.RecurrenceByMonth,
-		ExDates:            e.ExDates,
-		RDates:             e.RDates,
-		Duration:           e.Duration,
-		Categories:         e.Categories,
-		URL:                e.URL,
-		ReminderMinutes:    e.ReminderMinutes,
-		Location:           e.Location,
-		Latitude:           e.Latitude,
-		Longitude:          e.Longitude,
+		RecurrenceByMonth:    e.RecurrenceByMonth,
+		ExDates:              e.ExDates,
+		RDates:               e.RDates,
+		Duration:             e.Duration,
+		Categories:           e.Categories,
+		URL:                  e.URL,
+		ReminderMinutes:      e.ReminderMinutes,
+		Location:             e.Location,
+		Latitude:             e.Latitude,
+		Longitude:            e.Longitude,
 	}
 	if err := s.repo.Create(ev); err != nil {
 		return nil, err
@@ -547,57 +547,57 @@ func (s *EventService) Import(events []model.Event) (int, error) {
 			}
 		}
 		// Don't pass Duration to CreateEventRequest when EndTime is already computed
-		// (iCal decoder computes EndTime from DURATION). Pass EndTime for validation,
+		// (iCal decoder computes EndTime from DURATION). Pass EndTime for validation
 		// and store Duration on the Event directly.
 		req := &model.CreateEventRequest{
-			Title:              e.Title,
-			Description:        e.Description,
-			StartTime:          startTime,
-			EndTime:            endTime,
-			AllDay:             e.AllDay,
-			Color:              e.Color,
-			RecurrenceFreq:     e.RecurrenceFreq,
-			RecurrenceCount:    e.RecurrenceCount,
-			RecurrenceUntil:    e.RecurrenceUntil,
-			RecurrenceInterval: e.RecurrenceInterval,
-			RecurrenceByDay:    e.RecurrenceByDay,
+			Title:                e.Title,
+			Description:          e.Description,
+			StartTime:            startTime,
+			EndTime:              endTime,
+			AllDay:               e.AllDay,
+			Color:                e.Color,
+			RecurrenceFreq:       e.RecurrenceFreq,
+			RecurrenceCount:      e.RecurrenceCount,
+			RecurrenceUntil:      e.RecurrenceUntil,
+			RecurrenceInterval:   e.RecurrenceInterval,
+			RecurrenceByDay:      e.RecurrenceByDay,
 			RecurrenceByMonthDay: e.RecurrenceByMonthDay,
-			RecurrenceByMonth:  e.RecurrenceByMonth,
-			ExDates:            e.ExDates,
-			RDates:             e.RDates,
-			Categories:         e.Categories,
-			URL:                e.URL,
-			ReminderMinutes:    e.ReminderMinutes,
-			Location:           e.Location,
-			Latitude:           e.Latitude,
-			Longitude:          e.Longitude,
+			RecurrenceByMonth:    e.RecurrenceByMonth,
+			ExDates:              e.ExDates,
+			RDates:               e.RDates,
+			Categories:           e.Categories,
+			URL:                  e.URL,
+			ReminderMinutes:      e.ReminderMinutes,
+			Location:             e.Location,
+			Latitude:             e.Latitude,
+			Longitude:            e.Longitude,
 		}
 		if err := req.Validate(); err != nil {
 			continue
 		}
 		ev := &model.Event{
-			Title:              e.Title,
-			Description:        e.Description,
-			StartTime:          req.StartTime,
-			EndTime:            req.EndTime,
-			AllDay:             e.AllDay,
-			Color:              e.Color,
-			RecurrenceFreq:     e.RecurrenceFreq,
-			RecurrenceCount:    e.RecurrenceCount,
-			RecurrenceUntil:    e.RecurrenceUntil,
-			RecurrenceInterval: e.RecurrenceInterval,
-			RecurrenceByDay:    e.RecurrenceByDay,
+			Title:                e.Title,
+			Description:          e.Description,
+			StartTime:            req.StartTime,
+			EndTime:              req.EndTime,
+			AllDay:               e.AllDay,
+			Color:                e.Color,
+			RecurrenceFreq:       e.RecurrenceFreq,
+			RecurrenceCount:      e.RecurrenceCount,
+			RecurrenceUntil:      e.RecurrenceUntil,
+			RecurrenceInterval:   e.RecurrenceInterval,
+			RecurrenceByDay:      e.RecurrenceByDay,
 			RecurrenceByMonthDay: e.RecurrenceByMonthDay,
-			RecurrenceByMonth:  e.RecurrenceByMonth,
-			ExDates:            e.ExDates,
-			RDates:             e.RDates,
-			Duration:           e.Duration,
-			Categories:         e.Categories,
-			URL:                e.URL,
-			ReminderMinutes:    e.ReminderMinutes,
-			Location:           e.Location,
-			Latitude:           e.Latitude,
-			Longitude:          e.Longitude,
+			RecurrenceByMonth:    e.RecurrenceByMonth,
+			ExDates:              e.ExDates,
+			RDates:               e.RDates,
+			Duration:             e.Duration,
+			Categories:           e.Categories,
+			URL:                  e.URL,
+			ReminderMinutes:      e.ReminderMinutes,
+			Location:             e.Location,
+			Latitude:             e.Latitude,
+			Longitude:            e.Longitude,
 		}
 		if err := s.repo.Create(ev); err != nil {
 			continue
@@ -615,20 +615,20 @@ func (s *EventService) Import(events []model.Event) (int, error) {
 			continue
 		}
 		ev := &model.Event{
-			Title:              e.Title,
-			Description:        sanitize.HTML(e.Description),
-			StartTime:          e.StartTime,
-			EndTime:            e.EndTime,
-			AllDay:             e.AllDay,
-			Color:              e.Color,
-			Duration:           e.Duration,
-			Categories:         e.Categories,
-			URL:                e.URL,
-			ReminderMinutes:    e.ReminderMinutes,
-			Location:           e.Location,
-			Latitude:           e.Latitude,
-			Longitude:          e.Longitude,
-			RecurrenceParentID:    &parentID,
+			Title:                   e.Title,
+			Description:             sanitize.HTML(e.Description),
+			StartTime:               e.StartTime,
+			EndTime:                 e.EndTime,
+			AllDay:                  e.AllDay,
+			Color:                   e.Color,
+			Duration:                e.Duration,
+			Categories:              e.Categories,
+			URL:                     e.URL,
+			ReminderMinutes:         e.ReminderMinutes,
+			Location:                e.Location,
+			Latitude:                e.Latitude,
+			Longitude:               e.Longitude,
+			RecurrenceParentID:      &parentID,
 			RecurrenceOriginalStart: e.RecurrenceOriginalStart,
 		}
 		if err := s.repo.Create(ev); err != nil {

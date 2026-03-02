@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	"sort"
 	"strconv"
 	"strings"
@@ -14,7 +13,7 @@ const maxExpansions = 1000
 
 // byDayEntry represents a parsed BYDAY value like "2MO" (2nd Monday) or "MO" (every Monday).
 type byDayEntry struct {
-	Offset  int          // 0 means every occurrence, positive = nth, negative = nth from end
+	Offset  int          // 0 means every occurrence, positive = nth, negative = nth from the end
 	Weekday time.Weekday // Go weekday value
 }
 
@@ -79,7 +78,7 @@ func nthWeekdayOfMonth(year int, month time.Month, wd time.Weekday, n int) (time
 		return time.Time{}, false
 	}
 	if n > 0 {
-		// Find first occurrence of weekday in month
+		// Find the first occurrence of weekday in the month
 		first := time.Date(year, month, 1, 0, 0, 0, 0, time.UTC)
 		diff := int(wd) - int(first.Weekday())
 		if diff < 0 {
@@ -93,7 +92,7 @@ func nthWeekdayOfMonth(year int, month time.Month, wd time.Weekday, n int) (time
 		return t, true
 	}
 	// n < 0: count from end
-	// Find last day of month
+	// Find last day of the month
 	lastDay := time.Date(year, month+1, 0, 0, 0, 0, 0, time.UTC)
 	diff := int(lastDay.Weekday()) - int(wd)
 	if diff < 0 {
@@ -169,7 +168,7 @@ func expandRecurring(event model.Event, from, to time.Time) []model.Event {
 			continue
 		}
 
-		// Include if overlaps the query window
+		// Include it if overlaps the query window
 		if instEnd.After(from) && instStart.Before(to) {
 			inst := event
 			inst.StartTime = instStart.Format(time.RFC3339)
@@ -345,7 +344,7 @@ func expandMonthlyByDay(startTime time.Time, interval int, byDay []byDayEntry, u
 
 		for _, entry := range byDay {
 			if entry.Offset != 0 {
-				// Nth weekday of month (e.g., 2nd Monday, last Friday)
+				// Nth weekday of the month (e.g., 2nd Monday, last Friday)
 				t, ok := nthWeekdayOfMonth(year, month, entry.Weekday, entry.Offset)
 				if !ok {
 					continue
@@ -604,42 +603,4 @@ func mergeEvents(a, b []model.Event) []model.Event {
 		return result[i].StartTime < result[j].StartTime
 	})
 	return result
-}
-
-// FormatByDay returns a human-readable description of BYDAY value.
-func FormatByDay(byDay string) string {
-	entries := parseByDay(byDay)
-	if len(entries) == 0 {
-		return ""
-	}
-	dayNames := map[time.Weekday]string{
-		time.Sunday: "Sun", time.Monday: "Mon", time.Tuesday: "Tue",
-		time.Wednesday: "Wed", time.Thursday: "Thu", time.Friday: "Fri", time.Saturday: "Sat",
-	}
-	var parts []string
-	for _, e := range entries {
-		name := dayNames[e.Weekday]
-		if e.Offset != 0 {
-			parts = append(parts, fmt.Sprintf("%s %s", ordinal(e.Offset), name))
-		} else {
-			parts = append(parts, name)
-		}
-	}
-	return strings.Join(parts, ", ")
-}
-
-func ordinal(n int) string {
-	if n < 0 {
-		return "last"
-	}
-	switch n {
-	case 1:
-		return "1st"
-	case 2:
-		return "2nd"
-	case 3:
-		return "3rd"
-	default:
-		return fmt.Sprintf("%dth", n)
-	}
 }

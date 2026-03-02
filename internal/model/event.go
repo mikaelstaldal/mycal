@@ -8,35 +8,35 @@ import (
 )
 
 type Event struct {
-	ID              int64    `json:"id"`
-	Title           string   `json:"title"`
-	Description     string   `json:"description"`
-	StartTime       string   `json:"start_time"`
-	EndTime         string   `json:"end_time"`
-	AllDay          bool     `json:"all_day"`
-	Color           string   `json:"color"`
-	RecurrenceFreq  string   `json:"recurrence_freq"`
-	RecurrenceCount    int      `json:"recurrence_count"`
-	RecurrenceUntil    string   `json:"recurrence_until"`
-	RecurrenceInterval int      `json:"recurrence_interval"`
-	RecurrenceByDay    string   `json:"recurrence_by_day"`
-	RecurrenceByMonthDay string `json:"recurrence_by_monthday"`
-	RecurrenceByMonth  string   `json:"recurrence_by_month"`
-	ExDates            string   `json:"exdates"`
-	RDates             string   `json:"rdates"`
-	RecurrenceIndex    int      `json:"recurrence_index,omitempty"`
-	RecurrenceParentID    *int64 `json:"recurrence_parent_id,omitempty"`
-	RecurrenceOriginalStart string `json:"recurrence_original_start,omitempty"`
-	Duration        string   `json:"duration,omitempty"`
-	Categories      string   `json:"categories,omitempty"`
-	URL             string   `json:"url,omitempty"`
-	ReminderMinutes int      `json:"reminder_minutes"`
-	Location        string   `json:"location"`
-	Latitude        *float64 `json:"latitude"`
-	Longitude       *float64 `json:"longitude"`
-	CreatedAt       string   `json:"created_at"`
-	UpdatedAt       string   `json:"updated_at"`
-	ImportUID       string   `json:"-"` // transient field for iCal import UID matching
+	ID                      int64    `json:"id"`
+	Title                   string   `json:"title"`
+	Description             string   `json:"description"`
+	StartTime               string   `json:"start_time"`
+	EndTime                 string   `json:"end_time"`
+	AllDay                  bool     `json:"all_day"`
+	Color                   string   `json:"color"`
+	RecurrenceFreq          string   `json:"recurrence_freq"`
+	RecurrenceCount         int      `json:"recurrence_count"`
+	RecurrenceUntil         string   `json:"recurrence_until"`
+	RecurrenceInterval      int      `json:"recurrence_interval"`
+	RecurrenceByDay         string   `json:"recurrence_by_day"`
+	RecurrenceByMonthDay    string   `json:"recurrence_by_monthday"`
+	RecurrenceByMonth       string   `json:"recurrence_by_month"`
+	ExDates                 string   `json:"exdates"`
+	RDates                  string   `json:"rdates"`
+	RecurrenceIndex         int      `json:"recurrence_index,omitempty"`
+	RecurrenceParentID      *int64   `json:"recurrence_parent_id,omitempty"`
+	RecurrenceOriginalStart string   `json:"recurrence_original_start,omitempty"`
+	Duration                string   `json:"duration,omitempty"`
+	Categories              string   `json:"categories,omitempty"`
+	URL                     string   `json:"url,omitempty"`
+	ReminderMinutes         int      `json:"reminder_minutes"`
+	Location                string   `json:"location"`
+	Latitude                *float64 `json:"latitude"`
+	Longitude               *float64 `json:"longitude"`
+	CreatedAt               string   `json:"created_at"`
+	UpdatedAt               string   `json:"updated_at"`
+	ImportUID               string   `json:"-"` // transient field for iCal import UID matching
 }
 
 func (e *Event) IsRecurring() bool {
@@ -52,45 +52,45 @@ var validFreqs = map[string]bool{
 }
 
 type CreateEventRequest struct {
-	Title           string   `json:"title"`
-	Description     string   `json:"description"`
-	StartTime       string   `json:"start_time"`
-	EndTime         string   `json:"end_time"`
-	AllDay          bool     `json:"all_day"`
-	Color           string   `json:"color"`
-	RecurrenceFreq     string   `json:"recurrence_freq"`
-	RecurrenceCount    int      `json:"recurrence_count"`
-	RecurrenceUntil    string   `json:"recurrence_until"`
-	RecurrenceInterval int      `json:"recurrence_interval"`
-	RecurrenceByDay    string   `json:"recurrence_by_day"`
-	RecurrenceByMonthDay string `json:"recurrence_by_monthday"`
-	RecurrenceByMonth  string   `json:"recurrence_by_month"`
-	ExDates            string   `json:"exdates"`
-	RDates             string   `json:"rdates"`
-	Duration           string   `json:"duration"`
-	Categories         string   `json:"categories"`
-	URL                string   `json:"url"`
-	ReminderMinutes    int      `json:"reminder_minutes"`
-	Location           string   `json:"location"`
-	Latitude           *float64 `json:"latitude"`
-	Longitude          *float64 `json:"longitude"`
+	Title                string   `json:"title"`
+	Description          string   `json:"description"`
+	StartTime            string   `json:"start_time"`
+	EndTime              string   `json:"end_time"`
+	AllDay               bool     `json:"all_day"`
+	Color                string   `json:"color"`
+	RecurrenceFreq       string   `json:"recurrence_freq"`
+	RecurrenceCount      int      `json:"recurrence_count"`
+	RecurrenceUntil      string   `json:"recurrence_until"`
+	RecurrenceInterval   int      `json:"recurrence_interval"`
+	RecurrenceByDay      string   `json:"recurrence_by_day"`
+	RecurrenceByMonthDay string   `json:"recurrence_by_monthday"`
+	RecurrenceByMonth    string   `json:"recurrence_by_month"`
+	ExDates              string   `json:"exdates"`
+	RDates               string   `json:"rdates"`
+	Duration             string   `json:"duration"`
+	Categories           string   `json:"categories"`
+	URL                  string   `json:"url"`
+	ReminderMinutes      int      `json:"reminder_minutes"`
+	Location             string   `json:"location"`
+	Latitude             *float64 `json:"latitude"`
+	Longitude            *float64 `json:"longitude"`
 }
 
 const dateOnly = "2006-01-02"
 
 const (
-	maxTitleLength         = 500
-	maxDescriptionLength   = 10000
-	maxLocationLength      = 500
-	maxCategoriesLength    = 500
-	maxURLLength           = 2000
-	maxReminderMinutes     = 40320 // 4 weeks
-	maxRecurrenceCount     = 1000
-	maxRecurrenceInterval  = 999
-	maxRecurrenceListLen   = 5000 // max length for comma-separated recurrence fields
-	maxEventDuration       = 366 * 24 * time.Hour // 366 days
-	minYear                = 1970
-	maxYearOffset          = 100 // max year is current year + this offset
+	maxTitleLength        = 500
+	maxDescriptionLength  = 10000
+	maxLocationLength     = 500
+	maxCategoriesLength   = 500
+	maxURLLength          = 2000
+	maxReminderMinutes    = 40320 // 4 weeks
+	maxRecurrenceCount    = 1000
+	maxRecurrenceInterval = 999
+	maxRecurrenceListLen  = 5000                 // max length for comma-separated recurrence fields
+	maxEventDuration      = 366 * 24 * time.Hour // 366 days
+	minYear               = 1970
+	maxYearOffset         = 100 // max year is the current year plus this offset
 )
 
 var validWeekdays = map[string]bool{
@@ -389,7 +389,7 @@ func (r *CreateEventRequest) Validate() error {
 		if r.ReminderMinutes > maxReminderMinutes {
 			return fmt.Errorf("reminder_minutes must be at most %d", maxReminderMinutes)
 		}
-		return r.validateCoordinates()
+		return validateCoordinates(r.Latitude, r.Longitude)
 	}
 
 	if r.EndTime == "" {
@@ -424,7 +424,7 @@ func (r *CreateEventRequest) Validate() error {
 	if r.ReminderMinutes > maxReminderMinutes {
 		return fmt.Errorf("reminder_minutes must be at most %d", maxReminderMinutes)
 	}
-	return r.validateCoordinates()
+	return validateCoordinates(r.Latitude, r.Longitude)
 }
 
 func (r *CreateEventRequest) validateRecurrence() error {
@@ -446,39 +446,29 @@ func (r *CreateEventRequest) validateRecurrence() error {
 		r.RecurrenceByDay, r.RecurrenceByMonthDay, r.RecurrenceByMonth, r.ExDates, r.RDates)
 }
 
-func (r *CreateEventRequest) validateCoordinates() error {
-	if r.Latitude != nil && (*r.Latitude < -90 || *r.Latitude > 90) {
-		return fmt.Errorf("latitude must be between -90 and 90")
-	}
-	if r.Longitude != nil && (*r.Longitude < -180 || *r.Longitude > 180) {
-		return fmt.Errorf("longitude must be between -180 and 180")
-	}
-	return nil
-}
-
 type UpdateEventRequest struct {
-	Title           *string  `json:"title"`
-	Description     *string  `json:"description"`
-	StartTime       *string  `json:"start_time"`
-	EndTime         *string  `json:"end_time"`
-	AllDay          *bool    `json:"all_day"`
-	Color           *string  `json:"color"`
-	RecurrenceFreq     *string  `json:"recurrence_freq"`
-	RecurrenceCount    *int     `json:"recurrence_count"`
-	RecurrenceUntil    *string  `json:"recurrence_until"`
-	RecurrenceInterval *int     `json:"recurrence_interval"`
-	RecurrenceByDay    *string  `json:"recurrence_by_day"`
-	RecurrenceByMonthDay *string `json:"recurrence_by_monthday"`
-	RecurrenceByMonth  *string  `json:"recurrence_by_month"`
-	ExDates            *string  `json:"exdates"`
-	RDates             *string  `json:"rdates"`
-	Duration           *string  `json:"duration"`
-	Categories         *string  `json:"categories"`
-	URL                *string  `json:"url"`
-	ReminderMinutes    *int     `json:"reminder_minutes"`
-	Location           *string  `json:"location"`
-	Latitude           *float64 `json:"latitude"`
-	Longitude          *float64 `json:"longitude"`
+	Title                *string  `json:"title"`
+	Description          *string  `json:"description"`
+	StartTime            *string  `json:"start_time"`
+	EndTime              *string  `json:"end_time"`
+	AllDay               *bool    `json:"all_day"`
+	Color                *string  `json:"color"`
+	RecurrenceFreq       *string  `json:"recurrence_freq"`
+	RecurrenceCount      *int     `json:"recurrence_count"`
+	RecurrenceUntil      *string  `json:"recurrence_until"`
+	RecurrenceInterval   *int     `json:"recurrence_interval"`
+	RecurrenceByDay      *string  `json:"recurrence_by_day"`
+	RecurrenceByMonthDay *string  `json:"recurrence_by_monthday"`
+	RecurrenceByMonth    *string  `json:"recurrence_by_month"`
+	ExDates              *string  `json:"exdates"`
+	RDates               *string  `json:"rdates"`
+	Duration             *string  `json:"duration"`
+	Categories           *string  `json:"categories"`
+	URL                  *string  `json:"url"`
+	ReminderMinutes      *int     `json:"reminder_minutes"`
+	Location             *string  `json:"location"`
+	Latitude             *float64 `json:"latitude"`
+	Longitude            *float64 `json:"longitude"`
 }
 
 func (r *UpdateEventRequest) Validate() error {
@@ -525,7 +515,7 @@ func (r *UpdateEventRequest) Validate() error {
 	}
 
 	// If not setting all_day, and all_day pointer is nil, we don't know yet
-	// whether event is all-day; service layer will do final validation
+	// whether the event is all-day; service layer will do final validation
 	start := ""
 	end := ""
 	if r.StartTime != nil {
@@ -608,10 +598,18 @@ func (r *UpdateEventRequest) Validate() error {
 	if r.ReminderMinutes != nil && *r.ReminderMinutes > maxReminderMinutes {
 		return fmt.Errorf("reminder_minutes must be at most %d", maxReminderMinutes)
 	}
-	if r.Latitude != nil && (*r.Latitude < -90 || *r.Latitude > 90) {
+	if err := validateCoordinates(r.Latitude, r.Longitude); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func validateCoordinates(latitude, longitude *float64) error {
+	if latitude != nil && (*latitude < -90 || *latitude > 90) {
 		return fmt.Errorf("latitude must be between -90 and 90")
 	}
-	if r.Longitude != nil && (*r.Longitude < -180 || *r.Longitude > 180) {
+	if longitude != nil && (*longitude < -180 || *longitude > 180) {
 		return fmt.Errorf("longitude must be between -180 and 180")
 	}
 	return nil

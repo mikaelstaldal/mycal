@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -194,7 +195,7 @@ func (r *SQLiteRepository) GetByID(id int64) (*model.Event, error) {
 		`SELECT `+selectColumns+`
 		 FROM events WHERE id = ?`, id,
 	))
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
@@ -307,7 +308,7 @@ func (r *SQLiteRepository) GetOverride(parentID int64, originalStart string) (*m
 		`SELECT `+selectColumns+`
 		 FROM events WHERE recurrence_parent_id = ? AND recurrence_original_start = ?`, parentID, originalStart,
 	))
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {

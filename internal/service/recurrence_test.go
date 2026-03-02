@@ -240,7 +240,7 @@ func TestExpandWithRdate(t *testing.T) {
 }
 
 func TestExpandIntervalWithByDay(t *testing.T) {
-	// Every 2 weeks on MO,FR
+	// Every 2 weeks on MO, FR
 	e := makeEvent("WEEKLY", "2026-02-02T10:00:00Z", "2026-02-02T11:00:00Z", func(e *model.Event) {
 		e.RecurrenceInterval = 2
 		e.RecurrenceByDay = "MO,FR"

@@ -200,7 +200,7 @@ func NewCalendarFeedHandler(svc *service.EventService) http.Handler {
 	return withMiddleware(exportICalFeed(svc))
 }
 
-const maxImportSize = 5 * 1024 * 1024 // 5MB
+const maxImportSize = 10 * 1024 * 1024 // 10 MiB
 
 // validateExternalURL checks that the URL is safe to fetch (not localhost or private IPs).
 func validateExternalURL(rawURL string) error {
@@ -291,7 +291,7 @@ func importSingleEvent(svc *service.EventService) http.HandlerFunc {
 
 		events, err := ical.Decode(reader)
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "failed to parse iCal data")
+			writeError(w, http.StatusBadRequest, "failed to parse iCalendar data")
 			return
 		}
 
@@ -319,7 +319,7 @@ func importEvents(svc *service.EventService) http.HandlerFunc {
 
 		events, err := ical.Decode(reader)
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "failed to parse iCal data")
+			writeError(w, http.StatusBadRequest, "failed to parse iCalendar data")
 			return
 		}
 

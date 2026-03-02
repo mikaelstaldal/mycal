@@ -10,16 +10,16 @@ import (
 
 // mockRepo implements repository.EventRepository with configurable behavior per test.
 type mockRepo struct {
-	listFn            func(from, to string) ([]model.Event, error)
-	listAllFn         func() ([]model.Event, error)
-	listRecurringFn   func(to string) ([]model.Event, error)
-	searchFn          func(query, from, to string) ([]model.Event, error)
-	getByIDFn         func(id int64) (*model.Event, error)
-	createFn          func(event *model.Event) error
-	updateFn          func(event *model.Event) error
-	deleteFn          func(id int64) error
-	listOverridesFn   func(parentIDs []int64) ([]model.Event, error)
-	getOverrideFn     func(parentID int64, originalStart string) (*model.Event, error)
+	listFn             func(from, to string) ([]model.Event, error)
+	listAllFn          func() ([]model.Event, error)
+	listRecurringFn    func(to string) ([]model.Event, error)
+	searchFn           func(query, from, to string) ([]model.Event, error)
+	getByIDFn          func(id int64) (*model.Event, error)
+	createFn           func(event *model.Event) error
+	updateFn           func(event *model.Event) error
+	deleteFn           func(id int64) error
+	listOverridesFn    func(parentIDs []int64) ([]model.Event, error)
+	getOverrideFn      func(parentID int64, originalStart string) (*model.Event, error)
 	deleteByParentIDFn func(parentID int64) error
 }
 
@@ -101,9 +101,9 @@ func (m *mockRepo) DeleteByParentID(parentID int64) error {
 }
 
 // helpers
-func strPtr(s string) *string    { return &s }
-func intPtr(i int) *int          { return &i }
-func boolPtr(b bool) *bool       { return &b }
+func strPtr(s string) *string       { return &s }
+func intPtr(i int) *int             { return &i }
+func boolPtr(b bool) *bool          { return &b }
 func float64Ptr(f float64) *float64 { return &f }
 
 var errRepo = errors.New("repo error")
@@ -534,7 +534,7 @@ func TestUpdate_NotFound(t *testing.T) {
 func TestUpdate_ValidationFailure(t *testing.T) {
 	repo := &mockRepo{}
 	svc := NewEventService(repo)
-	req := &model.UpdateEventRequest{Title: strPtr("")} // empty title not allowed
+	req := &model.UpdateEventRequest{Title: strPtr("")} // an empty title isn't allowed
 	_, err := svc.Update(1, req)
 	if !errors.Is(err, ErrValidation) {
 		t.Fatalf("expected ErrValidation, got: %v", err)
@@ -644,7 +644,7 @@ func TestUpdate_ToggleToAllDay(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	// Should normalize start to midnight and set end to next day
+	// Should normalize start to midnight and set the end to the next day
 	if e.StartTime != "2026-02-15T00:00:00Z" {
 		t.Fatalf("expected start normalized to midnight, got %q", e.StartTime)
 	}
@@ -669,22 +669,22 @@ func TestUpdate_AllFieldUpdates(t *testing.T) {
 	}
 	svc := NewEventService(repo)
 	req := &model.UpdateEventRequest{
-		Color:              strPtr("blue"),
-		RecurrenceFreq:     strPtr("WEEKLY"),
-		RecurrenceCount:    intPtr(10),
-		RecurrenceUntil:    strPtr("2026-12-31T00:00:00Z"),
-		RecurrenceInterval: intPtr(2),
-		RecurrenceByDay:    strPtr("MO,WE"),
+		Color:                strPtr("blue"),
+		RecurrenceFreq:       strPtr("WEEKLY"),
+		RecurrenceCount:      intPtr(10),
+		RecurrenceUntil:      strPtr("2026-12-31T00:00:00Z"),
+		RecurrenceInterval:   intPtr(2),
+		RecurrenceByDay:      strPtr("MO,WE"),
 		RecurrenceByMonthDay: strPtr("1,15"),
-		RecurrenceByMonth:  strPtr("1,6"),
-		ExDates:            strPtr("2026-02-22T10:00:00Z"),
-		RDates:             strPtr("2026-03-01T10:00:00Z"),
-		Categories:         strPtr("work"),
-		URL:                strPtr("https://example.com"),
-		ReminderMinutes:    intPtr(30),
-		Location:           strPtr("Room A"),
-		Latitude:           float64Ptr(59.33),
-		Longitude:          float64Ptr(18.07),
+		RecurrenceByMonth:    strPtr("1,6"),
+		ExDates:              strPtr("2026-02-22T10:00:00Z"),
+		RDates:               strPtr("2026-03-01T10:00:00Z"),
+		Categories:           strPtr("work"),
+		URL:                  strPtr("https://example.com"),
+		ReminderMinutes:      intPtr(30),
+		Location:             strPtr("Room A"),
+		Latitude:             float64Ptr(59.33),
+		Longitude:            float64Ptr(18.07),
 	}
 	e, err := svc.Update(1, req)
 	if err != nil {
@@ -808,7 +808,7 @@ func TestCreateOrUpdateOverride_NewOverride(t *testing.T) {
 	if e.RecurrenceOriginalStart != "2026-02-08T09:00:00Z" {
 		t.Fatalf("expected original_start '2026-02-08T09:00:00Z', got %q", e.RecurrenceOriginalStart)
 	}
-	// EndTime should be computed from parent's duration (1h)
+	// EndTime should be computed from the parent's duration (1h)
 	if e.EndTime != "2026-02-08T10:00:00Z" {
 		t.Fatalf("expected end_time '2026-02-08T10:00:00Z', got %q", e.EndTime)
 	}
@@ -828,7 +828,7 @@ func TestCreateOrUpdateOverride_ExistingOverride(t *testing.T) {
 					RecurrenceFreq: "WEEKLY",
 				}, nil
 			}
-			// Return existing override for Update call
+			// Return the existing override for Update call
 			return &model.Event{
 				ID:                      overrideID,
 				Title:                   "Old Override",
@@ -912,18 +912,18 @@ func TestCreateOrUpdateOverride_NewOverrideWithAllFields(t *testing.T) {
 	repo := &mockRepo{
 		getByIDFn: func(id int64) (*model.Event, error) {
 			return &model.Event{
-				ID:             parentID,
-				Title:          "Weekly",
-				Description:    "Desc",
-				StartTime:      "2026-02-01T09:00:00Z",
-				EndTime:        "2026-02-01T10:00:00Z",
-				RecurrenceFreq: "WEEKLY",
-				Location:       "Office",
-				Categories:     "work",
-				URL:            "https://example.com",
+				ID:              parentID,
+				Title:           "Weekly",
+				Description:     "Desc",
+				StartTime:       "2026-02-01T09:00:00Z",
+				EndTime:         "2026-02-01T10:00:00Z",
+				RecurrenceFreq:  "WEEKLY",
+				Location:        "Office",
+				Categories:      "work",
+				URL:             "https://example.com",
 				ReminderMinutes: 15,
-				Latitude:       float64Ptr(59.0),
-				Longitude:      float64Ptr(18.0),
+				Latitude:        float64Ptr(59.0),
+				Longitude:       float64Ptr(18.0),
 			}, nil
 		},
 		getOverrideFn: func(pid int64, origStart string) (*model.Event, error) {
@@ -1020,7 +1020,7 @@ func TestCreateOrUpdateOverride_GetOverrideError(t *testing.T) {
 func TestCreateOrUpdateOverride_ValidationFailure(t *testing.T) {
 	repo := &mockRepo{}
 	svc := NewEventService(repo)
-	req := &model.UpdateEventRequest{Title: strPtr("")} // empty title not allowed
+	req := &model.UpdateEventRequest{Title: strPtr("")} // an empty title isn't allowed
 	_, err := svc.CreateOrUpdateOverride(1, "2026-02-08T09:00:00Z", req)
 	if !errors.Is(err, ErrValidation) {
 		t.Fatalf("expected ErrValidation, got: %v", err)
@@ -1182,7 +1182,7 @@ func TestImport_ParentsAndOverrides(t *testing.T) {
 	if len(createdEvents) != 2 {
 		t.Fatalf("expected 2 created events, got %d", len(createdEvents))
 	}
-	// Second should be override linked to first
+	// The second should be override linked to the first
 	override := createdEvents[1]
 	if override.RecurrenceParentID == nil || *override.RecurrenceParentID != 1 {
 		t.Fatal("expected override to reference parent ID 1")

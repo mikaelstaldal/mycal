@@ -234,13 +234,101 @@ func TestValidateUpdateRecurrenceFields(t *testing.T) {
 
 func TestValidateAllDayRecurrenceFields(t *testing.T) {
 	r := CreateEventRequest{
-		Title:          "All Day Test",
-		StartTime:      "2025-06-01",
-		AllDay:         true,
-		RecurrenceFreq: "WEEKLY",
+		Title:           "All Day Test",
+		StartTime:       "2025-06-01",
+		AllDay:          true,
+		RecurrenceFreq:  "WEEKLY",
 		RecurrenceByDay: "MO,XX",
 	}
 	if err := r.Validate(); err == nil || !strings.Contains(err.Error(), "invalid weekday") {
 		t.Fatalf("expected weekday error for all-day event, got: %v", err)
+	}
+}
+
+func TestValidateLatitude(t *testing.T) {
+	tests := []struct {
+		name    string
+		lat     float64
+		wantErr string
+	}{
+		{"valid zero", 0, ""},
+		{"valid positive", 45.5, ""},
+		{"valid negative", -45.5, ""},
+		{"valid max", 90, ""},
+		{"valid min", -90, ""},
+		{"too large", 90.1, "between -90 and 90"},
+		{"too small", -90.1, "between -90 and 90"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := validCreateRequest()
+			r.Latitude = &tt.lat
+			err := r.Validate()
+			if tt.wantErr == "" {
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+			} else {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("expected error containing %q, got: %v", tt.wantErr, err)
+				}
+			}
+		})
+	}
+}
+
+func TestValidateLongitude(t *testing.T) {
+	tests := []struct {
+		name    string
+		lon     float64
+		wantErr string
+	}{
+		{"valid zero", 0, ""},
+		{"valid positive", 120.5, ""},
+		{"valid negative", -120.5, ""},
+		{"valid max", 180, ""},
+		{"valid min", -180, ""},
+		{"too large", 180.1, "between -180 and 180"},
+		{"too small", -180.1, "between -180 and 180"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := validCreateRequest()
+			r.Longitude = &tt.lon
+			err := r.Validate()
+			if tt.wantErr == "" {
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+			} else {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("expected error containing %q, got: %v", tt.wantErr, err)
+				}
+			}
+		})
+	}
+}
+
+func TestValidateUpdateCoordinates(t *testing.T) {
+	// Latitude validation in update
+	badLat := 91.0
+	r := &UpdateEventRequest{Latitude: &badLat}
+	if err := r.Validate(); err == nil || !strings.Contains(err.Error(), "between -90 and 90") {
+		t.Fatalf("expected latitude error, got: %v", err)
+	}
+
+	// Longitude validation in update
+	badLon := 181.0
+	r2 := &UpdateEventRequest{Longitude: &badLon}
+	if err := r2.Validate(); err == nil || !strings.Contains(err.Error(), "between -180 and 180") {
+		t.Fatalf("expected longitude error, got: %v", err)
+	}
+
+	// Valid coordinates in update
+	goodLat := 45.5
+	goodLon := 120.5
+	r3 := &UpdateEventRequest{Latitude: &goodLat, Longitude: &goodLon}
+	if err := r3.Validate(); err != nil {
+		t.Fatalf("unexpected error for valid coordinates: %v", err)
 	}
 }
