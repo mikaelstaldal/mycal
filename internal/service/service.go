@@ -436,21 +436,8 @@ func (s *EventService) CreateOrUpdateOverride(parentID int64, instanceStart stri
 	return override, nil
 }
 
-func (s *EventService) ImportSingle(events []model.Event) (*model.Event, error) {
-	if len(events) == 0 {
-		return nil, fmt.Errorf("%w: iCal source contains no events", ErrValidation)
-	}
-	// Reject recurrence overrides — importing a modification without the parent recurring event doesn't make sense
-	for _, e := range events {
-		if e.RecurrenceOriginalStart != "" {
-			return nil, fmt.Errorf("%w: iCal source contains a recurrence override (RECURRENCE-ID), which is not supported for single event import", ErrValidation)
-		}
-	}
-	if len(events) > 1 {
-		return nil, fmt.Errorf("%w: iCal source contains %d events, expected exactly one", ErrValidation, len(events))
-	}
-
-	e := events[0]
+// buildEventForImport validates a parsed event and returns a model.Event ready to persist.
+func buildEventForImport(e model.Event) (*model.Event, error) {
 	startTime := e.StartTime
 	endTime := e.EndTime
 	if e.AllDay {
@@ -462,6 +449,8 @@ func (s *EventService) ImportSingle(events []model.Event) (*model.Event, error) 
 		}
 	}
 	// Don't pass Duration to CreateEventRequest when EndTime is already computed
+	// (iCal decoder computes EndTime from DURATION). Pass EndTime for validation
+	// and store Duration on the Event directly.
 	req := &model.CreateEventRequest{
 		Title:                e.Title,
 		Description:          e.Description,
@@ -488,7 +477,7 @@ func (s *EventService) ImportSingle(events []model.Event) (*model.Event, error) 
 	if err := req.Validate(); err != nil {
 		return nil, fmt.Errorf("%w: %s", ErrValidation, err.Error())
 	}
-	ev := &model.Event{
+	return &model.Event{
 		Title:                e.Title,
 		Description:          e.Description,
 		StartTime:            req.StartTime,
@@ -511,6 +500,26 @@ func (s *EventService) ImportSingle(events []model.Event) (*model.Event, error) 
 		Location:             e.Location,
 		Latitude:             e.Latitude,
 		Longitude:            e.Longitude,
+	}, nil
+}
+
+func (s *EventService) ImportSingle(events []model.Event) (*model.Event, error) {
+	if len(events) == 0 {
+		return nil, fmt.Errorf("%w: iCal source contains no events", ErrValidation)
+	}
+	// Reject recurrence overrides — importing a modification without the parent recurring event doesn't make sense
+	for _, e := range events {
+		if e.RecurrenceOriginalStart != "" {
+			return nil, fmt.Errorf("%w: iCal source contains a recurrence override (RECURRENCE-ID), which is not supported for single event import", ErrValidation)
+		}
+	}
+	if len(events) > 1 {
+		return nil, fmt.Errorf("%w: iCal source contains %d events, expected exactly one", ErrValidation, len(events))
+	}
+
+	ev, err := buildEventForImport(events[0])
+	if err != nil {
+		return nil, err
 	}
 	if err := s.repo.Create(ev); err != nil {
 		return nil, err
@@ -536,68 +545,9 @@ func (s *EventService) Import(events []model.Event) (int, error) {
 	parentByUID := make(map[string]int64)
 
 	for _, e := range parents {
-		startTime := e.StartTime
-		endTime := e.EndTime
-		if e.AllDay {
-			if t, err := time.Parse(time.RFC3339, startTime); err == nil {
-				startTime = t.Format(dateOnly)
-			}
-			if t, err := time.Parse(time.RFC3339, endTime); err == nil {
-				endTime = t.Format(dateOnly)
-			}
-		}
-		// Don't pass Duration to CreateEventRequest when EndTime is already computed
-		// (iCal decoder computes EndTime from DURATION). Pass EndTime for validation
-		// and store Duration on the Event directly.
-		req := &model.CreateEventRequest{
-			Title:                e.Title,
-			Description:          e.Description,
-			StartTime:            startTime,
-			EndTime:              endTime,
-			AllDay:               e.AllDay,
-			Color:                e.Color,
-			RecurrenceFreq:       e.RecurrenceFreq,
-			RecurrenceCount:      e.RecurrenceCount,
-			RecurrenceUntil:      e.RecurrenceUntil,
-			RecurrenceInterval:   e.RecurrenceInterval,
-			RecurrenceByDay:      e.RecurrenceByDay,
-			RecurrenceByMonthDay: e.RecurrenceByMonthDay,
-			RecurrenceByMonth:    e.RecurrenceByMonth,
-			ExDates:              e.ExDates,
-			RDates:               e.RDates,
-			Categories:           e.Categories,
-			URL:                  e.URL,
-			ReminderMinutes:      e.ReminderMinutes,
-			Location:             e.Location,
-			Latitude:             e.Latitude,
-			Longitude:            e.Longitude,
-		}
-		if err := req.Validate(); err != nil {
+		ev, err := buildEventForImport(e)
+		if err != nil {
 			continue
-		}
-		ev := &model.Event{
-			Title:                e.Title,
-			Description:          e.Description,
-			StartTime:            req.StartTime,
-			EndTime:              req.EndTime,
-			AllDay:               e.AllDay,
-			Color:                e.Color,
-			RecurrenceFreq:       e.RecurrenceFreq,
-			RecurrenceCount:      e.RecurrenceCount,
-			RecurrenceUntil:      e.RecurrenceUntil,
-			RecurrenceInterval:   e.RecurrenceInterval,
-			RecurrenceByDay:      e.RecurrenceByDay,
-			RecurrenceByMonthDay: e.RecurrenceByMonthDay,
-			RecurrenceByMonth:    e.RecurrenceByMonth,
-			ExDates:              e.ExDates,
-			RDates:               e.RDates,
-			Duration:             e.Duration,
-			Categories:           e.Categories,
-			URL:                  e.URL,
-			ReminderMinutes:      e.ReminderMinutes,
-			Location:             e.Location,
-			Latitude:             e.Latitude,
-			Longitude:            e.Longitude,
 		}
 		if err := s.repo.Create(ev); err != nil {
 			continue
