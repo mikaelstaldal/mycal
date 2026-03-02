@@ -2,6 +2,12 @@
 
 A personal calendar application with iCalendar support. Go backend, SQLite storage, REST API, and a built-in Preact web frontend.
 
+## Clients
+
+In addition to the built-in web interface, there is also 
+
+* A [native Android app](https://github.com/mikaelstaldal/mycal-android)
+
 ## Status
 
 *Note:* This application has mostly been vibe coded with AI tools, it has not been properly reviewed or extensively tested,

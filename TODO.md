@@ -38,7 +38,3 @@
 - [ ] Support RESOURCES property
 - [ ] Support REFRESH-INTERVAL for subscription feed optimization
 - [x] Support VTIMEZONE definitions for import and export
-
-## Later
-
-- [ ] Native Android app
