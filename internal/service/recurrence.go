@@ -207,7 +207,10 @@ func expandRecurring(event model.Event, from, to time.Time) []model.Event {
 		}
 		// Re-sort after adding RDATEs
 		sort.Slice(instances, func(i, j int) bool {
-			return instances[i].StartTime < instances[j].StartTime
+			if instances[i].StartTime != instances[j].StartTime {
+				return instances[i].StartTime < instances[j].StartTime
+			}
+			return instances[i].CreatedAt < instances[j].CreatedAt
 		})
 	}
 
@@ -600,7 +603,10 @@ func addFreq(t time.Time, freq string, n int) time.Time {
 func mergeEvents(a, b []model.Event) []model.Event {
 	result := append(a, b...)
 	sort.Slice(result, func(i, j int) bool {
-		return result[i].StartTime < result[j].StartTime
+		if result[i].StartTime != result[j].StartTime {
+			return result[i].StartTime < result[j].StartTime
+		}
+		return result[i].CreatedAt < result[j].CreatedAt
 	})
 	return result
 }

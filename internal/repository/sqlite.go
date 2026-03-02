@@ -101,7 +101,7 @@ func scanEvent(scanner interface{ Scan(...any) error }) (model.Event, error) {
 func (r *SQLiteRepository) List(from, to string) ([]model.Event, error) {
 	rows, err := r.db.Query(
 		`SELECT `+selectColumns+`
-		 FROM events WHERE start_time < ? AND end_time > ? AND recurrence_freq = '' AND recurrence_parent_id IS NULL ORDER BY start_time`,
+		 FROM events WHERE start_time < ? AND end_time > ? AND recurrence_freq = '' AND recurrence_parent_id IS NULL ORDER BY start_time, created_at`,
 		to, from,
 	)
 	if err != nil {
@@ -123,7 +123,7 @@ func (r *SQLiteRepository) List(from, to string) ([]model.Event, error) {
 func (r *SQLiteRepository) ListAll() ([]model.Event, error) {
 	rows, err := r.db.Query(
 		`SELECT ` + selectColumns + `
-		 FROM events ORDER BY start_time`,
+		 FROM events ORDER BY start_time, created_at`,
 	)
 	if err != nil {
 		return nil, err
@@ -240,7 +240,7 @@ func (r *SQLiteRepository) Update(event *model.Event) error {
 func (r *SQLiteRepository) ListRecurring(to string) ([]model.Event, error) {
 	rows, err := r.db.Query(
 		`SELECT `+selectColumns+`
-		 FROM events WHERE recurrence_freq != '' AND start_time < ? AND recurrence_parent_id IS NULL ORDER BY start_time`,
+		 FROM events WHERE recurrence_freq != '' AND start_time < ? AND recurrence_parent_id IS NULL ORDER BY start_time, created_at`,
 		to,
 	)
 	if err != nil {
@@ -285,7 +285,7 @@ func (r *SQLiteRepository) ListOverrides(parentIDs []int64) ([]model.Event, erro
 		args[i] = id
 	}
 	query := `SELECT ` + selectColumns + `
-		FROM events WHERE recurrence_parent_id IN (` + strings.Join(placeholders, ",") + `) ORDER BY start_time`
+		FROM events WHERE recurrence_parent_id IN (` + strings.Join(placeholders, ",") + `) ORDER BY start_time, created_at`
 	rows, err := r.db.Query(query, args...)
 	if err != nil {
 		return nil, err
