@@ -8,8 +8,8 @@ All endpoints are under `/api/v1`. Datetimes use RFC 3339 format (or `YYYY-MM-DD
 | GET    | `/api/v1/events?q=...`                         | Search events by text                                                                                           |
 | POST   | `/api/v1/events`                               | Create an event                                                                                                 |
 | GET    | `/api/v1/events/{id}`                          | Get a single event                                                                                              |
-| PUT    | `/api/v1/events/{id}`                          | Update an event (partial)                                                                                       |
-| PUT    | `/api/v1/events/{id}?instance_start=<RFC3339>` | Override a single recurrence instance                                                                           |
+| PATCH  | `/api/v1/events/{id}`                          | Update an event (partial)                                                                                       |
+| PATCH  | `/api/v1/events/{id}?instance_start=<RFC3339>` | Override a single recurrence instance                                                                           |
 | DELETE | `/api/v1/events/{id}`                          | Delete an event and all its overrides (add `?instance_start=<RFC3339>` to exclude a single recurrence instance) |
 | POST   | `/api/v1/import`                               | Import events from iCalendar data                                                                               |
 | POST   | `/api/v1/import-single`                        | Import a single event from iCalendar data                                                                       |

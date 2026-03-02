@@ -23,7 +23,7 @@ func registerEventRoutes(mux *http.ServeMux, svc *service.EventService) {
 	mux.HandleFunc("GET /api/v1/events.ics", exportICalFeed(svc))
 	mux.HandleFunc("POST /api/v1/events", createEvent(svc))
 	mux.HandleFunc("GET /api/v1/events/{id}", getEvent(svc))
-	mux.HandleFunc("PUT /api/v1/events/{id}", updateEvent(svc))
+	mux.HandleFunc("PATCH /api/v1/events/{id}", updateEvent(svc))
 	mux.HandleFunc("DELETE /api/v1/events/{id}", deleteEvent(svc))
 	mux.HandleFunc("POST /api/v1/import", importEvents(svc))
 	mux.HandleFunc("POST /api/v1/import-single", importSingleEvent(svc))

@@ -60,13 +60,13 @@ func postICS(t *testing.T, url string, icsContent string) *http.Response {
 	return resp
 }
 
-func putJSON(t *testing.T, url string, body any) *http.Response {
+func patchJSON(t *testing.T, url string, body any) *http.Response {
 	t.Helper()
 	data, err := json.Marshal(body)
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	req, err := http.NewRequest(http.MethodPut, url, bytes.NewReader(data))
+	req, err := http.NewRequest(http.MethodPatch, url, bytes.NewReader(data))
 	if err != nil {
 		t.Fatalf("new request: %v", err)
 	}
@@ -250,7 +250,7 @@ func TestUpdateEvent(t *testing.T) {
 	created := createTestEvent(t, ts)
 
 	newTitle := "Updated Title"
-	resp := putJSON(t, ts.URL+"/api/v1/events/"+itoa(created.ID), model.UpdateEventRequest{
+	resp := patchJSON(t, ts.URL+"/api/v1/events/"+itoa(created.ID), model.UpdateEventRequest{
 		Title: &newTitle,
 	})
 	if resp.StatusCode != http.StatusOK {
@@ -269,7 +269,7 @@ func TestUpdateEvent(t *testing.T) {
 func TestUpdateEvent_NotFound(t *testing.T) {
 	ts := setupTestServer(t)
 	title := "X"
-	resp := putJSON(t, ts.URL+"/api/v1/events/99999", model.UpdateEventRequest{
+	resp := patchJSON(t, ts.URL+"/api/v1/events/99999", model.UpdateEventRequest{
 		Title: &title,
 	})
 	defer resp.Body.Close()
@@ -418,10 +418,10 @@ func TestRecurringEventExpansion(t *testing.T) {
 
 	// Create a weekly recurring event
 	body := model.CreateEventRequest{
-		Title:          "Weekly Standup",
-		StartTime:      "2026-03-02T09:00:00Z",
-		EndTime:        "2026-03-02T09:30:00Z",
-		RecurrenceFreq: "WEEKLY",
+		Title:           "Weekly Standup",
+		StartTime:       "2026-03-02T09:00:00Z",
+		EndTime:         "2026-03-02T09:30:00Z",
+		RecurrenceFreq:  "WEEKLY",
 		RecurrenceCount: 10,
 	}
 	resp := postJSON(t, ts.URL+"/api/v1/events", body)
@@ -450,10 +450,10 @@ func TestDeleteWithInstanceStart(t *testing.T) {
 	ts := setupTestServer(t)
 
 	body := model.CreateEventRequest{
-		Title:          "Daily Standup",
-		StartTime:      "2026-03-01T09:00:00Z",
-		EndTime:        "2026-03-01T09:30:00Z",
-		RecurrenceFreq: "DAILY",
+		Title:           "Daily Standup",
+		StartTime:       "2026-03-01T09:00:00Z",
+		EndTime:         "2026-03-01T09:30:00Z",
+		RecurrenceFreq:  "DAILY",
 		RecurrenceCount: 30,
 	}
 	resp := postJSON(t, ts.URL+"/api/v1/events", body)
@@ -569,7 +569,7 @@ func TestOverrideInstance(t *testing.T) {
 
 	// Override the 2nd instance (2026-03-09)
 	newTitle := "Modified Standup"
-	resp = putJSON(t, ts.URL+"/api/v1/events/"+itoa(created.ID)+"?instance_start=2026-03-09T09:00:00Z",
+	resp = patchJSON(t, ts.URL+"/api/v1/events/"+itoa(created.ID)+"?instance_start=2026-03-09T09:00:00Z",
 		model.UpdateEventRequest{Title: &newTitle})
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("override: got status %d, want %d", resp.StatusCode, http.StatusOK)
@@ -618,7 +618,7 @@ func TestDeleteParentDeletesOverrides(t *testing.T) {
 
 	// Create an override
 	newTitle := "Override"
-	putJSON(t, ts.URL+"/api/v1/events/"+itoa(created.ID)+"?instance_start=2026-04-02T10:00:00Z",
+	patchJSON(t, ts.URL+"/api/v1/events/"+itoa(created.ID)+"?instance_start=2026-04-02T10:00:00Z",
 		model.UpdateEventRequest{Title: &newTitle})
 
 	// Delete the parent
@@ -653,7 +653,7 @@ func TestDeleteInstanceWithOverride(t *testing.T) {
 
 	// Create an override for Apr 2
 	newTitle := "Override"
-	putJSON(t, ts.URL+"/api/v1/events/"+itoa(created.ID)+"?instance_start=2026-04-02T10:00:00Z",
+	patchJSON(t, ts.URL+"/api/v1/events/"+itoa(created.ID)+"?instance_start=2026-04-02T10:00:00Z",
 		model.UpdateEventRequest{Title: &newTitle})
 
 	// Delete that instance via EXDATE
@@ -731,7 +731,7 @@ func TestCreateEventWithCategories(t *testing.T) {
 
 	// Update categories
 	newCats := "Personal"
-	resp = putJSON(t, ts.URL+"/api/v1/events/"+itoa(event.ID), model.UpdateEventRequest{
+	resp = patchJSON(t, ts.URL+"/api/v1/events/"+itoa(event.ID), model.UpdateEventRequest{
 		Categories: &newCats,
 	})
 	if resp.StatusCode != http.StatusOK {

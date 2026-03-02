@@ -30,7 +30,7 @@ export async function updateEvent(id, data, instanceStart) {
         url += `?instance_start=${encodeURIComponent(instanceStart)}`;
     }
     const res = await fetch(url, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
     });
