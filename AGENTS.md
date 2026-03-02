@@ -70,7 +70,7 @@ so make sure to keep it backwards compatible.
 
 ## Database
 
-Do not do database migrations, assume that we will start with an empty database.
+Make migrations when changing the database schema, assume there is production data that needs to be preserved. 
 
 ## Version control
 

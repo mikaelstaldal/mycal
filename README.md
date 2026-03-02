@@ -8,11 +8,6 @@ In addition to the built-in web interface, there is also
 
 * A [native Android app](https://github.com/mikaelstaldal/mycal-android)
 
-## Status
-
-*Note:* This application has mostly been vibe coded with AI tools, it has not been properly reviewed or extensively tested,
-and is under active development. Use at your own risk and backup your data often if you use for real.
-
 ## Features
 
 - Monthly calendar grid with event display
