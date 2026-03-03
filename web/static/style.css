@@ -1108,7 +1108,6 @@ body {
     .app { padding: 4px 8px; }
     .day { min-height: 60px; }
     .event-chip { font-size: 0.65rem; }
-    .nav h1 { font-size: 1.1rem; }
     .week-header { grid-template-columns: 40px repeat(7, minmax(0, 1fr)); }
     .week-grid { grid-template-columns: 40px repeat(7, minmax(0, 1fr)); }
     .week-events-overlay { grid-template-columns: 40px repeat(7, minmax(0, 1fr)); }
@@ -1119,9 +1118,58 @@ body {
     .day-view-events-overlay { grid-template-columns: 40px 1fr; }
     .day-view-allday-row { grid-template-columns: 40px 1fr; }
     .week-day-name { font-size: 0.65rem; }
-    .view-toggle button { font-size: 0.75rem; padding: 4px 8px; }
-    .search-input { width: 140px; font-size: 0.8rem; }
     .year-view { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+
+    /* Compact toolbar */
+    .top-bar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+        margin-bottom: 8px;
+    }
+    .nav {
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+    .nav button {
+        padding: 4px 10px;
+        font-size: 0.8rem;
+    }
+    .nav h1 {
+        font-size: 1.1rem;
+        margin-left: 4px;
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .view-toggle {
+        order: 1;
+        width: 100%;
+        margin-left: 0;
+        margin-top: 2px;
+    }
+    .view-toggle button {
+        flex: 1;
+        font-size: 0.75rem;
+        padding: 5px 4px;
+        text-align: center;
+    }
+    .top-bar-actions {
+        gap: 4px;
+    }
+    .search-input {
+        flex: 1;
+        min-width: 0;
+        width: auto;
+        font-size: 0.8rem;
+        padding: 4px 8px;
+    }
+    .settings-btn {
+        padding: 4px 8px;
+        font-size: 1.1rem;
+    }
 }
 
 /* Description display */
