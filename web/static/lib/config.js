@@ -22,6 +22,18 @@ export function getConfig() {
     return { ...DEFAULTS };
 }
 
+export function hasUserDefaultView() {
+    try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+            return 'defaultView' in JSON.parse(stored);
+        }
+    } catch (e) {
+        // ignore corrupt data
+    }
+    return false;
+}
+
 export function saveConfig(config) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
 }

@@ -12,7 +12,7 @@ import { Toast } from './components/toast.js';
 import { Settings } from './components/settings.js';
 import { listEvents, searchEvents, createEvent, updateEvent, deleteEvent, getEvent, importSingleEvent } from './lib/api.js';
 import { addMonths, addWeeks, startOfWeek, toRFC3339 } from './lib/date-utils.js';
-import { getConfig } from './lib/config.js';
+import { getConfig, hasUserDefaultView } from './lib/config.js';
 import { checkAndNotify, requestPermission } from './lib/notifications.js';
 
 function App() {
@@ -26,7 +26,10 @@ function App() {
     const [showImport, setShowImport] = useState(false);
     const [toast, setToast] = useState(null);
     const [toastError, setToastError] = useState(false);
-    const [viewMode, setViewMode] = useState(() => getConfig().defaultView || 'month');
+    const [viewMode, setViewMode] = useState(() => {
+        if (hasUserDefaultView()) return getConfig().defaultView;
+        return window.innerWidth <= 600 ? 'schedule' : 'month';
+    });
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState(null);
     const searchTimer = useRef(null);
