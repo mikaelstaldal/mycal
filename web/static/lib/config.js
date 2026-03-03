@@ -4,7 +4,7 @@ const DEFAULTS = {
     weekStartDay: 1,   // 0=Sunday, 1=Monday
     clockFormat: '24h', // '24h' or '12h'
     dateFormat: 'yyyy-MM-dd', // 'yyyy-MM-dd', 'MM/dd/yyyy', 'dd/MM/yyyy'
-    defaultView: 'month', // 'month' or 'week'
+    defaultView: 'month', // 'month', 'week', or 'schedule'
     dayStartHour: 8, // 0-23, hour to scroll to in week view
     mapProvider: 'none', // 'none', 'openstreetmap', 'google'
     googleMapsApiKey: '', // only needed when mapProvider is 'google'

@@ -4,6 +4,7 @@ import { Nav } from './components/nav.js';
 import { Calendar } from './components/calendar.js';
 import { WeekView } from './components/week-view.js';
 import { DayView } from './components/day-view.js';
+import { ScheduleView } from './components/schedule-view.js';
 import { YearView } from './components/year-view.js';
 import { EventForm } from './components/event-form.js';
 import { ImportForm } from './components/import-form.js';
@@ -34,7 +35,10 @@ function App() {
 
     const loadEvents = useCallback(async () => {
         let from, to;
-        if (viewMode === 'day') {
+        if (viewMode === 'schedule') {
+            from = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - 30);
+            to = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() + 30);
+        } else if (viewMode === 'day') {
             from = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - 1);
             to = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() + 2);
         } else if (viewMode === 'week') {
@@ -68,7 +72,9 @@ function App() {
     }, [events]);
 
     function handlePrev() {
-        if (viewMode === 'day') {
+        if (viewMode === 'schedule') {
+            setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - 7));
+        } else if (viewMode === 'day') {
             setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - 1));
         } else if (viewMode === 'week') {
             setCurrentDate(addWeeks(currentDate, -1));
@@ -80,7 +86,9 @@ function App() {
     }
 
     function handleNext() {
-        if (viewMode === 'day') {
+        if (viewMode === 'schedule') {
+            setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() + 7));
+        } else if (viewMode === 'day') {
             setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() + 1));
         } else if (viewMode === 'week') {
             setCurrentDate(addWeeks(currentDate, 1));
@@ -310,6 +318,9 @@ function App() {
                 <${YearView} currentDate=${currentDate} events=${events}
                              onMonthClick=${handleYearMonthClick} onWeekClick=${handleYearWeekClick}
                              onDayClick=${handleYearDayClick} config=${config} />
+            ` : viewMode === 'schedule' ? html`
+                <${ScheduleView} currentDate=${currentDate} events=${events}
+                                 onEventClick=${handleEventClick} onDayClick=${handleDayClick} config=${config} />
             ` : viewMode === 'day' ? html`
                 <${DayView} currentDate=${currentDate} events=${events}
                             onDayClick=${handleDayClick} onEventClick=${handleEventClick}

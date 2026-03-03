@@ -2,7 +2,9 @@ import { html } from 'htm/preact';
 import { formatMonthYear, formatWeekRange, formatDayHeading } from '../lib/date-utils.js';
 
 export function Nav({ currentDate, onPrev, onNext, onToday, viewMode, onViewChange, weekStartDay }) {
-    const heading = viewMode === 'day'
+    const heading = viewMode === 'schedule'
+        ? formatDayHeading(currentDate)
+        : viewMode === 'day'
         ? formatDayHeading(currentDate)
         : viewMode === 'week'
         ? formatWeekRange(currentDate, weekStartDay)
@@ -20,6 +22,7 @@ export function Nav({ currentDate, onPrev, onNext, onToday, viewMode, onViewChan
                 <button class=${viewMode === 'month' ? 'active' : ''} onClick=${() => onViewChange('month')}>Month</button>
                 <button class=${viewMode === 'week' ? 'active' : ''} onClick=${() => onViewChange('week')}>Week</button>
                 <button class=${viewMode === 'day' ? 'active' : ''} onClick=${() => onViewChange('day')}>Day</button>
+                <button class=${viewMode === 'schedule' ? 'active' : ''} onClick=${() => onViewChange('schedule')}>Schedule</button>
             </div>
             <h1>${heading}</h1>
         </nav>

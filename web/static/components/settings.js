@@ -117,6 +117,7 @@ export function Settings({ config, onConfigChange }) {
                             onChange=${e => handleChange('defaultView', e.target.value)}>
                         <option value="month">Month</option>
                         <option value="week">Week</option>
+                        <option value="schedule">Schedule</option>
                     </select>
                 </label>
                 <label>

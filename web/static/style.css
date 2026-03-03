@@ -957,6 +957,84 @@ body {
     transform: translateX(-50%);
 }
 
+/* Schedule view: app becomes a flex column so the view fills remaining space */
+.app:has(.schedule-view) {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    overflow: hidden;
+}
+
+.schedule-view {
+    width: 100%;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+}
+
+.schedule-empty {
+    padding: 24px 16px;
+    text-align: center;
+    color: #888;
+    font-size: 0.9rem;
+}
+
+.schedule-date-header {
+    position: sticky;
+    top: 0;
+    background: #f5f5f5;
+    padding: 10px 16px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #333;
+    cursor: pointer;
+    z-index: 1;
+}
+
+.schedule-date-header:hover {
+    background: #e8f0fe;
+    color: #1a73e8;
+}
+
+.schedule-event {
+    margin: 4px 8px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    color: #fff;
+    cursor: pointer;
+}
+
+.schedule-event:hover {
+    opacity: 0.85;
+}
+
+.schedule-event.past-event {
+    opacity: 0.5;
+}
+
+.schedule-event-time {
+    font-size: 0.75rem;
+    opacity: 0.9;
+    margin-top: 2px;
+}
+
+.schedule-event-title {
+    font-size: 0.95rem;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.schedule-event-location {
+    font-size: 0.8rem;
+    opacity: 0.85;
+    margin-top: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 /* Search */
 .search-input {
     padding: 6px 12px;
