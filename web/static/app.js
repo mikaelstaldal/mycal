@@ -28,7 +28,7 @@ function App() {
     const [toastError, setToastError] = useState(false);
     const [viewMode, setViewMode] = useState(() => {
         if (hasUserDefaultView()) return getConfig().defaultView;
-        return window.innerWidth <= 600 ? 'schedule' : 'month';
+        return window.innerWidth <= 600 ? 'schedule' : 'week';
     });
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState(null);
