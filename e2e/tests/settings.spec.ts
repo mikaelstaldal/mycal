@@ -31,14 +31,14 @@ test.describe('Settings', () => {
     // Close settings
     await dialog.getByRole('button', { name: 'Close' }).click();
 
-    // Check that the calendar header starts with Sun
-    const firstWeekday = page.locator('.calendar-header .weekday').first();
+    // Check that the week view header starts with Sun
+    const firstWeekday = page.locator('.week-day-header .week-day-name').first();
     await expect(firstWeekday).toContainText('Sun');
 
     // Reload and verify persistence
     await page.reload();
 
-    const firstWeekdayAfterReload = page.locator('.calendar-header .weekday').first();
+    const firstWeekdayAfterReload = page.locator('.week-day-header .week-day-name').first();
     await expect(firstWeekdayAfterReload).toContainText('Sun');
   });
 });

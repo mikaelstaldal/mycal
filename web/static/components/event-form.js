@@ -4,16 +4,7 @@ import { toLocalDatetimeValue, fromLocalDatetimeValue, formatDate, formatTime, t
 import { MapPicker } from './map-picker.js';
 import { RichEditor } from './rich-editor.js';
 
-const COLORS = [
-    { name: 'dodgerblue', hex: '#1e90ff' },
-    { name: 'red', hex: '#ff0000' },
-    { name: 'gold', hex: '#ffd700' },
-    { name: 'green', hex: '#008000' },
-    { name: 'orange', hex: '#ffa500' },
-    { name: 'mediumturquoise', hex: '#48d1cc' },
-    { name: 'cornflowerblue', hex: '#6495ed' },
-    { name: 'salmon', hex: '#fa8072' },
-];
+import { COLORS } from '../lib/colors.js';
 const WEEKDAYS = [
     { key: 'MO', label: 'Mon' },
     { key: 'TU', label: 'Tue' },
@@ -522,11 +513,13 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                         <span>Color</span>
                         <div class="color-options">
                             <div class="color-swatch ${!color ? 'selected' : ''}"
-                                 style="background-color: #9e9e9e"
+                                 style="background-color: ${config.defaultEventColor || 'dodgerblue'}"
+                                 title="Default color"
                                  onClick=${() => setColor('')} />
                             ${COLORS.map(c => html`
                                 <div class="color-swatch ${color === c.name ? 'selected' : ''}"
                                      style="background-color: ${c.name}"
+                                     title=${c.name}
                                      onClick=${() => setColor(c.name)} />
                             `)}
                         </div>

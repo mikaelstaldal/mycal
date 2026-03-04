@@ -99,7 +99,7 @@ export function ScheduleView({ currentDate, events, onEventClick, onDayClick, co
                         ${dayEvents.map(event => html`
                             <div class="schedule-event${isPastEvent(event) ? ' past-event' : ''}"
                                  key=${event.id + ':' + event.start_time}
-                                 style=${'background:' + (event.color || '#4285f4')}
+                                 style=${'background:' + (event.color || config.defaultEventColor || 'dodgerblue')}
                                  onClick=${(e) => { e.stopPropagation(); onEventClick(event); }}>
                                 <div class="schedule-event-title">${event.title}</div>
                                 ${formatEventTime(event) && html`

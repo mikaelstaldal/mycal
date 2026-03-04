@@ -5,6 +5,9 @@ test.describe('Event CRUD', () => {
   test.beforeEach(async ({ page, request }) => {
     await clearAllEvents(request);
     await page.goto('/');
+    // Switch to month view for these tests
+    await page.getByRole('button', { name: 'Month' }).click();
+    await expect(page.locator('.calendar-grid')).toBeVisible();
   });
 
   test('create event by clicking day cell and filling form', async ({ page }) => {
@@ -35,6 +38,8 @@ test.describe('Event CRUD', () => {
     });
 
     await page.reload();
+    await page.getByRole('button', { name: 'Month' }).click();
+    await expect(page.locator('.calendar-grid')).toBeVisible();
 
     // Click the event chip
     await page.locator('.event-chip', { hasText: 'Existing Event' }).click();
@@ -54,6 +59,8 @@ test.describe('Event CRUD', () => {
     });
 
     await page.reload();
+    await page.getByRole('button', { name: 'Month' }).click();
+    await expect(page.locator('.calendar-grid')).toBeVisible();
 
     // Click the event
     await page.locator('.event-chip', { hasText: 'Original Title' }).click();
@@ -84,6 +91,8 @@ test.describe('Event CRUD', () => {
     });
 
     await page.reload();
+    await page.getByRole('button', { name: 'Month' }).click();
+    await expect(page.locator('.calendar-grid')).toBeVisible();
 
     // Click the event
     await page.locator('.event-chip', { hasText: 'Delete Me' }).click();

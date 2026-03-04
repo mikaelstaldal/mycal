@@ -82,6 +82,6 @@ test.describe('Search', () => {
 
     // Search results should disappear, calendar visible
     await expect(page.locator('.search-results')).not.toBeVisible();
-    await expect(page.locator('.calendar-grid')).toBeVisible();
+    await expect(page.locator('.week-view')).toBeVisible();
   });
 });

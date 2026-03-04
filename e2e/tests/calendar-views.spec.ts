@@ -7,15 +7,14 @@ test.describe('Calendar Views', () => {
     await page.goto('/');
   });
 
-  test('shows month view by default with correct heading', async ({ page }) => {
+  test('shows week view by default with correct heading', async ({ page }) => {
     const heading = page.locator('nav h1');
     await expect(heading).toBeVisible();
 
     const now = new Date();
-    const expectedMonth = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-    await expect(heading).toContainText(expectedMonth);
+    await expect(heading).toContainText(String(now.getFullYear()));
 
-    await expect(page.locator('.calendar-grid')).toBeVisible();
+    await expect(page.locator('.week-view')).toBeVisible();
   });
 
   test('navigate months with prev/next buttons', async ({ page }) => {
@@ -29,18 +28,18 @@ test.describe('Calendar Views', () => {
     await expect(heading).toHaveText(initialText!);
   });
 
-  test('today button returns to current month', async ({ page }) => {
+  test('today button returns to current week', async ({ page }) => {
     const heading = page.locator('nav h1');
-    const now = new Date();
-    const expectedMonth = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const initialText = await heading.textContent();
 
     // Navigate away
     await page.getByRole('button', { name: '▶' }).click();
     await page.getByRole('button', { name: '▶' }).click();
+    await expect(heading).not.toHaveText(initialText!);
 
     // Click Today
     await page.getByRole('button', { name: 'Today' }).click();
-    await expect(heading).toContainText(expectedMonth);
+    await expect(heading).toHaveText(initialText!);
   });
 
   test('switch to Week view', async ({ page }) => {

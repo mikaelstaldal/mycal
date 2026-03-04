@@ -52,7 +52,7 @@ export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDa
         return {
             top: `${top}px`,
             height: `${height}px`,
-            backgroundColor: event.color || 'dodgerblue'
+            backgroundColor: event.color || config.defaultEventColor || 'dodgerblue'
         };
     }
 
@@ -85,7 +85,7 @@ export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDa
                         <div class=${`allday-event${isPastEvent(e) ? ' past-event' : ''}`}
                              key=${e.id}
                              title=${e.title}
-                             style=${e.color ? `background-color: ${e.color}` : ''}
+                             style=${`background-color: ${e.color || config.defaultEventColor || 'dodgerblue'}`}
                              onClick=${(ev) => { ev.stopPropagation(); onEventClick(e); }}>
                             ${e.title}
                         </div>

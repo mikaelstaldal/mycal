@@ -54,7 +54,7 @@ export function Calendar({ currentDate, events, onDayClick, onEventClick, onWeek
                                         <div class=${`event-chip${isPastEvent(e) ? ' past-event' : ''}`}
                                              key=${e.id}
                                              title=${e.title}
-                                             style=${e.color ? `background-color: ${e.color}` : ''}
+                                             style=${`background-color: ${e.color || config.defaultEventColor || 'dodgerblue'}`}
                                              onClick=${(ev) => { ev.stopPropagation(); onEventClick(e); }}>
                                             ${e.all_day ? '' : formatTime(e.start_time, config.clockFormat) + ' '}${e.title}
                                         </div>

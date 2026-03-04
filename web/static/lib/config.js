@@ -6,6 +6,7 @@ const DEFAULTS = {
     dateFormat: 'yyyy-MM-dd', // 'yyyy-MM-dd', 'MM/dd/yyyy', 'dd/MM/yyyy'
     defaultView: 'week', // 'year', 'month', 'week', 'day', or 'schedule'
     dayStartHour: 8, // 0-23, hour to scroll to in week view
+    defaultEventColor: 'dodgerblue', // default color for events without explicit color
     mapProvider: 'none', // 'none', 'openstreetmap', 'google'
     googleMapsApiKey: '', // only needed when mapProvider is 'google'
 };

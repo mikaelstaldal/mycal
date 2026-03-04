@@ -54,7 +54,7 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, onAllD
         return {
             top: `${top}px`,
             height: `${height}px`,
-            backgroundColor: event.color || 'dodgerblue'
+            backgroundColor: event.color || config.defaultEventColor || 'dodgerblue'
         };
     }
 
@@ -112,7 +112,7 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, onAllD
                                     <div class=${`allday-event${isPastEvent(e) ? ' past-event' : ''}`}
                                          key=${e.id}
                                          title=${e.title}
-                                         style=${e.color ? `background-color: ${e.color}` : ''}
+                                         style=${`background-color: ${e.color || config.defaultEventColor || 'dodgerblue'}`}
                                          onClick=${(ev) => { ev.stopPropagation(); onEventClick(e); }}
                                          onMouseDown=${canDrag ? (ev) => {
                                              if (ev.button !== 0) return;
