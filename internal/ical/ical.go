@@ -345,6 +345,7 @@ func parseEvent(props []string, alarmProps []string, tzMap map[string]*time.Loca
 	var exdates, rdates []string
 	var categories string
 	var eventURL string
+	var googleConference string
 	var duration string
 	var color string
 	allDay := false
@@ -375,6 +376,8 @@ func parseEvent(props []string, alarmProps []string, tzMap map[string]*time.Loca
 			categories = unescapeText(value)
 		case "URL":
 			eventURL = value
+		case "X-GOOGLE-CONFERENCE":
+			googleConference = value
 		case "COLOR":
 			color = strings.ToLower(strings.TrimSpace(value))
 		case "DTSTART":
@@ -402,6 +405,11 @@ func parseEvent(props []string, alarmProps []string, tzMap map[string]*time.Loca
 		case "RECURRENCE-ID":
 			recurrenceID = parseICalTime(value, params, tzMap)
 		}
+	}
+
+	// Use X-GOOGLE-CONFERENCE as URL fallback
+	if eventURL == "" && googleConference != "" {
+		eventURL = googleConference
 	}
 
 	if summary == "" || dtstart == "" {

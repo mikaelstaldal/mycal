@@ -334,6 +334,51 @@ func TestDecodeStandardIANATZIDWithVTimezone(t *testing.T) {
 	}
 }
 
+func TestDecodeGoogleConferenceAsURL(t *testing.T) {
+	input := "BEGIN:VCALENDAR\r\n" +
+		"BEGIN:VEVENT\r\n" +
+		"DTSTART:20250315T100000Z\r\n" +
+		"DTEND:20250315T110000Z\r\n" +
+		"SUMMARY:Google Meet\r\n" +
+		"X-GOOGLE-CONFERENCE:https://meet.google.com/abc-defg-hij\r\n" +
+		"END:VEVENT\r\n" +
+		"END:VCALENDAR\r\n"
+
+	events, err := Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("expected 1 event, got %d", len(events))
+	}
+	if events[0].URL != "https://meet.google.com/abc-defg-hij" {
+		t.Errorf("URL = %q, want %q", events[0].URL, "https://meet.google.com/abc-defg-hij")
+	}
+}
+
+func TestDecodeURLTakesPrecedenceOverGoogleConference(t *testing.T) {
+	input := "BEGIN:VCALENDAR\r\n" +
+		"BEGIN:VEVENT\r\n" +
+		"DTSTART:20250315T100000Z\r\n" +
+		"DTEND:20250315T110000Z\r\n" +
+		"SUMMARY:Meeting with both\r\n" +
+		"URL:https://example.com/meeting\r\n" +
+		"X-GOOGLE-CONFERENCE:https://meet.google.com/abc-defg-hij\r\n" +
+		"END:VEVENT\r\n" +
+		"END:VCALENDAR\r\n"
+
+	events, err := Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("expected 1 event, got %d", len(events))
+	}
+	if events[0].URL != "https://example.com/meeting" {
+		t.Errorf("URL = %q, want %q", events[0].URL, "https://example.com/meeting")
+	}
+}
+
 func TestDecodeUnknownTZIDNoVTimezone(t *testing.T) {
 	ics := "BEGIN:VCALENDAR\r\n" +
 		"BEGIN:VEVENT\r\n" +
