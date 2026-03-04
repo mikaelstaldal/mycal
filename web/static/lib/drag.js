@@ -41,7 +41,7 @@ function shiftDateOnly(dateStr, daysDelta) {
  */
 export function startDrag(event, el, startEvent, options) {
     // Skip recurring instances
-    if (event.recurrence_index > 0) return;
+    if (event.parent_id) return;
 
     const { mode, onDragEnd, dayColumns, columnsContainer } = options;
     const columnSelector = options.columnSelector || '.week-day-events';

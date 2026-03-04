@@ -9,7 +9,7 @@ export async function listEvents(from, to) {
 }
 
 export async function getEvent(id) {
-    const res = await fetch(`${BASE}/${id}`);
+    const res = await fetch(`${BASE}/${encodeURIComponent(id)}`);
     if (!res.ok) throw new Error((await res.json()).error);
     return res.json();
 }
@@ -24,12 +24,8 @@ export async function createEvent(data) {
     return res.json();
 }
 
-export async function updateEvent(id, data, instanceStart) {
-    let url = `${BASE}/${id}`;
-    if (instanceStart) {
-        url += `?instance_start=${encodeURIComponent(instanceStart)}`;
-    }
-    const res = await fetch(url, {
+export async function updateEvent(id, data) {
+    const res = await fetch(`${BASE}/${encodeURIComponent(id)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -38,16 +34,9 @@ export async function updateEvent(id, data, instanceStart) {
     return res.json();
 }
 
-export async function deleteEvent(id, instanceStart) {
-    let url = `${BASE}/${id}`;
-    if (instanceStart) {
-        url += `?instance_start=${encodeURIComponent(instanceStart)}`;
-    }
+export async function deleteEvent(id) {
+    const url = `${BASE}/${encodeURIComponent(id)}`;
     const res = await fetch(url, { method: 'DELETE' });
-    if (instanceStart) {
-        if (!res.ok) throw new Error((await res.json()).error);
-        return res.json();
-    }
     if (!res.ok) throw new Error((await res.json()).error);
 }
 

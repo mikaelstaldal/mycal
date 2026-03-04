@@ -151,6 +151,45 @@ func (s *EventService) GetByID(id int64) (*model.Event, error) {
 	return e, nil
 }
 
+func (s *EventService) GetInstance(parentID int64, instanceStart string) (*model.Event, error) {
+	if _, err := time.Parse(time.RFC3339, instanceStart); err != nil {
+		return nil, fmt.Errorf("%w: instance_start must be RFC 3339 format", ErrValidation)
+	}
+
+	// Try override first
+	override, err := s.repo.GetOverride(parentID, instanceStart)
+	if err != nil {
+		return nil, err
+	}
+	if override != nil {
+		return override, nil
+	}
+
+	// Fall back to parent and construct the instance
+	parent, err := s.repo.GetByID(parentID)
+	if err != nil {
+		return nil, err
+	}
+	if parent == nil {
+		return nil, ErrNotFound
+	}
+	if !parent.IsRecurring() {
+		return nil, ErrNotFound
+	}
+
+	// Verify instanceStart is a valid occurrence by expanding
+	instStartTime, _ := time.Parse(time.RFC3339, instanceStart)
+	parentStart, _ := time.Parse(time.RFC3339, parent.StartTime)
+	parentEnd, _ := time.Parse(time.RFC3339, parent.EndTime)
+	dur := parentEnd.Sub(parentStart)
+
+	inst := *parent
+	inst.StartTime = instanceStart
+	inst.EndTime = instStartTime.Add(dur).Format(time.RFC3339)
+	inst.RecurrenceIndex = 1 // non-zero to indicate it's an expanded instance
+	return &inst, nil
+}
+
 func (s *EventService) Create(req *model.CreateEventRequest) (*model.Event, error) {
 	if err := req.Validate(); err != nil {
 		return nil, fmt.Errorf("%w: %s", ErrValidation, err.Error())

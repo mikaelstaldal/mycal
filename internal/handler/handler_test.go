@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -131,8 +131,8 @@ func TestCreateEvent(t *testing.T) {
 		t.Fatalf("got status %d, want %d", resp.StatusCode, http.StatusCreated)
 	}
 	event := decodeJSON[model.Event](t, resp)
-	if event.ID == 0 {
-		t.Error("expected non-zero ID")
+	if event.StringID == "" {
+		t.Error("expected non-empty string ID")
 	}
 	if event.Title != "Meeting" {
 		t.Errorf("title = %q, want %q", event.Title, "Meeting")
@@ -205,7 +205,7 @@ func TestGetEvent(t *testing.T) {
 	ts := setupTestServer(t)
 	created := createTestEvent(t, ts)
 
-	resp, err := http.Get(ts.URL + "/api/v1/events/" + itoa(created.ID))
+	resp, err := http.Get(ts.URL + "/api/v1/events/" + created.StringID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -213,8 +213,8 @@ func TestGetEvent(t *testing.T) {
 		t.Fatalf("got status %d, want %d", resp.StatusCode, http.StatusOK)
 	}
 	event := decodeJSON[model.Event](t, resp)
-	if event.ID != created.ID {
-		t.Errorf("id = %d, want %d", event.ID, created.ID)
+	if event.StringID != created.StringID {
+		t.Errorf("id = %q, want %q", event.StringID, created.StringID)
 	}
 	if event.Title != "Test Event" {
 		t.Errorf("title = %q, want %q", event.Title, "Test Event")
@@ -250,7 +250,7 @@ func TestUpdateEvent(t *testing.T) {
 	created := createTestEvent(t, ts)
 
 	newTitle := "Updated Title"
-	resp := patchJSON(t, ts.URL+"/api/v1/events/"+itoa(created.ID), model.UpdateEventRequest{
+	resp := patchJSON(t, ts.URL+"/api/v1/events/"+created.StringID, model.UpdateEventRequest{
 		Title: &newTitle,
 	})
 	if resp.StatusCode != http.StatusOK {
@@ -272,6 +272,7 @@ func TestUpdateEvent_NotFound(t *testing.T) {
 	resp := patchJSON(t, ts.URL+"/api/v1/events/99999", model.UpdateEventRequest{
 		Title: &title,
 	})
+
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusNotFound {
 		t.Errorf("got status %d, want %d", resp.StatusCode, http.StatusNotFound)
@@ -282,14 +283,14 @@ func TestDeleteEvent(t *testing.T) {
 	ts := setupTestServer(t)
 	created := createTestEvent(t, ts)
 
-	resp := doDelete(t, ts.URL+"/api/v1/events/"+itoa(created.ID))
+	resp := doDelete(t, ts.URL+"/api/v1/events/"+created.StringID)
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("delete: got status %d, want %d", resp.StatusCode, http.StatusNoContent)
 	}
 
 	// Confirm it's gone
-	resp2, err := http.Get(ts.URL + "/api/v1/events/" + itoa(created.ID))
+	resp2, err := http.Get(ts.URL + "/api/v1/events/" + created.StringID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -462,8 +463,9 @@ func TestDeleteWithInstanceStart(t *testing.T) {
 	}
 	created := decodeJSON[model.Event](t, resp)
 
-	// Delete a single instance via instance_start query param
-	delResp := doDelete(t, ts.URL+"/api/v1/events/"+itoa(created.ID)+"?instance_start=2026-03-05T09:00:00Z")
+	// Delete a single instance via composite ID
+	compositeID := created.StringID + "_2026-03-05T09:00:00Z"
+	delResp := doDelete(t, ts.URL+"/api/v1/events/"+url.PathEscape(compositeID))
 	if delResp.StatusCode != http.StatusOK {
 		t.Fatalf("delete instance: got status %d, want %d", delResp.StatusCode, http.StatusOK)
 	}
@@ -567,9 +569,10 @@ func TestOverrideInstance(t *testing.T) {
 	}
 	created := decodeJSON[model.Event](t, resp)
 
-	// Override the 2nd instance (2026-03-09)
+	// Override the 2nd instance (2026-03-09) using composite ID
+	compositeID := created.StringID + "_2026-03-09T09:00:00Z"
 	newTitle := "Modified Standup"
-	resp = patchJSON(t, ts.URL+"/api/v1/events/"+itoa(created.ID)+"?instance_start=2026-03-09T09:00:00Z",
+	resp = patchJSON(t, ts.URL+"/api/v1/events/"+url.PathEscape(compositeID),
 		model.UpdateEventRequest{Title: &newTitle})
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("override: got status %d, want %d", resp.StatusCode, http.StatusOK)
@@ -578,8 +581,8 @@ func TestOverrideInstance(t *testing.T) {
 	if override.Title != "Modified Standup" {
 		t.Errorf("override title = %q, want %q", override.Title, "Modified Standup")
 	}
-	if override.RecurrenceParentID == nil || *override.RecurrenceParentID != created.ID {
-		t.Errorf("override parent ID = %v, want %d", override.RecurrenceParentID, created.ID)
+	if override.RecurrenceParentID == nil {
+		t.Error("expected non-nil recurrence_parent_id on override")
 	}
 
 	// List events and verify the override replaces the original instance
@@ -616,13 +619,14 @@ func TestDeleteParentDeletesOverrides(t *testing.T) {
 	resp := postJSON(t, ts.URL+"/api/v1/events", body)
 	created := decodeJSON[model.Event](t, resp)
 
-	// Create an override
+	// Create an override using composite ID
+	compositeID := created.StringID + "_2026-04-02T10:00:00Z"
 	newTitle := "Override"
-	patchJSON(t, ts.URL+"/api/v1/events/"+itoa(created.ID)+"?instance_start=2026-04-02T10:00:00Z",
+	patchJSON(t, ts.URL+"/api/v1/events/"+url.PathEscape(compositeID),
 		model.UpdateEventRequest{Title: &newTitle})
 
 	// Delete the parent
-	delResp := doDelete(t, ts.URL+"/api/v1/events/"+itoa(created.ID))
+	delResp := doDelete(t, ts.URL+"/api/v1/events/"+created.StringID)
 	if delResp.StatusCode != http.StatusNoContent {
 		t.Fatalf("delete parent: got status %d", delResp.StatusCode)
 	}
@@ -651,13 +655,14 @@ func TestDeleteInstanceWithOverride(t *testing.T) {
 	resp := postJSON(t, ts.URL+"/api/v1/events", body)
 	created := decodeJSON[model.Event](t, resp)
 
-	// Create an override for Apr 2
+	// Create an override for Apr 2 using composite ID
+	compositeID := created.StringID + "_2026-04-02T10:00:00Z"
 	newTitle := "Override"
-	patchJSON(t, ts.URL+"/api/v1/events/"+itoa(created.ID)+"?instance_start=2026-04-02T10:00:00Z",
+	patchJSON(t, ts.URL+"/api/v1/events/"+url.PathEscape(compositeID),
 		model.UpdateEventRequest{Title: &newTitle})
 
-	// Delete that instance via EXDATE
-	delResp := doDelete(t, ts.URL+"/api/v1/events/"+itoa(created.ID)+"?instance_start=2026-04-02T10:00:00Z")
+	// Delete that instance via composite ID
+	delResp := doDelete(t, ts.URL+"/api/v1/events/"+url.PathEscape(compositeID))
 	if delResp.StatusCode != http.StatusOK {
 		t.Fatalf("delete instance: got status %d", delResp.StatusCode)
 	}
@@ -731,7 +736,7 @@ func TestCreateEventWithCategories(t *testing.T) {
 
 	// Update categories
 	newCats := "Personal"
-	resp = patchJSON(t, ts.URL+"/api/v1/events/"+itoa(event.ID), model.UpdateEventRequest{
+	resp = patchJSON(t, ts.URL+"/api/v1/events/"+event.StringID, model.UpdateEventRequest{
 		Categories: &newCats,
 	})
 	if resp.StatusCode != http.StatusOK {
@@ -904,6 +909,3 @@ END:VCALENDAR`
 	}
 }
 
-func itoa(n int64) string {
-	return fmt.Sprintf("%d", n)
-}

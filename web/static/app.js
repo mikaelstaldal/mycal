@@ -128,33 +128,24 @@ function App() {
             setShowForm(true);
             return;
         }
-        if (event.recurrence_freq && event.recurrence_index > 0) {
+        if (event.recurrence_freq && event.parent_id) {
             // Recurring instance (not the first one) - ask user what to edit
+            const parentId = event.parent_id;
             const choice = confirm('Edit this instance only?\n\nOK = Edit this instance\nCancel = Edit all instances');
             if (choice) {
-                // Edit single instance - pass instance start for override
-                try {
-                    const parent = await getEvent(event.id);
-                    parent._instanceStart = event.start_time;
-                    parent._editInstance = true;
-                    setSelectedEvent(parent);
-                } catch (err) {
-                    console.error('Failed to fetch parent event:', err);
-                    setSelectedEvent(event);
-                }
+                // Edit single instance - composite ID encodes the instance
+                event._editInstance = true;
+                setSelectedEvent(event);
             } else {
                 // Edit all - fetch parent
                 try {
-                    const parent = await getEvent(event.id);
-                    parent._instanceStart = event.start_time;
+                    const parent = await getEvent(parentId);
                     setSelectedEvent(parent);
                 } catch (err) {
                     console.error('Failed to fetch parent event:', err);
                     setSelectedEvent(event);
                 }
             }
-        } else if (event.recurrence_freq && event.recurrence_index === 0) {
-            setSelectedEvent(event);
         } else {
             setSelectedEvent(event);
         }
@@ -162,12 +153,12 @@ function App() {
         setShowForm(true);
     }
 
-    async function handleSave(id, data, instanceStart) {
+    async function handleSave(id, data) {
         if (data.reminder_minutes > 0) {
             requestPermission();
         }
         if (id) {
-            await updateEvent(id, data, instanceStart);
+            await updateEvent(id, data);
         } else {
             await createEvent(data);
         }
@@ -176,8 +167,8 @@ function App() {
         await loadEvents();
     }
 
-    async function handleDelete(id, instanceStart) {
-        await deleteEvent(id, instanceStart);
+    async function handleDelete(id) {
+        await deleteEvent(id);
         setShowForm(false);
         setSelectedEvent(null);
         await loadEvents();

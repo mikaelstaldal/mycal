@@ -237,8 +237,6 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
             rdates: rdates,
         };
 
-        const instanceStart = isInstanceEdit ? event._instanceStart : undefined;
-
         if (allDay) {
             if (!startTime) { setError('Start date is required'); return; }
             const data = {
@@ -256,7 +254,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
             if (useDuration) {
                 data.duration = buildDurationString();
             }
-            onSave(event?.id, data, instanceStart).catch(err => setError(err.message));
+            onSave(event?.id, data).catch(err => setError(err.message));
         } else {
             if (!startTime || (!useDuration && !endTime)) { setError('Start and end times are required'); return; }
             const data = {
@@ -274,7 +272,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
             if (useDuration) {
                 data.duration = buildDurationString();
             }
-            onSave(event?.id, data, instanceStart).catch(err => setError(err.message));
+            onSave(event?.id, data).catch(err => setError(err.message));
         }
     }
 
@@ -731,6 +729,9 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                     `}
                     ${editing && html`
                         <button type="submit">Save</button>
+                        ${event && html`
+                            <button type="button" class="danger" onClick=${handleDelete}>Delete</button>
+                        `}
                     `}
                     <button type="button" onClick=${handleClose}>Cancel</button>
                 </div>

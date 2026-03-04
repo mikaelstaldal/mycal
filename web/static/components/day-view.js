@@ -83,7 +83,7 @@ export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDa
                 <div class="day-view-allday-cell" onClick=${() => onAllDayClick(date)}>
                     ${adEvents.map(e => html`
                         <div class=${`allday-event${isPastEvent(e) ? ' past-event' : ''}`}
-                             key=${`${e.id}-${e.recurrence_index || 0}`}
+                             key=${e.id}
                              title=${e.title}
                              style=${e.color ? `background-color: ${e.color}` : ''}
                              onClick=${(ev) => { ev.stopPropagation(); onEventClick(e); }}>
@@ -111,10 +111,10 @@ export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDa
                             const durationMin = (new Date(e.end_time) - new Date(e.start_time)) / 60000;
                             const isShort = durationMin <= 30;
                             const classes = ['week-event', isShort && 'short-event', isPastEvent(e) && 'past-event'].filter(Boolean).join(' ');
-                            const canDrag = !e.recurrence_index;
+                            const canDrag = !e.parent_id;
                             return html`
                                 <div class=${classes}
-                                     key=${`${e.id}-${e.recurrence_index || 0}`}
+                                     key=${e.id}
                                      title=${e.title}
                                      style=${eventStyle(e)}
                                      onClick=${(ev) => { ev.stopPropagation(); onEventClick(e); }}

@@ -37,7 +37,7 @@ export function checkAndNotify(events) {
             continue;
         }
 
-        const key = `${event.id}-${event.recurrence_index || 0}`;
+        const key = event.id;
         if (fired[key]) {
             continue;
         }

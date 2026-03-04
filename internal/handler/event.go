@@ -9,7 +9,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"time"
 
@@ -22,11 +21,21 @@ func registerEventRoutes(mux *http.ServeMux, svc *service.EventService) {
 	mux.HandleFunc("GET /api/v1/events", listEvents(svc))
 	mux.HandleFunc("GET /api/v1/events.ics", exportICalFeed(svc))
 	mux.HandleFunc("POST /api/v1/events", createEvent(svc))
-	mux.HandleFunc("GET /api/v1/events/{id}", getEvent(svc))
-	mux.HandleFunc("PATCH /api/v1/events/{id}", updateEvent(svc))
-	mux.HandleFunc("DELETE /api/v1/events/{id}", deleteEvent(svc))
+	mux.HandleFunc("GET /api/v1/events/{id...}", getEvent(svc))
+	mux.HandleFunc("PATCH /api/v1/events/{id...}", updateEvent(svc))
+	mux.HandleFunc("DELETE /api/v1/events/{id...}", deleteEvent(svc))
 	mux.HandleFunc("POST /api/v1/import", importEvents(svc))
 	mux.HandleFunc("POST /api/v1/import-single", importSingleEvent(svc))
+}
+
+func setStringID(e *model.Event) {
+	e.SetStringID()
+}
+
+func setStringIDs(events []model.Event) {
+	for i := range events {
+		events[i].SetStringID()
+	}
 }
 
 const maxSearchQueryLength = 200
@@ -48,6 +57,7 @@ func listEvents(svc *service.EventService) http.HandlerFunc {
 				writeError(w, http.StatusInternalServerError, "failed to search events")
 				return
 			}
+			setStringIDs(events)
 			writeJSON(w, http.StatusOK, events)
 			return
 		}
@@ -61,6 +71,7 @@ func listEvents(svc *service.EventService) http.HandlerFunc {
 			writeError(w, http.StatusInternalServerError, "failed to list events")
 			return
 		}
+		setStringIDs(events)
 		writeJSON(w, http.StatusOK, events)
 	}
 }
@@ -81,18 +92,30 @@ func createEvent(svc *service.EventService) http.HandlerFunc {
 			writeError(w, http.StatusInternalServerError, "failed to create event")
 			return
 		}
+		setStringID(event)
 		writeJSON(w, http.StatusCreated, event)
 	}
 }
 
 func getEvent(svc *service.EventService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+		rawID, err := url.PathUnescape(r.PathValue("id"))
 		if err != nil {
 			writeError(w, http.StatusBadRequest, "invalid id")
 			return
 		}
-		event, err := svc.GetByID(id)
+		dbID, instanceStart, err := model.ParseEventID(rawID)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid id")
+			return
+		}
+
+		var event *model.Event
+		if instanceStart != "" {
+			event, err = svc.GetInstance(dbID, instanceStart)
+		} else {
+			event, err = svc.GetByID(dbID)
+		}
 		if err != nil {
 			if errors.Is(err, service.ErrNotFound) {
 				writeError(w, http.StatusNotFound, "event not found")
@@ -101,13 +124,19 @@ func getEvent(svc *service.EventService) http.HandlerFunc {
 			writeError(w, http.StatusInternalServerError, "failed to get event")
 			return
 		}
+		setStringID(event)
 		writeJSON(w, http.StatusOK, event)
 	}
 }
 
 func updateEvent(svc *service.EventService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+		rawID, err := url.PathUnescape(r.PathValue("id"))
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid id")
+			return
+		}
+		dbID, instanceStart, err := model.ParseEventID(rawID)
 		if err != nil {
 			writeError(w, http.StatusBadRequest, "invalid id")
 			return
@@ -118,27 +147,12 @@ func updateEvent(svc *service.EventService) http.HandlerFunc {
 			return
 		}
 
-		// Check for instance_start query param (override a single instance)
-		instanceStart := r.URL.Query().Get("instance_start")
+		var event *model.Event
 		if instanceStart != "" {
-			event, err := svc.CreateOrUpdateOverride(id, instanceStart, &req)
-			if err != nil {
-				if errors.Is(err, service.ErrNotFound) {
-					writeError(w, http.StatusNotFound, "event not found")
-					return
-				}
-				if errors.Is(err, service.ErrValidation) {
-					writeError(w, http.StatusBadRequest, err.Error())
-					return
-				}
-				writeError(w, http.StatusInternalServerError, "failed to update instance")
-				return
-			}
-			writeJSON(w, http.StatusOK, event)
-			return
+			event, err = svc.CreateOrUpdateOverride(dbID, instanceStart, &req)
+		} else {
+			event, err = svc.Update(dbID, &req)
 		}
-
-		event, err := svc.Update(id, &req)
 		if err != nil {
 			if errors.Is(err, service.ErrNotFound) {
 				writeError(w, http.StatusNotFound, "event not found")
@@ -151,22 +165,26 @@ func updateEvent(svc *service.EventService) http.HandlerFunc {
 			writeError(w, http.StatusInternalServerError, "failed to update event")
 			return
 		}
+		setStringID(event)
 		writeJSON(w, http.StatusOK, event)
 	}
 }
 
 func deleteEvent(svc *service.EventService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+		rawID, err := url.PathUnescape(r.PathValue("id"))
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid id")
+			return
+		}
+		dbID, instanceStart, err := model.ParseEventID(rawID)
 		if err != nil {
 			writeError(w, http.StatusBadRequest, "invalid id")
 			return
 		}
 
-		// If instance_start is provided, add EXDATE instead of deleting
-		instanceStart := r.URL.Query().Get("instance_start")
 		if instanceStart != "" {
-			event, err := svc.AddExDate(id, instanceStart)
+			event, err := svc.AddExDate(dbID, instanceStart)
 			if err != nil {
 				if errors.Is(err, service.ErrNotFound) {
 					writeError(w, http.StatusNotFound, "event not found")
@@ -179,11 +197,12 @@ func deleteEvent(svc *service.EventService) http.HandlerFunc {
 				writeError(w, http.StatusInternalServerError, "failed to add exception date")
 				return
 			}
+			setStringID(event)
 			writeJSON(w, http.StatusOK, event)
 			return
 		}
 
-		if err := svc.Delete(id); err != nil {
+		if err := svc.Delete(dbID); err != nil {
 			if errors.Is(err, service.ErrNotFound) {
 				writeError(w, http.StatusNotFound, "event not found")
 				return
@@ -305,6 +324,7 @@ func importSingleEvent(svc *service.EventService) http.HandlerFunc {
 			return
 		}
 
+		setStringID(event)
 		writeJSON(w, http.StatusCreated, event)
 	}
 }

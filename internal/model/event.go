@@ -8,7 +8,9 @@ import (
 )
 
 type Event struct {
-	ID                      int64    `json:"id"`
+	ID                      int64    `json:"-"`
+	StringID                string   `json:"id"`
+	ParentID                string   `json:"parent_id,omitempty"`
 	Title                   string   `json:"title"`
 	Description             string   `json:"description"`
 	StartTime               string   `json:"start_time"`
@@ -613,4 +615,47 @@ func validateCoordinates(latitude, longitude *float64) error {
 		return fmt.Errorf("longitude must be between -180 and 180")
 	}
 	return nil
+}
+
+// FormatEventID builds a composite string ID.
+// For recurring instances: "parentID_instanceStart".
+// For simple events: "dbID".
+func FormatEventID(dbID int64, instanceStart string) string {
+	if instanceStart != "" {
+		return strconv.FormatInt(dbID, 10) + "_" + instanceStart
+	}
+	return strconv.FormatInt(dbID, 10)
+}
+
+// ParseEventID parses a composite string ID into a DB ID and optional instance start.
+func ParseEventID(s string) (dbID int64, instanceStart string, err error) {
+	idx := strings.Index(s, "_")
+	if idx < 0 {
+		dbID, err = strconv.ParseInt(s, 10, 64)
+		return
+	}
+	dbID, err = strconv.ParseInt(s[:idx], 10, 64)
+	if err != nil {
+		return
+	}
+	instanceStart = s[idx+1:]
+	return
+}
+
+// SetStringID computes the StringID and ParentID from internal state.
+func (e *Event) SetStringID() {
+	if e.RecurrenceParentID != nil {
+		// Override instance: parentID_originalStart
+		parentStr := strconv.FormatInt(*e.RecurrenceParentID, 10)
+		e.StringID = parentStr + "_" + e.RecurrenceOriginalStart
+		e.ParentID = parentStr
+	} else if e.RecurrenceFreq != "" && e.RecurrenceIndex > 0 {
+		// Expanded recurring instance: ID_startTime
+		parentStr := strconv.FormatInt(e.ID, 10)
+		e.StringID = parentStr + "_" + e.StartTime
+		e.ParentID = parentStr
+	} else {
+		// Non-recurring or first instance of recurring parent
+		e.StringID = strconv.FormatInt(e.ID, 10)
+	}
 }
