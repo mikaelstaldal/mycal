@@ -2,18 +2,18 @@
 
 All endpoints are under `/api/v1`. Datetimes use RFC 3339 format (or `YYYY-MM-DD` for all-day events). Errors return `{"error": "message"}`.
 
-| Method | Path                    | Description                                                                       |
-|--------|-------------------------|-----------------------------------------------------------------------------------|
-| GET    | `/api/v1/events?from=...&to=...` | List events in a time range                                                |
-| GET    | `/api/v1/events?q=...`  | Search events by text                                                             |
-| POST   | `/api/v1/events`        | Create an event                                                                   |
-| GET    | `/api/v1/events/{id}`   | Get a single event (id may be composite, URL-encoded)                             |
-| PATCH  | `/api/v1/events/{id}`   | Update an event (use composite ID to override a single recurrence instance)       |
-| DELETE | `/api/v1/events/{id}`   | Delete an event (use composite ID to exclude a single recurrence instance)        |
-| POST   | `/api/v1/import`        | Import events from iCalendar data                                                |
-| POST   | `/api/v1/import-single` | Import a single event from iCalendar data                                         |
-| GET    | `/api/v1/events.ics`    | iCalendar feed (all events)                                                       |
-| GET    | `/calendar.ics`         | iCalendar feed (convenience URL)                                                  |
+| Method | Path                             | Description                                                                 |
+|--------|----------------------------------|-----------------------------------------------------------------------------|
+| GET    | `/api/v1/events?from=...&to=...` | List events in a time range                                                 |
+| GET    | `/api/v1/events?q=...`           | Search events by text                                                       |
+| POST   | `/api/v1/events`                 | Create an event                                                             |
+| GET    | `/api/v1/events/{id}`            | Get a single event (id may be composite, URL-encoded)                       |
+| PATCH  | `/api/v1/events/{id}`            | Update an event (use composite ID to override a single recurrence instance) |
+| DELETE | `/api/v1/events/{id}`            | Delete an event (use composite ID to exclude a single recurrence instance)  |
+| POST   | `/api/v1/import`                 | Import events from iCalendar data                                           |
+| POST   | `/api/v1/import-single`          | Import a single event from iCalendar data                                   |
+| GET    | `/api/v1/events.ics`             | iCalendar feed (all events)                                                 |
+| GET    | `/calendar.ics`                  | iCalendar feed (convenience URL)                                            |
 
 ## Event Fields
 
@@ -48,7 +48,7 @@ All endpoints are under `/api/v1`. Datetimes use RFC 3339 format (or `YYYY-MM-DD
 | `created_at`                | string | Creation timestamp (read-only)                                                   |
 | `updated_at`                | string | Last update timestamp (read-only)                                                |
 
-For `PUT` updates, all fields are optional — only included fields are changed.
+For `PATCH` updates, all fields are optional — only included fields are changed.
 
 ## Import
 
