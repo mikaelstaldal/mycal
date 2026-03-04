@@ -7,7 +7,7 @@ import { DayView } from './components/day-view.js';
 import { ScheduleView } from './components/schedule-view.js';
 import { YearView } from './components/year-view.js';
 import { EventForm } from './components/event-form.js';
-import { ImportForm } from './components/import-form.js';
+import { ImportSingleForm, ImportBulkForm } from './components/import-form.js';
 import { Toast } from './components/toast.js';
 import { Settings } from './components/settings.js';
 import { listEvents, searchEvents, createEvent, updateEvent, deleteEvent, getEvent, importSingleEvent } from './lib/api.js';
@@ -23,7 +23,8 @@ function App() {
     const [defaultDate, setDefaultDate] = useState(null);
     const [defaultAllDay, setDefaultAllDay] = useState(false);
     const [config, setConfig] = useState(getConfig);
-    const [showImport, setShowImport] = useState(false);
+    const [showImportSingle, setShowImportSingle] = useState(false);
+    const [showImportBulk, setShowImportBulk] = useState(false);
     const [toast, setToast] = useState(null);
     const [toastError, setToastError] = useState(false);
     const [viewMode, setViewMode] = useState(() => {
@@ -288,8 +289,11 @@ function App() {
                     <button class="settings-btn" onClick=${loadEvents} title="Refresh">
                         \u21BB
                     </button>
-                    <button class="settings-btn" onClick=${() => setShowImport(true)} title="Import">
-                        \u2B07
+                    <button class="settings-btn" onClick=${() => setShowImportSingle(true)} title="Import Event">
+                        \u2B07\uFE0E
+                    </button>
+                    <button class="settings-btn" onClick=${() => setShowImportBulk(true)} title="Bulk Import">
+                        \u21CA\uFE0E
                     </button>
                     <${Settings} config=${config} onConfigChange=${setConfig} />
                 </div>
@@ -335,9 +339,13 @@ function App() {
                               onSave=${handleSave} onDelete=${handleDelete} onClose=${handleClose}
                               config=${config} />
             `}
-            ${showImport && html`
-                <${ImportForm} onImported=${(message, isError) => { setShowImport(false); if (!isError) loadEvents(); setToastError(!!isError); setToast(message); }}
-                               onClose=${() => setShowImport(false)} />
+            ${showImportSingle && html`
+                <${ImportSingleForm} onImported=${(message, isError) => { setShowImportSingle(false); if (!isError) loadEvents(); setToastError(!!isError); setToast(message); }}
+                                     onClose=${() => setShowImportSingle(false)} />
+            `}
+            ${showImportBulk && html`
+                <${ImportBulkForm} onImported=${(message, isError) => { setShowImportBulk(false); if (!isError) loadEvents(); setToastError(!!isError); setToast(message); }}
+                                   onClose=${() => setShowImportBulk(false)} />
             `}
             ${toast && html`<${Toast} message=${toast} isError=${toastError} onDone=${() => setToast(null)} />`}
         </div>

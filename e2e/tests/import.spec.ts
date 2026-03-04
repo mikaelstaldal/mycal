@@ -9,8 +9,8 @@ test.describe('Import', () => {
   });
 
   test('import ICS file successfully', async ({ page }) => {
-    // Click the import button (⬇ icon)
-    await page.locator('.settings-btn[title="Import"]').click();
+    // Click the import event button (⬇ icon)
+    await page.locator('.settings-btn[title="Import Event"]').click();
 
     // Import dialog should open
     const dialog = page.locator('dialog.import-dialog');
@@ -39,7 +39,7 @@ test.describe('Import', () => {
   });
 
   test('import invalid file shows error', async ({ page }) => {
-    await page.locator('.settings-btn[title="Import"]').click();
+    await page.locator('.settings-btn[title="Import Event"]').click();
 
     const dialog = page.locator('dialog.import-dialog');
     await expect(dialog).toBeVisible();
