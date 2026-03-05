@@ -10,10 +10,10 @@ import (
 
 // mockRepo implements repository.EventRepository with configurable behavior per test.
 type mockRepo struct {
-	listFn             func(from, to string) ([]model.Event, error)
-	listAllFn          func() ([]model.Event, error)
-	listRecurringFn    func(to string) ([]model.Event, error)
-	searchFn           func(query, from, to string) ([]model.Event, error)
+	listFn             func(from, to string, calendarNames []string) ([]model.Event, error)
+	listAllFn          func(calendarNames []string) ([]model.Event, error)
+	listRecurringFn    func(to string, calendarNames []string) ([]model.Event, error)
+	searchFn           func(query, from, to string, calendarNames []string) ([]model.Event, error)
 	getByIDFn          func(id int64) (*model.Event, error)
 	createFn           func(event *model.Event) error
 	updateFn           func(event *model.Event) error
@@ -23,30 +23,30 @@ type mockRepo struct {
 	deleteByParentIDFn func(parentID int64) error
 }
 
-func (m *mockRepo) List(from, to string) ([]model.Event, error) {
+func (m *mockRepo) List(from, to string, calendarNames []string) ([]model.Event, error) {
 	if m.listFn != nil {
-		return m.listFn(from, to)
+		return m.listFn(from, to, calendarNames)
 	}
 	return nil, nil
 }
 
-func (m *mockRepo) ListAll() ([]model.Event, error) {
+func (m *mockRepo) ListAll(calendarNames []string) ([]model.Event, error) {
 	if m.listAllFn != nil {
-		return m.listAllFn()
+		return m.listAllFn(calendarNames)
 	}
 	return nil, nil
 }
 
-func (m *mockRepo) ListRecurring(to string) ([]model.Event, error) {
+func (m *mockRepo) ListRecurring(to string, calendarNames []string) ([]model.Event, error) {
 	if m.listRecurringFn != nil {
-		return m.listRecurringFn(to)
+		return m.listRecurringFn(to, calendarNames)
 	}
 	return nil, nil
 }
 
-func (m *mockRepo) Search(query, from, to string) ([]model.Event, error) {
+func (m *mockRepo) Search(query, from, to string, calendarNames []string) ([]model.Event, error) {
 	if m.searchFn != nil {
-		return m.searchFn(query, from, to)
+		return m.searchFn(query, from, to, calendarNames)
 	}
 	return nil, nil
 }
@@ -123,12 +123,12 @@ func TestNewEventService(t *testing.T) {
 
 func TestListAll_ReturnsEvents(t *testing.T) {
 	repo := &mockRepo{
-		listAllFn: func() ([]model.Event, error) {
+		listAllFn: func(calendarNames []string) ([]model.Event, error) {
 			return []model.Event{{ID: 1, Title: "A"}, {ID: 2, Title: "B"}}, nil
 		},
 	}
 	svc := NewEventService(repo)
-	events, err := svc.ListAll()
+	events, err := svc.ListAll(nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -139,12 +139,12 @@ func TestListAll_ReturnsEvents(t *testing.T) {
 
 func TestListAll_NilNormalizesToEmptySlice(t *testing.T) {
 	repo := &mockRepo{
-		listAllFn: func() ([]model.Event, error) {
+		listAllFn: func(calendarNames []string) ([]model.Event, error) {
 			return nil, nil
 		},
 	}
 	svc := NewEventService(repo)
-	events, err := svc.ListAll()
+	events, err := svc.ListAll(nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -158,12 +158,12 @@ func TestListAll_NilNormalizesToEmptySlice(t *testing.T) {
 
 func TestListAll_RepoError(t *testing.T) {
 	repo := &mockRepo{
-		listAllFn: func() ([]model.Event, error) {
+		listAllFn: func(calendarNames []string) ([]model.Event, error) {
 			return nil, errRepo
 		},
 	}
 	svc := NewEventService(repo)
-	_, err := svc.ListAll()
+	_, err := svc.ListAll(nil)
 	if !errors.Is(err, errRepo) {
 		t.Fatalf("expected repo error, got: %v", err)
 	}
@@ -173,15 +173,15 @@ func TestListAll_RepoError(t *testing.T) {
 
 func TestList_BasicList(t *testing.T) {
 	repo := &mockRepo{
-		listFn: func(from, to string) ([]model.Event, error) {
+		listFn: func(from, to string, calendarNames []string) ([]model.Event, error) {
 			return []model.Event{{ID: 1, Title: "Meeting"}}, nil
 		},
-		listRecurringFn: func(to string) ([]model.Event, error) {
+		listRecurringFn: func(to string, calendarNames []string) ([]model.Event, error) {
 			return nil, nil
 		},
 	}
 	svc := NewEventService(repo)
-	events, err := svc.List("2026-02-01T00:00:00Z", "2026-03-01T00:00:00Z")
+	events, err := svc.List("2026-02-01T00:00:00Z", "2026-03-01T00:00:00Z", nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -192,15 +192,15 @@ func TestList_BasicList(t *testing.T) {
 
 func TestList_NilNormalizesToEmptySlice(t *testing.T) {
 	repo := &mockRepo{
-		listFn: func(from, to string) ([]model.Event, error) {
+		listFn: func(from, to string, calendarNames []string) ([]model.Event, error) {
 			return nil, nil
 		},
-		listRecurringFn: func(to string) ([]model.Event, error) {
+		listRecurringFn: func(to string, calendarNames []string) ([]model.Event, error) {
 			return nil, nil
 		},
 	}
 	svc := NewEventService(repo)
-	events, err := svc.List("2026-02-01T00:00:00Z", "2026-03-01T00:00:00Z")
+	events, err := svc.List("2026-02-01T00:00:00Z", "2026-03-01T00:00:00Z", nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -211,12 +211,12 @@ func TestList_NilNormalizesToEmptySlice(t *testing.T) {
 
 func TestList_RepoListError(t *testing.T) {
 	repo := &mockRepo{
-		listFn: func(from, to string) ([]model.Event, error) {
+		listFn: func(from, to string, calendarNames []string) ([]model.Event, error) {
 			return nil, errRepo
 		},
 	}
 	svc := NewEventService(repo)
-	_, err := svc.List("2026-02-01T00:00:00Z", "2026-03-01T00:00:00Z")
+	_, err := svc.List("2026-02-01T00:00:00Z", "2026-03-01T00:00:00Z", nil)
 	if !errors.Is(err, errRepo) {
 		t.Fatalf("expected repo error, got: %v", err)
 	}
@@ -224,15 +224,15 @@ func TestList_RepoListError(t *testing.T) {
 
 func TestList_RepoListRecurringError(t *testing.T) {
 	repo := &mockRepo{
-		listFn: func(from, to string) ([]model.Event, error) {
+		listFn: func(from, to string, calendarNames []string) ([]model.Event, error) {
 			return []model.Event{}, nil
 		},
-		listRecurringFn: func(to string) ([]model.Event, error) {
+		listRecurringFn: func(to string, calendarNames []string) ([]model.Event, error) {
 			return nil, errRepo
 		},
 	}
 	svc := NewEventService(repo)
-	_, err := svc.List("2026-02-01T00:00:00Z", "2026-03-01T00:00:00Z")
+	_, err := svc.List("2026-02-01T00:00:00Z", "2026-03-01T00:00:00Z", nil)
 	if !errors.Is(err, errRepo) {
 		t.Fatalf("expected repo error, got: %v", err)
 	}
@@ -241,10 +241,10 @@ func TestList_RepoListRecurringError(t *testing.T) {
 func TestList_WithRecurringAndOverrides(t *testing.T) {
 	parentID := int64(10)
 	repo := &mockRepo{
-		listFn: func(from, to string) ([]model.Event, error) {
+		listFn: func(from, to string, calendarNames []string) ([]model.Event, error) {
 			return []model.Event{}, nil
 		},
-		listRecurringFn: func(to string) ([]model.Event, error) {
+		listRecurringFn: func(to string, calendarNames []string) ([]model.Event, error) {
 			return []model.Event{{
 				ID:             parentID,
 				Title:          "Daily",
@@ -265,7 +265,7 @@ func TestList_WithRecurringAndOverrides(t *testing.T) {
 		},
 	}
 	svc := NewEventService(repo)
-	events, err := svc.List("2026-02-01T00:00:00Z", "2026-02-04T00:00:00Z")
+	events, err := svc.List("2026-02-01T00:00:00Z", "2026-02-04T00:00:00Z", nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -287,10 +287,10 @@ func TestList_WithRecurringAndOverrides(t *testing.T) {
 
 func TestList_ListOverridesError(t *testing.T) {
 	repo := &mockRepo{
-		listFn: func(from, to string) ([]model.Event, error) {
+		listFn: func(from, to string, calendarNames []string) ([]model.Event, error) {
 			return []model.Event{}, nil
 		},
-		listRecurringFn: func(to string) ([]model.Event, error) {
+		listRecurringFn: func(to string, calendarNames []string) ([]model.Event, error) {
 			return []model.Event{{
 				ID:             1,
 				Title:          "Daily",
@@ -304,7 +304,7 @@ func TestList_ListOverridesError(t *testing.T) {
 		},
 	}
 	svc := NewEventService(repo)
-	_, err := svc.List("2026-02-01T00:00:00Z", "2026-02-04T00:00:00Z")
+	_, err := svc.List("2026-02-01T00:00:00Z", "2026-02-04T00:00:00Z", nil)
 	if !errors.Is(err, errRepo) {
 		t.Fatalf("expected repo error, got: %v", err)
 	}
@@ -314,12 +314,12 @@ func TestList_ListOverridesError(t *testing.T) {
 
 func TestSearch_ReturnsResults(t *testing.T) {
 	repo := &mockRepo{
-		searchFn: func(query, from, to string) ([]model.Event, error) {
+		searchFn: func(query, from, to string, calendarNames []string) ([]model.Event, error) {
 			return []model.Event{{ID: 1, Title: "Meeting"}}, nil
 		},
 	}
 	svc := NewEventService(repo)
-	events, err := svc.Search("meet", "2026-02-01T00:00:00Z", "2026-03-01T00:00:00Z")
+	events, err := svc.Search("meet", "2026-02-01T00:00:00Z", "2026-03-01T00:00:00Z", nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -330,12 +330,12 @@ func TestSearch_ReturnsResults(t *testing.T) {
 
 func TestSearch_NilNormalizesToEmptySlice(t *testing.T) {
 	repo := &mockRepo{
-		searchFn: func(query, from, to string) ([]model.Event, error) {
+		searchFn: func(query, from, to string, calendarNames []string) ([]model.Event, error) {
 			return nil, nil
 		},
 	}
 	svc := NewEventService(repo)
-	events, err := svc.Search("nothing", "2026-02-01T00:00:00Z", "2026-03-01T00:00:00Z")
+	events, err := svc.Search("nothing", "2026-02-01T00:00:00Z", "2026-03-01T00:00:00Z", nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -346,12 +346,12 @@ func TestSearch_NilNormalizesToEmptySlice(t *testing.T) {
 
 func TestSearch_RepoError(t *testing.T) {
 	repo := &mockRepo{
-		searchFn: func(query, from, to string) ([]model.Event, error) {
+		searchFn: func(query, from, to string, calendarNames []string) ([]model.Event, error) {
 			return nil, errRepo
 		},
 	}
 	svc := NewEventService(repo)
-	_, err := svc.Search("test", "2026-02-01T00:00:00Z", "2026-03-01T00:00:00Z")
+	_, err := svc.Search("test", "2026-02-01T00:00:00Z", "2026-03-01T00:00:00Z", nil)
 	if !errors.Is(err, errRepo) {
 		t.Fatalf("expected repo error, got: %v", err)
 	}
@@ -1042,7 +1042,7 @@ func TestImportSingle_SingleEvent(t *testing.T) {
 		StartTime: "2026-02-15T10:00:00Z",
 		EndTime:   "2026-02-15T11:00:00Z",
 	}}
-	e, err := svc.ImportSingle(events)
+	e, err := svc.ImportSingle(events, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -1054,7 +1054,7 @@ func TestImportSingle_SingleEvent(t *testing.T) {
 func TestImportSingle_NoEvents(t *testing.T) {
 	repo := &mockRepo{}
 	svc := NewEventService(repo)
-	_, err := svc.ImportSingle(nil)
+	_, err := svc.ImportSingle(nil, "")
 	if !errors.Is(err, ErrValidation) {
 		t.Fatalf("expected ErrValidation, got: %v", err)
 	}
@@ -1067,7 +1067,7 @@ func TestImportSingle_MultipleParents(t *testing.T) {
 		{Title: "A", StartTime: "2026-02-15T10:00:00Z", EndTime: "2026-02-15T11:00:00Z"},
 		{Title: "B", StartTime: "2026-02-16T10:00:00Z", EndTime: "2026-02-16T11:00:00Z"},
 	}
-	_, err := svc.ImportSingle(events)
+	_, err := svc.ImportSingle(events, "")
 	if !errors.Is(err, ErrValidation) {
 		t.Fatalf("expected ErrValidation for multiple events, got: %v", err)
 	}
@@ -1084,7 +1084,7 @@ func TestImportSingle_RejectsOverrides(t *testing.T) {
 			{Title: "Override", StartTime: "2026-02-22T10:00:00Z", EndTime: "2026-02-22T11:00:00Z",
 				RecurrenceParentID: &parentID, RecurrenceOriginalStart: "2026-02-22T10:00:00Z"},
 		}
-		_, err := svc.ImportSingle(events)
+		_, err := svc.ImportSingle(events, "")
 		if !errors.Is(err, ErrValidation) {
 			t.Fatalf("expected ErrValidation, got: %v", err)
 		}
@@ -1095,7 +1095,7 @@ func TestImportSingle_RejectsOverrides(t *testing.T) {
 			{Title: "Override Only", StartTime: "2026-02-22T10:00:00Z", EndTime: "2026-02-22T11:00:00Z",
 				RecurrenceParentID: &parentID, RecurrenceOriginalStart: "2026-02-22T10:00:00Z"},
 		}
-		_, err := svc.ImportSingle(events)
+		_, err := svc.ImportSingle(events, "")
 		if !errors.Is(err, ErrValidation) {
 			t.Fatalf("expected ErrValidation, got: %v", err)
 		}
@@ -1118,7 +1118,7 @@ func TestImportSingle_AllDayFormatConversion(t *testing.T) {
 		EndTime:   "2026-02-16T00:00:00Z",
 		AllDay:    true,
 	}}
-	_, err := svc.ImportSingle(events)
+	_, err := svc.ImportSingle(events, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -1136,7 +1136,7 @@ func TestImportSingle_ValidationFailure(t *testing.T) {
 		StartTime: "2026-02-15T10:00:00Z",
 		EndTime:   "2026-02-15T11:00:00Z",
 	}}
-	_, err := svc.ImportSingle(events)
+	_, err := svc.ImportSingle(events, "")
 	if !errors.Is(err, ErrValidation) {
 		t.Fatalf("expected ErrValidation, got: %v", err)
 	}
@@ -1172,7 +1172,7 @@ func TestImport_ParentsAndOverrides(t *testing.T) {
 			ImportUID:               "uid-123",
 		},
 	}
-	count, err := svc.Import(events)
+	count, err := svc.Import(events, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -1201,7 +1201,7 @@ func TestImport_SkipsInvalidEvents(t *testing.T) {
 		{Title: "", StartTime: "2026-02-15T10:00:00Z", EndTime: "2026-02-15T11:00:00Z"}, // invalid: no title
 		{Title: "Valid", StartTime: "2026-02-15T10:00:00Z", EndTime: "2026-02-15T11:00:00Z"},
 	}
-	count, err := svc.Import(events)
+	count, err := svc.Import(events, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -1227,7 +1227,7 @@ func TestImport_OverrideWithoutParent(t *testing.T) {
 			ImportUID:               "uid-no-parent",
 		},
 	}
-	count, err := svc.Import(events)
+	count, err := svc.Import(events, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -1252,7 +1252,7 @@ func TestImport_AllDayFormatConversion(t *testing.T) {
 		EndTime:   "2026-03-11T00:00:00Z",
 		AllDay:    true,
 	}}
-	count, err := svc.Import(events)
+	count, err := svc.Import(events, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -1274,7 +1274,7 @@ func TestImport_RepoCreateError(t *testing.T) {
 	events := []model.Event{
 		{Title: "Test", StartTime: "2026-02-15T10:00:00Z", EndTime: "2026-02-15T11:00:00Z"},
 	}
-	count, err := svc.Import(events)
+	count, err := svc.Import(events, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err) // Import continues on create errors
 	}

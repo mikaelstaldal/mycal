@@ -36,6 +36,7 @@ type Event struct {
 	Location                string   `json:"location"`
 	Latitude                *float64 `json:"latitude"`
 	Longitude               *float64 `json:"longitude"`
+	CalendarName            string   `json:"calendar_name"`
 	CreatedAt               string   `json:"created_at"`
 	UpdatedAt               string   `json:"updated_at"`
 	ImportUID               string   `json:"-"` // transient field for iCal import UID matching
@@ -89,6 +90,7 @@ const (
 	maxReminderMinutes    = 40320 // 4 weeks
 	maxRecurrenceCount    = 1000
 	maxRecurrenceInterval = 999
+	MaxCalendarNameLength = 100
 	maxRecurrenceListLen  = 5000                 // max length for comma-separated recurrence fields
 	maxEventDuration      = 366 * 24 * time.Hour // 366 days
 	minYear               = 1970

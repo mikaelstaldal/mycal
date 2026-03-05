@@ -25,8 +25,8 @@ func NewEventService(repo repository.EventRepository) *EventService {
 	return &EventService{repo: repo}
 }
 
-func (s *EventService) ListAll() ([]model.Event, error) {
-	events, err := s.repo.ListAll()
+func (s *EventService) ListAll(calendarNames []string) ([]model.Event, error) {
+	events, err := s.repo.ListAll(calendarNames)
 	if err != nil {
 		return nil, err
 	}
@@ -36,8 +36,8 @@ func (s *EventService) ListAll() ([]model.Event, error) {
 	return events, nil
 }
 
-func (s *EventService) List(from, to string) ([]model.Event, error) {
-	events, err := s.repo.List(from, to)
+func (s *EventService) List(from, to string, calendarNames []string) ([]model.Event, error) {
+	events, err := s.repo.List(from, to, calendarNames)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +46,7 @@ func (s *EventService) List(from, to string) ([]model.Event, error) {
 	}
 
 	// Expand recurring events
-	recurring, err := s.repo.ListRecurring(to)
+	recurring, err := s.repo.ListRecurring(to, calendarNames)
 	if err != nil {
 		return nil, err
 	}
@@ -129,8 +129,8 @@ func applyOverrides(expanded []model.Event, overrides []model.Event, from, to ti
 	return result
 }
 
-func (s *EventService) Search(query, from, to string) ([]model.Event, error) {
-	events, err := s.repo.Search(query, from, to)
+func (s *EventService) Search(query, from, to string, calendarNames []string) ([]model.Event, error) {
+	events, err := s.repo.Search(query, from, to, calendarNames)
 	if err != nil {
 		return nil, err
 	}
@@ -476,7 +476,7 @@ func (s *EventService) CreateOrUpdateOverride(parentID int64, instanceStart stri
 }
 
 // buildEventForImport validates a parsed event and returns a model.Event ready to persist.
-func buildEventForImport(e model.Event) (*model.Event, error) {
+func buildEventForImport(e model.Event, calendarName string) (*model.Event, error) {
 	startTime := e.StartTime
 	endTime := e.EndTime
 	if e.AllDay {
@@ -539,10 +539,14 @@ func buildEventForImport(e model.Event) (*model.Event, error) {
 		Location:             e.Location,
 		Latitude:             e.Latitude,
 		Longitude:            e.Longitude,
+		CalendarName:         calendarName,
 	}, nil
 }
 
-func (s *EventService) ImportSingle(events []model.Event) (*model.Event, error) {
+func (s *EventService) ImportSingle(events []model.Event, calendarName string) (*model.Event, error) {
+	if len(calendarName) > model.MaxCalendarNameLength {
+		return nil, fmt.Errorf("%w: calendar name must be at most %d characters", ErrValidation, model.MaxCalendarNameLength)
+	}
 	if len(events) == 0 {
 		return nil, fmt.Errorf("%w: iCal source contains no events", ErrValidation)
 	}
@@ -556,7 +560,7 @@ func (s *EventService) ImportSingle(events []model.Event) (*model.Event, error) 
 		return nil, fmt.Errorf("%w: iCal source contains %d events, expected exactly one", ErrValidation, len(events))
 	}
 
-	ev, err := buildEventForImport(events[0])
+	ev, err := buildEventForImport(events[0], calendarName)
 	if err != nil {
 		return nil, err
 	}
@@ -566,7 +570,10 @@ func (s *EventService) ImportSingle(events []model.Event) (*model.Event, error) 
 	return ev, nil
 }
 
-func (s *EventService) Import(events []model.Event) (int, error) {
+func (s *EventService) Import(events []model.Event, calendarName string) (int, error) {
+	if len(calendarName) > model.MaxCalendarNameLength {
+		return 0, fmt.Errorf("%w: calendar name must be at most %d characters", ErrValidation, model.MaxCalendarNameLength)
+	}
 	imported := 0
 
 	// Separate parents and overrides
@@ -584,7 +591,7 @@ func (s *EventService) Import(events []model.Event) (int, error) {
 	parentByUID := make(map[string]int64)
 
 	for _, e := range parents {
-		ev, err := buildEventForImport(e)
+		ev, err := buildEventForImport(e, calendarName)
 		if err != nil {
 			continue
 		}
@@ -617,6 +624,7 @@ func (s *EventService) Import(events []model.Event) (int, error) {
 			Location:                e.Location,
 			Latitude:                e.Latitude,
 			Longitude:               e.Longitude,
+			CalendarName:            calendarName,
 			RecurrenceParentID:      &parentID,
 			RecurrenceOriginalStart: e.RecurrenceOriginalStart,
 		}

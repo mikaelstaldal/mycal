@@ -45,6 +45,7 @@ func listEvents(svc *service.EventService) http.HandlerFunc {
 		q := r.URL.Query().Get("q")
 		from := r.URL.Query().Get("from")
 		to := r.URL.Query().Get("to")
+		calendarNames := r.URL.Query()["calendar"] // nil if absent = all calendars
 
 		if len(q) > maxSearchQueryLength {
 			writeError(w, http.StatusBadRequest, "search query too long")
@@ -52,7 +53,7 @@ func listEvents(svc *service.EventService) http.HandlerFunc {
 		}
 
 		if q != "" {
-			events, err := svc.Search(q, from, to)
+			events, err := svc.Search(q, from, to, calendarNames)
 			if err != nil {
 				writeError(w, http.StatusInternalServerError, "failed to search events")
 				return
@@ -66,7 +67,7 @@ func listEvents(svc *service.EventService) http.HandlerFunc {
 			writeError(w, http.StatusBadRequest, "from and to query parameters are required")
 			return
 		}
-		events, err := svc.List(from, to)
+		events, err := svc.List(from, to, calendarNames)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to list events")
 			return
@@ -308,13 +309,15 @@ func importSingleEvent(svc *service.EventService) http.HandlerFunc {
 		}
 		defer cleanup()
 
+		calendarName := r.URL.Query().Get("calendar")
+
 		events, err := ical.Decode(reader)
 		if err != nil {
 			writeError(w, http.StatusBadRequest, "failed to parse iCalendar data")
 			return
 		}
 
-		event, err := svc.ImportSingle(events)
+		event, err := svc.ImportSingle(events, calendarName)
 		if err != nil {
 			if errors.Is(err, service.ErrValidation) {
 				writeError(w, http.StatusBadRequest, err.Error())
@@ -337,13 +340,15 @@ func importEvents(svc *service.EventService) http.HandlerFunc {
 		}
 		defer cleanup()
 
+		calendarName := r.URL.Query().Get("calendar")
+
 		events, err := ical.Decode(reader)
 		if err != nil {
 			writeError(w, http.StatusBadRequest, "failed to parse iCalendar data")
 			return
 		}
 
-		imported, err := svc.Import(events)
+		imported, err := svc.Import(events, calendarName)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to import events")
 			return
@@ -355,7 +360,8 @@ func importEvents(svc *service.EventService) http.HandlerFunc {
 
 func exportICalFeed(svc *service.EventService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		events, err := svc.ListAll()
+		calendarNames := r.URL.Query()["calendar"] // nil if absent = all calendars
+		events, err := svc.ListAll(calendarNames)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to list events")
 			return

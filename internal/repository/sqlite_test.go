@@ -71,7 +71,7 @@ func TestList(t *testing.T) {
 		}
 	}
 
-	got, err := repo.List("2026-02-01T00:00:00Z", "2026-03-01T00:00:00Z")
+	got, err := repo.List("2026-02-01T00:00:00Z", "2026-03-01T00:00:00Z", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -73,6 +73,15 @@ paths:
           description: Search query text. When provided, `from` and `to` are optional filters.
           schema:
             type: string
+        - name: calendar
+          in: query
+          description: Filter by calendar name. Can be repeated to include multiple calendars. When omitted, all events are returned.
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
       responses:
         "200":
           description: List of events
@@ -201,6 +210,13 @@ paths:
       summary: Import events from iCalendar data
       description: >
         Accepts iCalendar data either as raw `text/calendar` body or as a JSON body with a URL to fetch.
+      parameters:
+        - name: calendar
+          in: query
+          description: Calendar name to assign to imported events. Defaults to empty string.
+          schema:
+            type: string
+            maxLength: 100
       requestBody:
         required: true
         content:
@@ -251,6 +267,13 @@ paths:
       description: >
         Accepts iCalendar data either as raw `text/calendar` body or as a JSON body with a URL to fetch.
         The iCalendar data must contain exactly one event.
+      parameters:
+        - name: calendar
+          in: query
+          description: Calendar name to assign to the imported event. Defaults to empty string.
+          schema:
+            type: string
+            maxLength: 100
       requestBody:
         required: true
         content:
@@ -294,7 +317,17 @@ paths:
   /api/v1/events.ics:
     get:
       summary: iCalendar feed
-      description: Returns all events as an iCalendar feed.
+      description: Returns all events as an iCalendar feed. Optionally filter by calendar name.
+      parameters:
+        - name: calendar
+          in: query
+          description: Filter by calendar name. Can be repeated to include multiple calendars. When omitted, all events are returned.
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
       responses:
         "200":
           description: iCalendar data
@@ -462,6 +495,11 @@ components:
           minimum: -180
           maximum: 180
           nullable: true
+        calendar_name:
+          type: string
+          maxLength: 100
+          readOnly: true
+          description: Calendar name (set via import, read-only via create/update API)
         created_at:
           type: string
           format: date-time

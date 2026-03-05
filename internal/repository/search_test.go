@@ -41,7 +41,7 @@ func TestSearchByTitle(t *testing.T) {
 	createTestEvent(t, repo, "Team Meeting", "Weekly sync", "2026-02-18T10:00:00Z", "2026-02-18T11:00:00Z")
 	createTestEvent(t, repo, "Lunch Break", "Cafeteria", "2026-02-18T12:00:00Z", "2026-02-18T13:00:00Z")
 
-	results, err := repo.Search("meeting", "", "")
+	results, err := repo.Search("meeting", "", "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +58,7 @@ func TestSearchByDescription(t *testing.T) {
 	createTestEvent(t, repo, "Event A", "Important discussion about budgets", "2026-02-18T10:00:00Z", "2026-02-18T11:00:00Z")
 	createTestEvent(t, repo, "Event B", "Casual chat", "2026-02-18T12:00:00Z", "2026-02-18T13:00:00Z")
 
-	results, err := repo.Search("budgets", "", "")
+	results, err := repo.Search("budgets", "", "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +75,7 @@ func TestSearchWithTimeRange(t *testing.T) {
 	createTestEvent(t, repo, "Morning Meeting", "Standup", "2026-02-18T09:00:00Z", "2026-02-18T10:00:00Z")
 	createTestEvent(t, repo, "Afternoon Meeting", "Review", "2026-02-18T15:00:00Z", "2026-02-18T16:00:00Z")
 
-	results, err := repo.Search("meeting", "2026-02-18T14:00:00Z", "2026-02-18T17:00:00Z")
+	results, err := repo.Search("meeting", "2026-02-18T14:00:00Z", "2026-02-18T17:00:00Z", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +96,7 @@ func TestSearchAfterUpdate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	results, err := repo.Search("Old", "", "")
+	results, err := repo.Search("Old", "", "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +104,7 @@ func TestSearchAfterUpdate(t *testing.T) {
 		t.Fatalf("expected 0 results for old title, got %d", len(results))
 	}
 
-	results, err = repo.Search("New", "", "")
+	results, err = repo.Search("New", "", "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,7 +121,7 @@ func TestSearchAfterDelete(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	results, err := repo.Search("Deletable", "", "")
+	results, err := repo.Search("Deletable", "", "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -134,7 +134,7 @@ func TestSearchSpecialCharacters(t *testing.T) {
 	repo := setupTestRepo(t)
 	createTestEvent(t, repo, `Event with "quotes"`, "Has special chars: AND OR NOT", "2026-02-18T10:00:00Z", "2026-02-18T11:00:00Z")
 
-	results, err := repo.Search(`"quotes"`, "", "")
+	results, err := repo.Search(`"quotes"`, "", "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,7 +143,7 @@ func TestSearchSpecialCharacters(t *testing.T) {
 	}
 
 	// FTS5 operators should be safely quoted
-	results, err = repo.Search("AND OR NOT", "", "")
+	results, err = repo.Search("AND OR NOT", "", "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,7 +154,7 @@ func TestSearchEmptyQuery(t *testing.T) {
 	repo := setupTestRepo(t)
 	createTestEvent(t, repo, "Some Event", "Description", "2026-02-18T10:00:00Z", "2026-02-18T11:00:00Z")
 
-	results, err := repo.Search("", "", "")
+	results, err := repo.Search("", "", "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

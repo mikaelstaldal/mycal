@@ -76,7 +76,7 @@ func main() {
 		}
 
 		svc := service.NewEventService(repo)
-		events, err := svc.ListAll()
+		events, err := svc.ListAll(nil)
 		if err != nil {
 			log.Fatalf("list events: %v", err)
 		}

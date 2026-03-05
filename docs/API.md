@@ -6,15 +6,15 @@ All endpoints are under `/api/v1`. Datetimes use RFC 3339 format (or `YYYY-MM-DD
 |--------|----------------------------------|-----------------------------------------------------------------------------|
 | GET    | `/api/v1/preferences`            | Get all preferences                                                         |
 | PATCH  | `/api/v1/preferences`            | Update preferences (partial)                                                |
-| GET    | `/api/v1/events?from=...&to=...` | List events in a time range                                                 |
-| GET    | `/api/v1/events?q=...`           | Search events by text                                                       |
+| GET    | `/api/v1/events?from=...&to=...` | List events in a time range (optional `calendar` filter)                    |
+| GET    | `/api/v1/events?q=...`           | Search events by text (optional `calendar` filter)                          |
 | POST   | `/api/v1/events`                 | Create an event                                                             |
 | GET    | `/api/v1/events/{id}`            | Get a single event (id may be composite, URL-encoded)                       |
 | PATCH  | `/api/v1/events/{id}`            | Update an event (use composite ID to override a single recurrence instance) |
 | DELETE | `/api/v1/events/{id}`            | Delete an event (use composite ID to exclude a single recurrence instance)  |
-| POST   | `/api/v1/import`                 | Import events from iCalendar data                                           |
-| POST   | `/api/v1/import-single`          | Import a single event from iCalendar data                                   |
-| GET    | `/api/v1/events.ics`             | iCalendar feed (all events)                                                 |
+| POST   | `/api/v1/import`                 | Import events from iCalendar data (optional `calendar` query param)         |
+| POST   | `/api/v1/import-single`          | Import a single event from iCalendar data (optional `calendar` query param) |
+| GET    | `/api/v1/events.ics`             | iCalendar feed (optional `calendar` filter)                                 |
 | GET    | `/calendar.ics`                  | iCalendar feed (convenience URL)                                            |
 
 ## Preferences
@@ -61,6 +61,7 @@ All endpoints are under `/api/v1`. Datetimes use RFC 3339 format (or `YYYY-MM-DD
 | `location`                  | string | Location text (max 500 chars)                                                    |
 | `latitude`                  | float  | Location latitude (-90 to 90)                                                    |
 | `longitude`                 | float  | Location longitude (-180 to 180)                                                 |
+| `calendar_name`             | string | Calendar name (read-only via create/update, set via import; max 100 chars)       |
 | `created_at`                | string | Creation timestamp (read-only)                                                   |
 | `updated_at`                | string | Last update timestamp (read-only)                                                |
 
@@ -83,6 +84,30 @@ curl -X POST http://localhost:8080/api/v1/import \
 ```json
 {"url": "https://example.com/calendar.ics"}
 ```
+
+## Calendar Filtering
+
+Events can be assigned to a named calendar via the `calendar` query parameter on import endpoints. The `calendar_name` field is read-only through the regular create/update API (always defaults to empty string).
+
+**Filtering by calendar** — pass one or more `calendar` query parameters to list, search, and iCal feed endpoints:
+
+```bash
+# List events from a specific calendar
+curl 'http://localhost:8080/api/v1/events?from=2026-02-01T00:00:00Z&to=2026-03-01T00:00:00Z&calendar=work'
+
+# List events from multiple calendars
+curl 'http://localhost:8080/api/v1/events?from=2026-02-01T00:00:00Z&to=2026-03-01T00:00:00Z&calendar=work&calendar=personal'
+
+# Import events into a specific calendar
+curl -X POST 'http://localhost:8080/api/v1/import?calendar=work' \
+  -H 'Content-Type: text/calendar' \
+  --data-binary @events.ics
+
+# Filter iCal feed by calendar
+curl 'http://localhost:8080/api/v1/events.ics?calendar=work'
+```
+
+When the `calendar` parameter is omitted, all events are returned regardless of calendar name.
 
 ## iCalendar Feed
 
