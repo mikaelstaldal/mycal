@@ -65,7 +65,7 @@ Always run `go mod tidy` after modifying the `go.mod` file.
 
 ## API
 
-The API docs are in `docs/API.md`, update them whenever the API is changed. The API is used by mobile clients, 
+The API docs are in `docs/API.md` and `docs/openapi.yaml`, update both whenever the API is changed. The API is used by mobile clients, 
 so make sure to keep it backwards compatible.
 
 ## Database
