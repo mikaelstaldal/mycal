@@ -5,6 +5,7 @@ import { importEvents, importSingleEvent } from '../lib/api.js';
 export function ImportSingleForm({ onImported, onClose }) {
     const [sourceMode, setSourceMode] = useState('file');
     const [url, setUrl] = useState('');
+    const [calendarName, setCalendarName] = useState('');
     const [loading, setLoading] = useState(false);
     const dialogRef = useRef(null);
     const fileRef = useRef(null);
@@ -27,7 +28,7 @@ export function ImportSingleForm({ onImported, onClose }) {
         }
         setLoading(true);
         try {
-            await importSingleEvent(input);
+            await importSingleEvent(input, calendarName.trim());
             onImported('Event imported successfully.');
         } catch (err) {
             onImported(err.message, true);
@@ -61,6 +62,11 @@ export function ImportSingleForm({ onImported, onClose }) {
                            placeholder="https://calendar.google.com/..." />
                 </label>
             `}
+            <label>
+                Calendar name (optional)
+                <input type="text" value=${calendarName} onInput=${e => setCalendarName(e.target.value)}
+                       placeholder="e.g. work, personal" maxlength="100" />
+            </label>
             <div class="import-hint">The file or URL must contain exactly one event.</div>
             <div class="dialog-actions">
                 <button onClick=${onClose}>Cancel</button>
@@ -75,6 +81,7 @@ export function ImportSingleForm({ onImported, onClose }) {
 export function ImportBulkForm({ onImported, onClose }) {
     const [sourceMode, setSourceMode] = useState('file');
     const [url, setUrl] = useState('');
+    const [calendarName, setCalendarName] = useState('');
     const [loading, setLoading] = useState(false);
     const dialogRef = useRef(null);
     const fileRef = useRef(null);
@@ -97,7 +104,7 @@ export function ImportBulkForm({ onImported, onClose }) {
         }
         setLoading(true);
         try {
-            const res = await importEvents(input);
+            const res = await importEvents(input, calendarName.trim());
             onImported(`Imported ${res.imported} event${res.imported !== 1 ? 's' : ''}.`);
         } catch (err) {
             onImported(err.message, true);
@@ -131,6 +138,11 @@ export function ImportBulkForm({ onImported, onClose }) {
                            placeholder="https://calendar.google.com/..." />
                 </label>
             `}
+            <label>
+                Calendar name (optional)
+                <input type="text" value=${calendarName} onInput=${e => setCalendarName(e.target.value)}
+                       placeholder="e.g. work, personal" maxlength="100" />
+            </label>
             <div class="dialog-actions">
                 <button onClick=${onClose}>Cancel</button>
                 <button type="submit" onClick=${handleImport} disabled=${loading}>

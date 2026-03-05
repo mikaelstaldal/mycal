@@ -46,9 +46,11 @@ export async function searchEvents(query) {
     return res.json();
 }
 
-export async function importEvents(icsContentOrUrl) {
+export async function importEvents(icsContentOrUrl, calendarName) {
     const isUrl = typeof icsContentOrUrl === 'string' && icsContentOrUrl.startsWith('http');
-    const res = await fetch(APP_BASE + '/api/v1/import', {
+    let url = APP_BASE + '/api/v1/import';
+    if (calendarName) url += `?calendar=${encodeURIComponent(calendarName)}`;
+    const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': isUrl ? 'application/json' : 'text/calendar' },
         body: isUrl ? JSON.stringify({ url: icsContentOrUrl }) : icsContentOrUrl,
@@ -73,9 +75,11 @@ export async function updatePreferences(prefs) {
     return res.json();
 }
 
-export async function importSingleEvent(icsContentOrUrl) {
+export async function importSingleEvent(icsContentOrUrl, calendarName) {
     const isUrl = typeof icsContentOrUrl === 'string' && icsContentOrUrl.startsWith('http');
-    const res = await fetch(APP_BASE + '/api/v1/import-single', {
+    let url = APP_BASE + '/api/v1/import-single';
+    if (calendarName) url += `?calendar=${encodeURIComponent(calendarName)}`;
+    const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': isUrl ? 'application/json' : 'text/calendar' },
         body: isUrl ? JSON.stringify({ url: icsContentOrUrl }) : icsContentOrUrl,
