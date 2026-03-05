@@ -15,3 +15,10 @@ type EventRepository interface {
 	GetOverride(parentID int64, originalStart string) (*model.Event, error)
 	DeleteByParentID(parentID int64) error
 }
+
+type PreferencesRepository interface {
+	GetAllPreferences() (map[string]string, error)
+	GetPreference(key string) (string, bool, error)
+	SetPreference(key, value string) error
+	DeletePreference(key string) error
+}

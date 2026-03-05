@@ -29,7 +29,8 @@ func setupTestServer(t *testing.T) *httptest.Server {
 		t.Fatalf("init repo: %v", err)
 	}
 	svc := service.NewEventService(repo)
-	router := handler.NewRouter(svc)
+	prefSvc := service.NewPreferencesService(repo)
+	router := handler.NewRouter(svc, prefSvc)
 	ts := httptest.NewServer(router)
 	t.Cleanup(func() {
 		ts.Close()
@@ -906,6 +907,68 @@ END:VCALENDAR`
 	icsStr := string(body)
 	if !strings.Contains(icsStr, "URL:https://example.com/event") {
 		t.Error("expected URL in exported iCal")
+	}
+}
+
+// --- Preferences tests ---
+
+func TestGetPreferencesDefaults(t *testing.T) {
+	ts := setupTestServer(t)
+	resp, err := http.Get(ts.URL + "/api/v1/preferences")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("got status %d, want %d", resp.StatusCode, http.StatusOK)
+	}
+	prefs := decodeJSON[map[string]string](t, resp)
+	if prefs["defaultEventColor"] != "dodgerblue" {
+		t.Errorf("defaultEventColor = %q, want %q", prefs["defaultEventColor"], "dodgerblue")
+	}
+}
+
+func TestUpdateAndGetPreferences(t *testing.T) {
+	ts := setupTestServer(t)
+
+	// Update
+	data, _ := json.Marshal(map[string]string{"defaultEventColor": "red"})
+	req, _ := http.NewRequest(http.MethodPatch, ts.URL+"/api/v1/preferences", bytes.NewReader(data))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("patch: got status %d, want %d", resp.StatusCode, http.StatusOK)
+	}
+	prefs := decodeJSON[map[string]string](t, resp)
+	if prefs["defaultEventColor"] != "red" {
+		t.Errorf("after patch: defaultEventColor = %q, want %q", prefs["defaultEventColor"], "red")
+	}
+
+	// Get
+	resp2, err := http.Get(ts.URL + "/api/v1/preferences")
+	if err != nil {
+		t.Fatal(err)
+	}
+	prefs2 := decodeJSON[map[string]string](t, resp2)
+	if prefs2["defaultEventColor"] != "red" {
+		t.Errorf("after get: defaultEventColor = %q, want %q", prefs2["defaultEventColor"], "red")
+	}
+}
+
+func TestUpdatePreferencesUnknownKey(t *testing.T) {
+	ts := setupTestServer(t)
+	data, _ := json.Marshal(map[string]string{"unknownKey": "value"})
+	req, _ := http.NewRequest(http.MethodPatch, ts.URL+"/api/v1/preferences", bytes.NewReader(data))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("got status %d, want %d", resp.StatusCode, http.StatusBadRequest)
 	}
 }
 

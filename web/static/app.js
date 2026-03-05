@@ -10,7 +10,7 @@ import { EventForm } from './components/event-form.js';
 import { ImportSingleForm, ImportBulkForm } from './components/import-form.js';
 import { Toast } from './components/toast.js';
 import { Settings } from './components/settings.js';
-import { listEvents, searchEvents, createEvent, updateEvent, deleteEvent, getEvent, importSingleEvent } from './lib/api.js';
+import { listEvents, searchEvents, createEvent, updateEvent, deleteEvent, getEvent, importSingleEvent, getPreferences } from './lib/api.js';
 import { addMonths, addWeeks, startOfWeek, toRFC3339 } from './lib/date-utils.js';
 import { getConfig, hasUserDefaultView } from './lib/config.js';
 import { checkAndNotify, requestPermission } from './lib/notifications.js';
@@ -68,6 +68,14 @@ function App() {
     }, [currentDate, viewMode, config.weekStartDay]);
 
     useEffect(() => { loadEvents(); }, [loadEvents]);
+
+    useEffect(() => {
+        getPreferences().then(prefs => {
+            if (prefs.defaultEventColor) {
+                setConfig(prev => ({ ...prev, defaultEventColor: prefs.defaultEventColor }));
+            }
+        }).catch(err => console.error('Failed to load preferences:', err));
+    }, []);
 
     useEffect(() => {
         checkAndNotify(events);

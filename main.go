@@ -123,7 +123,8 @@ func main() {
 	}
 
 	svc := service.NewEventService(repo)
-	apiRouter := handler.NewRouter(svc)
+	prefSvc := service.NewPreferencesService(repo)
+	apiRouter := handler.NewRouter(svc, prefSvc)
 
 	calendarFeed := handler.NewCalendarFeedHandler(svc)
 

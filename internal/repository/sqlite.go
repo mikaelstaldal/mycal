@@ -76,6 +76,14 @@ func initSchema(db *sql.DB) error {
 	}
 
 	_, err = db.Exec(`INSERT INTO events_fts(events_fts) VALUES('rebuild')`)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS preferences (
+		key   TEXT PRIMARY KEY,
+		value TEXT NOT NULL DEFAULT ''
+	)`)
 	return err
 }
 
@@ -319,5 +327,45 @@ func (r *SQLiteRepository) GetOverride(parentID int64, originalStart string) (*m
 
 func (r *SQLiteRepository) DeleteByParentID(parentID int64) error {
 	_, err := r.db.Exec(`DELETE FROM events WHERE recurrence_parent_id = ?`, parentID)
+	return err
+}
+
+func (r *SQLiteRepository) GetAllPreferences() (map[string]string, error) {
+	rows, err := r.db.Query(`SELECT key, value FROM preferences`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	prefs := make(map[string]string)
+	for rows.Next() {
+		var k, v string
+		if err := rows.Scan(&k, &v); err != nil {
+			return nil, err
+		}
+		prefs[k] = v
+	}
+	return prefs, rows.Err()
+}
+
+func (r *SQLiteRepository) GetPreference(key string) (string, bool, error) {
+	var value string
+	err := r.db.QueryRow(`SELECT value FROM preferences WHERE key = ?`, key).Scan(&value)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	return value, true, nil
+}
+
+func (r *SQLiteRepository) SetPreference(key, value string) error {
+	_, err := r.db.Exec(`INSERT INTO preferences (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, key, value)
+	return err
+}
+
+func (r *SQLiteRepository) DeletePreference(key string) error {
+	_, err := r.db.Exec(`DELETE FROM preferences WHERE key = ?`, key)
 	return err
 }

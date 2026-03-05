@@ -161,6 +161,84 @@ func TestCreateAndGetWithLocation(t *testing.T) {
 	}
 }
 
+// --- Preferences tests ---
+
+func TestSetAndGetPreference(t *testing.T) {
+	repo := newTestRepo(t)
+	if err := repo.SetPreference("defaultEventColor", "red"); err != nil {
+		t.Fatal(err)
+	}
+	val, ok, err := repo.GetPreference("defaultEventColor")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ok {
+		t.Fatal("expected preference to exist")
+	}
+	if val != "red" {
+		t.Fatalf("got %q, want %q", val, "red")
+	}
+}
+
+func TestGetPreferenceNotFound(t *testing.T) {
+	repo := newTestRepo(t)
+	_, ok, err := repo.GetPreference("nonexistent")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ok {
+		t.Fatal("expected preference not to exist")
+	}
+}
+
+func TestGetAllPreferences(t *testing.T) {
+	repo := newTestRepo(t)
+	if err := repo.SetPreference("a", "1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.SetPreference("b", "2"); err != nil {
+		t.Fatal(err)
+	}
+	prefs, err := repo.GetAllPreferences()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(prefs) != 2 {
+		t.Fatalf("got %d prefs, want 2", len(prefs))
+	}
+	if prefs["a"] != "1" || prefs["b"] != "2" {
+		t.Fatalf("unexpected prefs: %v", prefs)
+	}
+}
+
+func TestUpsertPreference(t *testing.T) {
+	repo := newTestRepo(t)
+	if err := repo.SetPreference("key", "v1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.SetPreference("key", "v2"); err != nil {
+		t.Fatal(err)
+	}
+	val, _, _ := repo.GetPreference("key")
+	if val != "v2" {
+		t.Fatalf("got %q, want %q", val, "v2")
+	}
+}
+
+func TestDeletePreference(t *testing.T) {
+	repo := newTestRepo(t)
+	if err := repo.SetPreference("key", "val"); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.DeletePreference("key"); err != nil {
+		t.Fatal(err)
+	}
+	_, ok, _ := repo.GetPreference("key")
+	if ok {
+		t.Fatal("expected preference to be deleted")
+	}
+}
+
 func TestCreateWithoutCoordinates(t *testing.T) {
 	repo := newTestRepo(t)
 	e := &model.Event{

@@ -1,6 +1,7 @@
 import { html } from 'htm/preact';
 import { useState, useRef, useEffect } from 'preact/hooks';
 import { saveConfig } from '../lib/config.js';
+import { updatePreferences } from '../lib/api.js';
 import { COLORS } from '../lib/colors.js';
 
 // Google Maps API keys are 39 chars starting with "AIza"
@@ -40,6 +41,9 @@ export function Settings({ config, onConfigChange }) {
         const updated = { ...config, [key]: numericKeys.includes(key) ? Number(value) : value };
         saveConfig(updated);
         onConfigChange(updated);
+        if (key === 'defaultEventColor') {
+            updatePreferences({ [key]: value }).catch(err => console.error('Failed to save preference:', err));
+        }
     }
 
     function handleMapProviderChange(value) {

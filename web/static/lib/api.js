@@ -57,6 +57,22 @@ export async function importEvents(icsContentOrUrl) {
     return res.json();
 }
 
+export async function getPreferences() {
+    const res = await fetch(APP_BASE + '/api/v1/preferences');
+    if (!res.ok) throw new Error((await res.json()).error);
+    return res.json();
+}
+
+export async function updatePreferences(prefs) {
+    const res = await fetch(APP_BASE + '/api/v1/preferences', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(prefs),
+    });
+    if (!res.ok) throw new Error((await res.json()).error);
+    return res.json();
+}
+
 export async function importSingleEvent(icsContentOrUrl) {
     const isUrl = typeof icsContentOrUrl === 'string' && icsContentOrUrl.startsWith('http');
     const res = await fetch(APP_BASE + '/api/v1/import-single', {

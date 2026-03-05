@@ -4,6 +4,8 @@ All endpoints are under `/api/v1`. Datetimes use RFC 3339 format (or `YYYY-MM-DD
 
 | Method | Path                             | Description                                                                 |
 |--------|----------------------------------|-----------------------------------------------------------------------------|
+| GET    | `/api/v1/preferences`            | Get all preferences                                                         |
+| PATCH  | `/api/v1/preferences`            | Update preferences (partial)                                                |
 | GET    | `/api/v1/events?from=...&to=...` | List events in a time range                                                 |
 | GET    | `/api/v1/events?q=...`           | Search events by text                                                       |
 | POST   | `/api/v1/events`                 | Create an event                                                             |
@@ -14,6 +16,20 @@ All endpoints are under `/api/v1`. Datetimes use RFC 3339 format (or `YYYY-MM-DD
 | POST   | `/api/v1/import-single`          | Import a single event from iCalendar data                                   |
 | GET    | `/api/v1/events.ics`             | iCalendar feed (all events)                                                 |
 | GET    | `/calendar.ics`                  | iCalendar feed (convenience URL)                                            |
+
+## Preferences
+
+`GET /api/v1/preferences` returns all preferences with their current values (defaults filled in for unset keys):
+
+```json
+{"defaultEventColor": "dodgerblue"}
+```
+
+`PATCH /api/v1/preferences` accepts a JSON object with a subset of preference keys to update. Only included keys are changed; omitted keys are left unchanged. Unknown keys return 400. Returns the full preferences state after update.
+
+| Key                 | Type   | Default        | Description                           |
+|---------------------|--------|----------------|---------------------------------------|
+| `defaultEventColor` | string | `"dodgerblue"` | Default CSS color for new events      |
 
 ## Event Fields
 
