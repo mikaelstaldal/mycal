@@ -9,6 +9,47 @@ servers:
     description: Local development server
 
 paths:
+  /api/v1/preferences:
+    get:
+      summary: Get all preferences
+      description: Returns all preferences with their current values (defaults filled in for unset keys).
+      responses:
+        "200":
+          description: Current preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Preferences"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    patch:
+      summary: Update preferences
+      description: >
+        Partial update — only included keys are changed. Omitted keys are left unchanged. Unknown keys return 400.
+        Returns the full preferences state after update.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Preferences"
+      responses:
+        "200":
+          description: Full preferences after update
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Preferences"
+        "400":
+          description: Unknown preference key or invalid value
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /api/v1/events:
     get:
       summary: List or search events
@@ -306,6 +347,14 @@ components:
             $ref: "#/components/schemas/Error"
 
   schemas:
+    Preferences:
+      type: object
+      properties:
+        defaultEventColor:
+          type: string
+          description: Default CSS color for new events
+          default: "dodgerblue"
+
     Error:
       type: object
       properties:
