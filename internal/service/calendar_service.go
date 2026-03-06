@@ -1,6 +1,8 @@
 package service
 
 import (
+	"fmt"
+
 	"github.com/mikaelstaldal/mycal/internal/model"
 	"github.com/mikaelstaldal/mycal/internal/repository"
 )
@@ -25,6 +27,9 @@ func (s *CalendarService) List() ([]model.Calendar, error) {
 }
 
 func (s *CalendarService) Update(id int64, name, color string) (*model.Calendar, error) {
+	if err := model.ValidateColor(color); err != nil {
+		return nil, fmt.Errorf("%w: %s", ErrValidation, err.Error())
+	}
 	cal, err := s.repo.GetCalendarByID(id)
 	if err != nil {
 		return nil, err

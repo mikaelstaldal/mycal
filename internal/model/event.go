@@ -326,6 +326,9 @@ func (r *CreateEventRequest) Validate() error {
 	if err := validateURL(r.URL); err != nil {
 		return err
 	}
+	if err := ValidateColor(r.Color); err != nil {
+		return err
+	}
 	if r.StartTime == "" {
 		return fmt.Errorf("start_time is required")
 	}
@@ -495,6 +498,11 @@ func (r *UpdateEventRequest) Validate() error {
 	}
 	if r.URL != nil {
 		if err := validateURL(*r.URL); err != nil {
+			return err
+		}
+	}
+	if r.Color != nil {
+		if err := ValidateColor(*r.Color); err != nil {
 			return err
 		}
 	}

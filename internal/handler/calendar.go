@@ -30,6 +30,10 @@ func updateCalendar(calSvc *service.CalendarService) http.HandlerFunc {
 		}
 		cal, err := calSvc.Update(id, req.Name, req.Color)
 		if err != nil {
+			if errors.Is(err, service.ErrValidation) {
+				writeError(w, http.StatusBadRequest, err.Error())
+				return
+			}
 			if errors.Is(err, service.ErrNotFound) {
 				writeError(w, http.StatusNotFound, "calendar not found")
 				return

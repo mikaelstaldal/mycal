@@ -55,6 +55,9 @@ func (r *CreateFeedRequest) Validate() error {
 	if len(r.CalendarName) > MaxCalendarNameLength {
 		return fmt.Errorf("calendar_name must be at most %d characters", MaxCalendarNameLength)
 	}
+	if err := ValidateColor(r.CalendarColor); err != nil {
+		return err
+	}
 	if r.RefreshIntervalMinutes == 0 {
 		r.RefreshIntervalMinutes = DefaultRefreshIntervalMinutes
 	}
