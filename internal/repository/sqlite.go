@@ -617,3 +617,10 @@ func (r *SQLiteRepository) UpdateCalendarColor(id int64, color string) error {
 	_, err := r.db.Exec(`UPDATE calendars SET color = ? WHERE id = ?`, color, id)
 	return err
 }
+
+func (r *SQLiteRepository) DeleteCalendarIfUnused(id int64) error {
+	_, err := r.db.Exec(`DELETE FROM calendars WHERE id = ? AND id != 0
+		AND NOT EXISTS (SELECT 1 FROM events WHERE calendar_id = ?)
+		AND NOT EXISTS (SELECT 1 FROM feeds WHERE calendar_id = ?)`, id, id, id)
+	return err
+}

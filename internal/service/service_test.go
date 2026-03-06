@@ -77,6 +77,9 @@ func (m *mockCalRepo) CreateCalendar(cal *model.Calendar) error {
 func (m *mockCalRepo) UpdateCalendarColor(id int64, color string) error {
 	return nil
 }
+func (m *mockCalRepo) DeleteCalendarIfUnused(id int64) error {
+	return nil
+}
 
 func (m *mockRepo) GetByID(id int64) (*model.Event, error) {
 	if m.getByIDFn != nil {

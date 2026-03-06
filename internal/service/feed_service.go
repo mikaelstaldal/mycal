@@ -2,8 +2,6 @@ package service
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -115,11 +113,21 @@ func (s *FeedService) Update(id int64, req *model.UpdateFeedRequest) (*model.Fee
 }
 
 func (s *FeedService) Delete(id int64) error {
-	err := s.feedRepo.DeleteFeed(id)
-	if errors.Is(err, sql.ErrNoRows) {
+	feed, err := s.feedRepo.GetFeedByID(id)
+	if err != nil {
+		return err
+	}
+	if feed == nil {
 		return ErrNotFound
 	}
-	return err
+	calendarID := feed.CalendarID
+	if err := s.feedRepo.DeleteFeed(id); err != nil {
+		return err
+	}
+	if calendarID != 0 {
+		_ = s.calRepo.DeleteCalendarIfUnused(calendarID)
+	}
+	return nil
 }
 
 func (s *FeedService) RefreshFeed(id int64) (*model.Feed, error) {
