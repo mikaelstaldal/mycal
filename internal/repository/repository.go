@@ -37,6 +37,6 @@ type CalendarRepository interface {
 	GetCalendarByID(id int64) (*model.Calendar, error)
 	GetCalendarByName(name string) (*model.Calendar, error)
 	CreateCalendar(cal *model.Calendar) error
-	UpdateCalendarColor(id int64, color string) error
+	UpdateCalendar(cal *model.Calendar) error
 	DeleteCalendarIfUnused(id int64) error
 }

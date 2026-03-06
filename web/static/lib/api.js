@@ -132,3 +132,13 @@ export async function listCalendars() {
     if (!res.ok) throw new Error((await res.json()).error);
     return res.json();
 }
+
+export async function updateCalendar(id, data) {
+    const res = await fetch(`${CALENDARS_BASE}/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error((await res.json()).error);
+    return res.json();
+}

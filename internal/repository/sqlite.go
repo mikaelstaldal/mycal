@@ -613,8 +613,8 @@ func (r *SQLiteRepository) CreateCalendar(cal *model.Calendar) error {
 	return nil
 }
 
-func (r *SQLiteRepository) UpdateCalendarColor(id int64, color string) error {
-	_, err := r.db.Exec(`UPDATE calendars SET color = ? WHERE id = ?`, color, id)
+func (r *SQLiteRepository) UpdateCalendar(cal *model.Calendar) error {
+	_, err := r.db.Exec(`UPDATE calendars SET name = ?, color = ? WHERE id = ?`, cal.Name, cal.Color, cal.ID)
 	return err
 }
 

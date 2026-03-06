@@ -7,6 +7,7 @@ All endpoints are under `/api/v1`. Datetimes use RFC 3339 format (or `YYYY-MM-DD
 | GET    | `/api/v1/preferences`            | Get all preferences                                                         |
 | PATCH  | `/api/v1/preferences`            | Update preferences (partial)                                                |
 | GET    | `/api/v1/calendars`              | List all calendars                                                          |
+| PATCH  | `/api/v1/calendars/{id}`         | Update a calendar (name and/or color)                                       |
 | GET    | `/api/v1/events?from=...&to=...` | List events in a time range (optional `calendar_id` or `calendar` filter)   |
 | GET    | `/api/v1/events?q=...`           | Search events by text (optional `calendar_id` or `calendar` filter)         |
 | POST   | `/api/v1/events`                 | Create an event                                                             |
@@ -45,6 +46,14 @@ There are currently no user-configurable server-side preferences. The default ev
 ```
 
 Calendars are auto-created when importing events or creating feed subscriptions with a `calendar_name`. The default calendar (id=0) always exists.
+
+`PATCH /api/v1/calendars/{id}` updates a calendar's name and/or color. Only included fields are changed:
+
+```json
+{"name": "Work", "color": "gold"}
+```
+
+Returns the updated calendar object.
 
 ## Event Fields
 

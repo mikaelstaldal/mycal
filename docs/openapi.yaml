@@ -66,6 +66,42 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/v1/calendars/{id}:
+    patch:
+      summary: Update a calendar
+      description: >
+        Partial update — only included fields are changed. Updates the calendar's name and/or color.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCalendarRequest"
+      responses:
+        "200":
+          description: Updated calendar
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Calendar"
+        "400":
+          description: Invalid ID or JSON
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /api/v1/events:
     get:
       summary: List or search events
@@ -565,6 +601,17 @@ components:
         - id
         - name
         - color
+
+    UpdateCalendarRequest:
+      type: object
+      description: All fields are optional. Only included fields are changed.
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        color:
+          type: string
+          description: CSS color for events in this calendar
 
     Feed:
       type: object

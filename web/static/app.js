@@ -12,7 +12,7 @@ import { FeedsDialog } from './components/feeds.js';
 import { Toast } from './components/toast.js';
 import { Settings } from './components/settings.js';
 import { CalendarSidebar } from './components/calendar-sidebar.js';
-import { listEvents, searchEvents, createEvent, updateEvent, deleteEvent, getEvent, importSingleEvent, listCalendars } from './lib/api.js';
+import { listEvents, searchEvents, createEvent, updateEvent, deleteEvent, getEvent, importSingleEvent, listCalendars, updateCalendar } from './lib/api.js';
 import { addMonths, addWeeks, startOfWeek, toRFC3339 } from './lib/date-utils.js';
 import { getConfig, hasUserDefaultView } from './lib/config.js';
 import { checkAndNotify, requestPermission } from './lib/notifications.js';
@@ -120,6 +120,16 @@ function App() {
 
     function handleToggleAll() {
         setSelectedCalendarIds(prev => prev === null ? [] : null);
+    }
+
+    async function handleEditCalendar(id, data) {
+        try {
+            await updateCalendar(id, data);
+            await loadCalendars();
+            await loadEvents();
+        } catch (err) {
+            console.error('Failed to update calendar:', err);
+        }
     }
 
     function handlePrev() {
@@ -353,7 +363,8 @@ function App() {
                     <${CalendarSidebar} calendars=${calendars}
                                         selectedCalendarIds=${selectedCalendarIds}
                                         onToggleCalendar=${handleToggleCalendar}
-                                        onToggleAll=${handleToggleAll} />
+                                        onToggleAll=${handleToggleAll}
+                                        onEditCalendar=${handleEditCalendar} />
                 ` : null}
                 <div class="app-main">
                     ${searchResults !== null ? html`

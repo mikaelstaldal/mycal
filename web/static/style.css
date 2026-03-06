@@ -1577,3 +1577,84 @@ body {
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+.calendar-edit-trigger {
+    display: none;
+    margin-left: auto;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.75rem;
+    color: #999;
+    padding: 0 2px;
+    flex-shrink: 0;
+}
+
+.calendar-sidebar-item:hover .calendar-edit-trigger {
+    display: inline;
+}
+
+.calendar-edit-trigger:hover {
+    color: #1a73e8;
+}
+
+.calendar-sidebar-edit {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 0;
+}
+
+.calendar-edit-name {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.8rem;
+    padding: 2px 4px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+}
+
+.calendar-edit-actions {
+    display: flex;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.calendar-edit-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 0 2px;
+    color: #555;
+    flex-shrink: 0;
+}
+
+.calendar-edit-btn:hover {
+    color: #1a73e8;
+}
+
+.calendar-edit-colors {
+    display: flex;
+    gap: 4px;
+    width: 100%;
+    flex-wrap: wrap;
+    margin-top: 2px;
+}
+
+.calendar-color-swatch {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+}
+
+.calendar-color-swatch.selected {
+    border-color: #333;
+}
+
+.calendar-color-swatch:hover {
+    opacity: 0.8;
+}
