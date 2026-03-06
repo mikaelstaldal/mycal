@@ -28,10 +28,11 @@ func setupTestServer(t *testing.T) *httptest.Server {
 	if err != nil {
 		t.Fatalf("init repo: %v", err)
 	}
-	svc := service.NewEventService(repo)
+	calSvc := service.NewCalendarService(repo)
+	svc := service.NewEventService(repo, repo)
 	prefSvc := service.NewPreferencesService(repo)
-	feedSvc := service.NewFeedService(repo, repo)
-	router := handler.NewRouter(svc, prefSvc, feedSvc)
+	feedSvc := service.NewFeedService(repo, repo, repo)
+	router := handler.NewRouter(svc, prefSvc, feedSvc, calSvc)
 	ts := httptest.NewServer(router)
 	t.Cleanup(func() {
 		ts.Close()
@@ -923,15 +924,16 @@ func TestGetPreferencesDefaults(t *testing.T) {
 		t.Fatalf("got status %d, want %d", resp.StatusCode, http.StatusOK)
 	}
 	prefs := decodeJSON[map[string]string](t, resp)
-	if prefs["defaultEventColor"] != "dodgerblue" {
-		t.Errorf("defaultEventColor = %q, want %q", prefs["defaultEventColor"], "dodgerblue")
+	// Preferences should be empty (defaultEventColor moved to calendars)
+	if len(prefs) != 0 {
+		t.Errorf("expected empty preferences, got %v", prefs)
 	}
 }
 
-func TestUpdateAndGetPreferences(t *testing.T) {
+func TestUpdatePreferencesNoAllowedKeys(t *testing.T) {
 	ts := setupTestServer(t)
 
-	// Update
+	// defaultEventColor is no longer a preference - should fail
 	data, _ := json.Marshal(map[string]string{"defaultEventColor": "red"})
 	req, _ := http.NewRequest(http.MethodPatch, ts.URL+"/api/v1/preferences", bytes.NewReader(data))
 	req.Header.Set("Content-Type", "application/json")
@@ -939,22 +941,9 @@ func TestUpdateAndGetPreferences(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("patch: got status %d, want %d", resp.StatusCode, http.StatusOK)
-	}
-	prefs := decodeJSON[map[string]string](t, resp)
-	if prefs["defaultEventColor"] != "red" {
-		t.Errorf("after patch: defaultEventColor = %q, want %q", prefs["defaultEventColor"], "red")
-	}
-
-	// Get
-	resp2, err := http.Get(ts.URL + "/api/v1/preferences")
-	if err != nil {
-		t.Fatal(err)
-	}
-	prefs2 := decodeJSON[map[string]string](t, resp2)
-	if prefs2["defaultEventColor"] != "red" {
-		t.Errorf("after get: defaultEventColor = %q, want %q", prefs2["defaultEventColor"], "red")
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("got status %d, want %d", resp.StatusCode, http.StatusBadRequest)
 	}
 }
 

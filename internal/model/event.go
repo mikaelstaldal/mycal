@@ -36,6 +36,7 @@ type Event struct {
 	Location                string   `json:"location"`
 	Latitude                *float64 `json:"latitude"`
 	Longitude               *float64 `json:"longitude"`
+	CalendarID              int64    `json:"calendar_id"`
 	CalendarName            string   `json:"calendar_name"`
 	IcsUID                  string   `json:"ics_uid,omitempty"`
 	CreatedAt               string   `json:"created_at"`

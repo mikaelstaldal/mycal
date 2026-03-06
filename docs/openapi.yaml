@@ -50,6 +50,22 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/v1/calendars:
+    get:
+      summary: List all calendars
+      description: Returns all calendars. The default calendar (id=0) always exists. New calendars are auto-created when importing events or creating feed subscriptions with a calendar_name.
+      responses:
+        "200":
+          description: List of calendars
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Calendar"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /api/v1/events:
     get:
       summary: List or search events
@@ -73,9 +89,18 @@ paths:
           description: Search query text. When provided, `from` and `to` are optional filters.
           schema:
             type: string
+        - name: calendar_id
+          in: query
+          description: Filter by calendar ID. Can be repeated to include multiple calendars. When omitted, all events are returned.
+          schema:
+            type: array
+            items:
+              type: integer
+          style: form
+          explode: true
         - name: calendar
           in: query
-          description: Filter by calendar name. Can be repeated to include multiple calendars. When omitted, all events are returned.
+          description: Filter by calendar name (backward compatible). Can be repeated. When omitted, all events are returned.
           schema:
             type: array
             items:
@@ -448,9 +473,18 @@ paths:
       summary: iCalendar feed
       description: Returns all events as an iCalendar feed. Optionally filter by calendar name.
       parameters:
+        - name: calendar_id
+          in: query
+          description: Filter by calendar ID. Can be repeated.
+          schema:
+            type: array
+            items:
+              type: integer
+          style: form
+          explode: true
         - name: calendar
           in: query
-          description: Filter by calendar name. Can be repeated to include multiple calendars. When omitted, all events are returned.
+          description: Filter by calendar name (backward compatible). Can be repeated.
           schema:
             type: array
             items:
@@ -511,11 +545,26 @@ components:
   schemas:
     Preferences:
       type: object
+      description: >
+        User preferences. Currently no server-side preferences are defined;
+        the default event color is managed per-calendar via the calendars table.
+
+    Calendar:
+      type: object
       properties:
-        defaultEventColor:
+        id:
+          type: integer
+          format: int64
+          readOnly: true
+        name:
           type: string
-          description: Default CSS color for new events
-          default: "dodgerblue"
+        color:
+          type: string
+          description: CSS color for events in this calendar
+      required:
+        - id
+        - name
+        - color
 
     Feed:
       type: object
@@ -527,6 +576,11 @@ components:
           type: string
           format: uri
           maxLength: 2000
+        calendar_id:
+          type: integer
+          format: int64
+          readOnly: true
+          description: Calendar ID for imported events
         calendar_name:
           type: string
           maxLength: 100
@@ -700,6 +754,11 @@ components:
           minimum: -180
           maximum: 180
           nullable: true
+        calendar_id:
+          type: integer
+          format: int64
+          readOnly: true
+          description: Calendar ID (set via import, read-only via create/update API)
         calendar_name:
           type: string
           maxLength: 100

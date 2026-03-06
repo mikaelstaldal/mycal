@@ -18,15 +18,16 @@ var (
 )
 
 type EventService struct {
-	repo repository.EventRepository
+	repo    repository.EventRepository
+	calRepo repository.CalendarRepository
 }
 
-func NewEventService(repo repository.EventRepository) *EventService {
-	return &EventService{repo: repo}
+func NewEventService(repo repository.EventRepository, calRepo repository.CalendarRepository) *EventService {
+	return &EventService{repo: repo, calRepo: calRepo}
 }
 
-func (s *EventService) ListAll(calendarNames []string) ([]model.Event, error) {
-	events, err := s.repo.ListAll(calendarNames)
+func (s *EventService) ListAll(calendarIDs []int64) ([]model.Event, error) {
+	events, err := s.repo.ListAll(calendarIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -36,8 +37,8 @@ func (s *EventService) ListAll(calendarNames []string) ([]model.Event, error) {
 	return events, nil
 }
 
-func (s *EventService) List(from, to string, calendarNames []string) ([]model.Event, error) {
-	events, err := s.repo.List(from, to, calendarNames)
+func (s *EventService) List(from, to string, calendarIDs []int64) ([]model.Event, error) {
+	events, err := s.repo.List(from, to, calendarIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +47,7 @@ func (s *EventService) List(from, to string, calendarNames []string) ([]model.Ev
 	}
 
 	// Expand recurring events
-	recurring, err := s.repo.ListRecurring(to, calendarNames)
+	recurring, err := s.repo.ListRecurring(to, calendarIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -129,8 +130,8 @@ func applyOverrides(expanded []model.Event, overrides []model.Event, from, to ti
 	return result
 }
 
-func (s *EventService) Search(query, from, to string, calendarNames []string) ([]model.Event, error) {
-	events, err := s.repo.Search(query, from, to, calendarNames)
+func (s *EventService) Search(query, from, to string, calendarIDs []int64) ([]model.Event, error) {
+	events, err := s.repo.Search(query, from, to, calendarIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -561,10 +562,16 @@ func (s *EventService) ImportSingle(events []model.Event, calendarName string) (
 		return nil, fmt.Errorf("%w: iCal source contains %d events, expected exactly one", ErrValidation, len(events))
 	}
 
+	calendarID, err := s.resolveCalendarName(calendarName)
+	if err != nil {
+		return nil, err
+	}
+
 	ev, err := buildEventForImport(events[0], calendarName)
 	if err != nil {
 		return nil, err
 	}
+	ev.CalendarID = calendarID
 	if err := s.repo.Create(ev); err != nil {
 		return nil, err
 	}
@@ -575,6 +582,12 @@ func (s *EventService) Import(events []model.Event, calendarName string) (int, e
 	if len(calendarName) > model.MaxCalendarNameLength {
 		return 0, fmt.Errorf("%w: calendar name must be at most %d characters", ErrValidation, model.MaxCalendarNameLength)
 	}
+
+	calendarID, err := s.resolveCalendarName(calendarName)
+	if err != nil {
+		return 0, err
+	}
+
 	imported := 0
 
 	// Separate parents and overrides
@@ -596,6 +609,7 @@ func (s *EventService) Import(events []model.Event, calendarName string) (int, e
 		if err != nil {
 			continue
 		}
+		ev.CalendarID = calendarID
 		if err := s.repo.Create(ev); err != nil {
 			continue
 		}
@@ -625,6 +639,7 @@ func (s *EventService) Import(events []model.Event, calendarName string) (int, e
 			Location:                e.Location,
 			Latitude:                e.Latitude,
 			Longitude:               e.Longitude,
+			CalendarID:              calendarID,
 			CalendarName:            calendarName,
 			RecurrenceParentID:      &parentID,
 			RecurrenceOriginalStart: e.RecurrenceOriginalStart,
@@ -699,6 +714,24 @@ func (s *EventService) RemoveExDate(id int64, instanceStart string) (*model.Even
 		return nil, err
 	}
 	return existing, nil
+}
+
+func (s *EventService) resolveCalendarName(name string) (int64, error) {
+	if name == "" {
+		return 0, nil
+	}
+	cal, err := s.calRepo.GetCalendarByName(name)
+	if err != nil {
+		return 0, err
+	}
+	if cal != nil {
+		return cal.ID, nil
+	}
+	newCal := &model.Calendar{Name: name, Color: "dodgerblue"}
+	if err := s.calRepo.CreateCalendar(newCal); err != nil {
+		return 0, err
+	}
+	return newCal.ID, nil
 }
 
 func (s *EventService) Delete(id int64) error {

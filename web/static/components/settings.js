@@ -1,8 +1,6 @@
 import { html } from 'htm/preact';
 import { useState, useRef, useEffect } from 'preact/hooks';
 import { saveConfig } from '../lib/config.js';
-import { updatePreferences } from '../lib/api.js';
-import { COLORS } from '../lib/colors.js';
 
 // Google Maps API keys are 39 chars starting with "AIza"
 function isValidGoogleMapsApiKey(key) {
@@ -41,9 +39,6 @@ export function Settings({ config, onConfigChange }) {
         const updated = { ...config, [key]: numericKeys.includes(key) ? Number(value) : value };
         saveConfig(updated);
         onConfigChange(updated);
-        if (key === 'defaultEventColor') {
-            updatePreferences({ [key]: value }).catch(err => console.error('Failed to save preference:', err));
-        }
     }
 
     function handleMapProviderChange(value) {
@@ -138,17 +133,6 @@ export function Settings({ config, onConfigChange }) {
                         `)}
                     </select>
                 </label>
-                <div class="color-picker">
-                    <span>Default event color</span>
-                    <div class="color-options">
-                        ${COLORS.map(c => html`
-                            <div class="color-swatch ${config.defaultEventColor === c.name ? 'selected' : ''}"
-                                 style="background-color: ${c.name}"
-                                 title=${c.name}
-                                 onClick=${() => handleChange('defaultEventColor', c.name)} />
-                        `)}
-                    </div>
-                </div>
                 <label>
                     Map provider
                     <select value=${selectedProvider}

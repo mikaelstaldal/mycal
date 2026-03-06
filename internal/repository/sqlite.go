@@ -106,16 +106,59 @@ func initSchema(db *sql.DB) error {
 		created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
 		updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
 	)`)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Migration: create calendars table
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS calendars (
+		id    INTEGER PRIMARY KEY AUTOINCREMENT,
+		name  TEXT NOT NULL UNIQUE,
+		color TEXT NOT NULL DEFAULT 'dodgerblue'
+	)`)
+	if err != nil {
+		return err
+	}
+
+	// Insert default calendar (id=0 reserved for default)
+	_, _ = db.Exec(`INSERT OR IGNORE INTO calendars (id, name, color) VALUES (0, 'Default', 'dodgerblue')`)
+
+	// Migrate defaultEventColor preference to default calendar's color
+	var prefColor string
+	err = db.QueryRow(`SELECT value FROM preferences WHERE key = 'defaultEventColor'`).Scan(&prefColor)
+	if err == nil && prefColor != "" {
+		_, _ = db.Exec(`UPDATE calendars SET color = ? WHERE id = 0`, prefColor)
+		_, _ = db.Exec(`DELETE FROM preferences WHERE key = 'defaultEventColor'`)
+	}
+
+	// Migrate existing calendar_name values to calendars table
+	_, _ = db.Exec(`INSERT OR IGNORE INTO calendars (name, color)
+		SELECT DISTINCT calendar_name, 'dodgerblue' FROM events WHERE calendar_name != ''
+		UNION
+		SELECT DISTINCT calendar_name, 'dodgerblue' FROM feeds WHERE calendar_name != ''`)
+
+	// Migration: add calendar_id columns (idempotent)
+	_, _ = db.Exec(`ALTER TABLE events ADD COLUMN calendar_id INTEGER NOT NULL DEFAULT 0`)
+	_, _ = db.Exec(`ALTER TABLE feeds ADD COLUMN calendar_id INTEGER NOT NULL DEFAULT 0`)
+
+	// Populate calendar_id from calendar_name
+	_, _ = db.Exec(`UPDATE events SET calendar_id = COALESCE((SELECT id FROM calendars WHERE name = events.calendar_name), 0) WHERE calendar_name != '' AND calendar_id = 0`)
+	_, _ = db.Exec(`UPDATE feeds SET calendar_id = COALESCE((SELECT id FROM calendars WHERE name = feeds.calendar_name), 0) WHERE calendar_name != '' AND calendar_id = 0`)
+
+	// Add indexes
+	_, _ = db.Exec(`CREATE INDEX IF NOT EXISTS idx_events_calendar_id ON events(calendar_id)`)
+	_, _ = db.Exec(`CREATE INDEX IF NOT EXISTS idx_feeds_calendar_id ON feeds(calendar_id)`)
+
+	return nil
 }
 
-const selectColumns = `id, title, description, start_time, end_time, all_day, color, recurrence_freq, recurrence_count, recurrence_until, recurrence_interval, recurrence_by_day, recurrence_by_monthday, recurrence_by_month, exdates, rdates, recurrence_parent_id, recurrence_original_start, duration, categories, url, reminder_minutes, location, latitude, longitude, calendar_name, ics_uid, created_at, updated_at`
+const selectColumns = `id, title, description, start_time, end_time, all_day, color, recurrence_freq, recurrence_count, recurrence_until, recurrence_interval, recurrence_by_day, recurrence_by_monthday, recurrence_by_month, exdates, rdates, recurrence_parent_id, recurrence_original_start, duration, categories, url, reminder_minutes, location, latitude, longitude, calendar_id, calendar_name, ics_uid, created_at, updated_at`
 
 func scanEvent(scanner interface{ Scan(...any) error }) (model.Event, error) {
 	var e model.Event
 	var lat, lon sql.NullFloat64
 	var parentID sql.NullInt64
-	err := scanner.Scan(&e.ID, &e.Title, &e.Description, &e.StartTime, &e.EndTime, &e.AllDay, &e.Color, &e.RecurrenceFreq, &e.RecurrenceCount, &e.RecurrenceUntil, &e.RecurrenceInterval, &e.RecurrenceByDay, &e.RecurrenceByMonthDay, &e.RecurrenceByMonth, &e.ExDates, &e.RDates, &parentID, &e.RecurrenceOriginalStart, &e.Duration, &e.Categories, &e.URL, &e.ReminderMinutes, &e.Location, &lat, &lon, &e.CalendarName, &e.IcsUID, &e.CreatedAt, &e.UpdatedAt)
+	err := scanner.Scan(&e.ID, &e.Title, &e.Description, &e.StartTime, &e.EndTime, &e.AllDay, &e.Color, &e.RecurrenceFreq, &e.RecurrenceCount, &e.RecurrenceUntil, &e.RecurrenceInterval, &e.RecurrenceByDay, &e.RecurrenceByMonthDay, &e.RecurrenceByMonth, &e.ExDates, &e.RDates, &parentID, &e.RecurrenceOriginalStart, &e.Duration, &e.Categories, &e.URL, &e.ReminderMinutes, &e.Location, &lat, &lon, &e.CalendarID, &e.CalendarName, &e.IcsUID, &e.CreatedAt, &e.UpdatedAt)
 	if lat.Valid {
 		e.Latitude = &lat.Float64
 	}
@@ -128,24 +171,24 @@ func scanEvent(scanner interface{ Scan(...any) error }) (model.Event, error) {
 	return e, err
 }
 
-func calendarNameFilter(calendarNames []string) (string, []any) {
-	if calendarNames == nil {
+func calendarIDFilter(calendarIDs []int64) (string, []any) {
+	if calendarIDs == nil {
 		return "", nil
 	}
-	if len(calendarNames) == 0 {
+	if len(calendarIDs) == 0 {
 		return " AND 1=0", nil
 	}
-	placeholders := make([]string, len(calendarNames))
-	args := make([]any, len(calendarNames))
-	for i, name := range calendarNames {
+	placeholders := make([]string, len(calendarIDs))
+	args := make([]any, len(calendarIDs))
+	for i, id := range calendarIDs {
 		placeholders[i] = "?"
-		args[i] = name
+		args[i] = id
 	}
-	return " AND calendar_name IN (" + strings.Join(placeholders, ",") + ")", args
+	return " AND calendar_id IN (" + strings.Join(placeholders, ",") + ")", args
 }
 
-func (r *SQLiteRepository) List(from, to string, calendarNames []string) ([]model.Event, error) {
-	filterSQL, filterArgs := calendarNameFilter(calendarNames)
+func (r *SQLiteRepository) List(from, to string, calendarIDs []int64) ([]model.Event, error) {
+	filterSQL, filterArgs := calendarIDFilter(calendarIDs)
 	args := []any{to, from}
 	args = append(args, filterArgs...)
 	rows, err := r.db.Query(
@@ -169,8 +212,8 @@ func (r *SQLiteRepository) List(from, to string, calendarNames []string) ([]mode
 	return events, rows.Err()
 }
 
-func (r *SQLiteRepository) ListAll(calendarNames []string) ([]model.Event, error) {
-	filterSQL, filterArgs := calendarNameFilter(calendarNames)
+func (r *SQLiteRepository) ListAll(calendarIDs []int64) ([]model.Event, error) {
+	filterSQL, filterArgs := calendarIDFilter(calendarIDs)
 	query := `SELECT ` + selectColumns + ` FROM events WHERE 1=1` + filterSQL + ` ORDER BY start_time, created_at`
 	rows, err := r.db.Query(query, filterArgs...)
 	if err != nil {
@@ -199,7 +242,7 @@ func sanitizeFTSQuery(query string) string {
 	return strings.Join(quoted, " ")
 }
 
-func (r *SQLiteRepository) Search(query, from, to string, calendarNames []string) ([]model.Event, error) {
+func (r *SQLiteRepository) Search(query, from, to string, calendarIDs []int64) ([]model.Event, error) {
 	ftsQuery := sanitizeFTSQuery(query)
 	if ftsQuery == "" {
 		return nil, nil
@@ -208,7 +251,7 @@ func (r *SQLiteRepository) Search(query, from, to string, calendarNames []string
 	var sb strings.Builder
 	var args []any
 
-	sb.WriteString(`SELECT e.id, e.title, e.description, e.start_time, e.end_time, e.all_day, e.color, e.recurrence_freq, e.recurrence_count, e.recurrence_until, e.recurrence_interval, e.recurrence_by_day, e.recurrence_by_monthday, e.recurrence_by_month, e.exdates, e.rdates, e.recurrence_parent_id, e.recurrence_original_start, e.duration, e.categories, e.url, e.reminder_minutes, e.location, e.latitude, e.longitude, e.calendar_name, e.ics_uid, e.created_at, e.updated_at
+	sb.WriteString(`SELECT e.id, e.title, e.description, e.start_time, e.end_time, e.all_day, e.color, e.recurrence_freq, e.recurrence_count, e.recurrence_until, e.recurrence_interval, e.recurrence_by_day, e.recurrence_by_monthday, e.recurrence_by_month, e.exdates, e.rdates, e.recurrence_parent_id, e.recurrence_original_start, e.duration, e.categories, e.url, e.reminder_minutes, e.location, e.latitude, e.longitude, e.calendar_id, e.calendar_name, e.ics_uid, e.created_at, e.updated_at
 		FROM events e
 		JOIN events_fts f ON e.id = f.rowid
 		WHERE events_fts MATCH ?`)
@@ -219,9 +262,9 @@ func (r *SQLiteRepository) Search(query, from, to string, calendarNames []string
 		args = append(args, to, from)
 	}
 
-	filterSQL, filterArgs := calendarNameFilter(calendarNames)
+	filterSQL, filterArgs := calendarIDFilter(calendarIDs)
 	if filterSQL != "" {
-		sb.WriteString(strings.Replace(filterSQL, "calendar_name", "e.calendar_name", 1))
+		sb.WriteString(strings.Replace(filterSQL, "calendar_id", "e.calendar_id", 1))
 		args = append(args, filterArgs...)
 	}
 
@@ -260,8 +303,8 @@ func (r *SQLiteRepository) GetByID(id int64) (*model.Event, error) {
 
 func (r *SQLiteRepository) Create(event *model.Event) error {
 	result, err := r.db.Exec(
-		`INSERT INTO events (title, description, start_time, end_time, all_day, color, recurrence_freq, recurrence_count, recurrence_until, recurrence_interval, recurrence_by_day, recurrence_by_monthday, recurrence_by_month, exdates, rdates, recurrence_parent_id, recurrence_original_start, duration, categories, url, reminder_minutes, location, latitude, longitude, calendar_name, ics_uid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		event.Title, event.Description, event.StartTime, event.EndTime, event.AllDay, event.Color, event.RecurrenceFreq, event.RecurrenceCount, event.RecurrenceUntil, event.RecurrenceInterval, event.RecurrenceByDay, event.RecurrenceByMonthDay, event.RecurrenceByMonth, event.ExDates, event.RDates, event.RecurrenceParentID, event.RecurrenceOriginalStart, event.Duration, event.Categories, event.URL, event.ReminderMinutes, event.Location, event.Latitude, event.Longitude, event.CalendarName, event.IcsUID,
+		`INSERT INTO events (title, description, start_time, end_time, all_day, color, recurrence_freq, recurrence_count, recurrence_until, recurrence_interval, recurrence_by_day, recurrence_by_monthday, recurrence_by_month, exdates, rdates, recurrence_parent_id, recurrence_original_start, duration, categories, url, reminder_minutes, location, latitude, longitude, calendar_id, calendar_name, ics_uid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		event.Title, event.Description, event.StartTime, event.EndTime, event.AllDay, event.Color, event.RecurrenceFreq, event.RecurrenceCount, event.RecurrenceUntil, event.RecurrenceInterval, event.RecurrenceByDay, event.RecurrenceByMonthDay, event.RecurrenceByMonth, event.ExDates, event.RDates, event.RecurrenceParentID, event.RecurrenceOriginalStart, event.Duration, event.Categories, event.URL, event.ReminderMinutes, event.Location, event.Latitude, event.Longitude, event.CalendarID, event.CalendarName, event.IcsUID,
 	)
 	if err != nil {
 		return err
@@ -279,9 +322,9 @@ func (r *SQLiteRepository) Create(event *model.Event) error {
 
 func (r *SQLiteRepository) Update(event *model.Event) error {
 	_, err := r.db.Exec(
-		`UPDATE events SET title=?, description=?, start_time=?, end_time=?, all_day=?, color=?, recurrence_freq=?, recurrence_count=?, recurrence_until=?, recurrence_interval=?, recurrence_by_day=?, recurrence_by_monthday=?, recurrence_by_month=?, exdates=?, rdates=?, recurrence_parent_id=?, recurrence_original_start=?, duration=?, categories=?, url=?, reminder_minutes=?, location=?, latitude=?, longitude=?, calendar_name=?, ics_uid=?,
+		`UPDATE events SET title=?, description=?, start_time=?, end_time=?, all_day=?, color=?, recurrence_freq=?, recurrence_count=?, recurrence_until=?, recurrence_interval=?, recurrence_by_day=?, recurrence_by_monthday=?, recurrence_by_month=?, exdates=?, rdates=?, recurrence_parent_id=?, recurrence_original_start=?, duration=?, categories=?, url=?, reminder_minutes=?, location=?, latitude=?, longitude=?, calendar_id=?, calendar_name=?, ics_uid=?,
 		 updated_at=strftime('%Y-%m-%dT%H:%M:%SZ','now') WHERE id=?`,
-		event.Title, event.Description, event.StartTime, event.EndTime, event.AllDay, event.Color, event.RecurrenceFreq, event.RecurrenceCount, event.RecurrenceUntil, event.RecurrenceInterval, event.RecurrenceByDay, event.RecurrenceByMonthDay, event.RecurrenceByMonth, event.ExDates, event.RDates, event.RecurrenceParentID, event.RecurrenceOriginalStart, event.Duration, event.Categories, event.URL, event.ReminderMinutes, event.Location, event.Latitude, event.Longitude, event.CalendarName, event.IcsUID, event.ID,
+		event.Title, event.Description, event.StartTime, event.EndTime, event.AllDay, event.Color, event.RecurrenceFreq, event.RecurrenceCount, event.RecurrenceUntil, event.RecurrenceInterval, event.RecurrenceByDay, event.RecurrenceByMonthDay, event.RecurrenceByMonth, event.ExDates, event.RDates, event.RecurrenceParentID, event.RecurrenceOriginalStart, event.Duration, event.Categories, event.URL, event.ReminderMinutes, event.Location, event.Latitude, event.Longitude, event.CalendarID, event.CalendarName, event.IcsUID, event.ID,
 	)
 	if err != nil {
 		return err
@@ -291,8 +334,8 @@ func (r *SQLiteRepository) Update(event *model.Event) error {
 	).Scan(&event.UpdatedAt)
 }
 
-func (r *SQLiteRepository) ListRecurring(to string, calendarNames []string) ([]model.Event, error) {
-	filterSQL, filterArgs := calendarNameFilter(calendarNames)
+func (r *SQLiteRepository) ListRecurring(to string, calendarIDs []int64) ([]model.Event, error) {
+	filterSQL, filterArgs := calendarIDFilter(calendarIDs)
 	args := []any{to}
 	args = append(args, filterArgs...)
 	rows, err := r.db.Query(
@@ -392,8 +435,8 @@ func (r *SQLiteRepository) ExistsByIcsUID(uid string) (bool, error) {
 
 func (r *SQLiteRepository) CreateFeed(feed *model.Feed) error {
 	result, err := r.db.Exec(
-		`INSERT INTO feeds (url, calendar_name, refresh_interval_minutes, enabled) VALUES (?, ?, ?, ?)`,
-		feed.URL, feed.CalendarName, feed.RefreshIntervalMinutes, feed.Enabled,
+		`INSERT INTO feeds (url, calendar_id, calendar_name, refresh_interval_minutes, enabled) VALUES (?, ?, ?, ?, ?)`,
+		feed.URL, feed.CalendarID, feed.CalendarName, feed.RefreshIntervalMinutes, feed.Enabled,
 	)
 	if err != nil {
 		return err
@@ -411,8 +454,8 @@ func (r *SQLiteRepository) CreateFeed(feed *model.Feed) error {
 func (r *SQLiteRepository) GetFeedByID(id int64) (*model.Feed, error) {
 	var f model.Feed
 	err := r.db.QueryRow(
-		`SELECT id, url, calendar_name, refresh_interval_minutes, last_refreshed_at, last_error, enabled, created_at, updated_at FROM feeds WHERE id = ?`, id,
-	).Scan(&f.ID, &f.URL, &f.CalendarName, &f.RefreshIntervalMinutes, &f.LastRefreshedAt, &f.LastError, &f.Enabled, &f.CreatedAt, &f.UpdatedAt)
+		`SELECT id, url, calendar_id, calendar_name, refresh_interval_minutes, last_refreshed_at, last_error, enabled, created_at, updated_at FROM feeds WHERE id = ?`, id,
+	).Scan(&f.ID, &f.URL, &f.CalendarID, &f.CalendarName, &f.RefreshIntervalMinutes, &f.LastRefreshedAt, &f.LastError, &f.Enabled, &f.CreatedAt, &f.UpdatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -424,7 +467,7 @@ func (r *SQLiteRepository) GetFeedByID(id int64) (*model.Feed, error) {
 
 func (r *SQLiteRepository) ListFeeds() ([]model.Feed, error) {
 	rows, err := r.db.Query(
-		`SELECT id, url, calendar_name, refresh_interval_minutes, last_refreshed_at, last_error, enabled, created_at, updated_at FROM feeds ORDER BY created_at`,
+		`SELECT id, url, calendar_id, calendar_name, refresh_interval_minutes, last_refreshed_at, last_error, enabled, created_at, updated_at FROM feeds ORDER BY created_at`,
 	)
 	if err != nil {
 		return nil, err
@@ -434,7 +477,7 @@ func (r *SQLiteRepository) ListFeeds() ([]model.Feed, error) {
 	var feeds []model.Feed
 	for rows.Next() {
 		var f model.Feed
-		if err := rows.Scan(&f.ID, &f.URL, &f.CalendarName, &f.RefreshIntervalMinutes, &f.LastRefreshedAt, &f.LastError, &f.Enabled, &f.CreatedAt, &f.UpdatedAt); err != nil {
+		if err := rows.Scan(&f.ID, &f.URL, &f.CalendarID, &f.CalendarName, &f.RefreshIntervalMinutes, &f.LastRefreshedAt, &f.LastError, &f.Enabled, &f.CreatedAt, &f.UpdatedAt); err != nil {
 			return nil, err
 		}
 		feeds = append(feeds, f)
@@ -444,8 +487,8 @@ func (r *SQLiteRepository) ListFeeds() ([]model.Feed, error) {
 
 func (r *SQLiteRepository) UpdateFeed(feed *model.Feed) error {
 	_, err := r.db.Exec(
-		`UPDATE feeds SET url=?, calendar_name=?, refresh_interval_minutes=?, last_refreshed_at=?, last_error=?, enabled=?, updated_at=strftime('%Y-%m-%dT%H:%M:%SZ','now') WHERE id=?`,
-		feed.URL, feed.CalendarName, feed.RefreshIntervalMinutes, feed.LastRefreshedAt, feed.LastError, feed.Enabled, feed.ID,
+		`UPDATE feeds SET url=?, calendar_id=?, calendar_name=?, refresh_interval_minutes=?, last_refreshed_at=?, last_error=?, enabled=?, updated_at=strftime('%Y-%m-%dT%H:%M:%SZ','now') WHERE id=?`,
+		feed.URL, feed.CalendarID, feed.CalendarName, feed.RefreshIntervalMinutes, feed.LastRefreshedAt, feed.LastError, feed.Enabled, feed.ID,
 	)
 	if err != nil {
 		return err
@@ -507,5 +550,55 @@ func (r *SQLiteRepository) SetPreference(key, value string) error {
 
 func (r *SQLiteRepository) DeletePreference(key string) error {
 	_, err := r.db.Exec(`DELETE FROM preferences WHERE key = ?`, key)
+	return err
+}
+
+// Calendar repository methods
+
+func (r *SQLiteRepository) ListCalendars() ([]model.Calendar, error) {
+	rows, err := r.db.Query(`SELECT id, name, color FROM calendars ORDER BY id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var calendars []model.Calendar
+	for rows.Next() {
+		var c model.Calendar
+		if err := rows.Scan(&c.ID, &c.Name, &c.Color); err != nil {
+			return nil, err
+		}
+		calendars = append(calendars, c)
+	}
+	return calendars, rows.Err()
+}
+
+func (r *SQLiteRepository) GetCalendarByName(name string) (*model.Calendar, error) {
+	var c model.Calendar
+	err := r.db.QueryRow(`SELECT id, name, color FROM calendars WHERE name = ?`, name).Scan(&c.ID, &c.Name, &c.Color)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &c, nil
+}
+
+func (r *SQLiteRepository) CreateCalendar(cal *model.Calendar) error {
+	result, err := r.db.Exec(`INSERT INTO calendars (name, color) VALUES (?, ?)`, cal.Name, cal.Color)
+	if err != nil {
+		return err
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		return err
+	}
+	cal.ID = id
+	return nil
+}
+
+func (r *SQLiteRepository) UpdateCalendarColor(id int64, color string) error {
+	_, err := r.db.Exec(`UPDATE calendars SET color = ? WHERE id = ?`, color, id)
 	return err
 }

@@ -75,7 +75,7 @@ func main() {
 			log.Fatalf("init repository: %v", err)
 		}
 
-		svc := service.NewEventService(repo)
+		svc := service.NewEventService(repo, repo)
 		events, err := svc.ListAll(nil)
 		if err != nil {
 			log.Fatalf("list events: %v", err)
@@ -122,10 +122,11 @@ func main() {
 		log.Fatalf("init repository: %v", err)
 	}
 
-	svc := service.NewEventService(repo)
+	calSvc := service.NewCalendarService(repo)
+	svc := service.NewEventService(repo, repo)
 	prefSvc := service.NewPreferencesService(repo)
-	feedSvc := service.NewFeedService(repo, repo)
-	apiRouter := handler.NewRouter(svc, prefSvc, feedSvc)
+	feedSvc := service.NewFeedService(repo, repo, repo)
+	apiRouter := handler.NewRouter(svc, prefSvc, feedSvc, calSvc)
 
 	// Start background feed refresh goroutine
 	go func() {
@@ -136,7 +137,7 @@ func main() {
 		}
 	}()
 
-	calendarFeed := handler.NewCalendarFeedHandler(svc)
+	calendarFeed := handler.NewCalendarFeedHandler(svc, calSvc)
 
 	mux := http.NewServeMux()
 	mux.Handle("/api/", apiRouter)

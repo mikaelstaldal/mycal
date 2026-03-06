@@ -3,10 +3,10 @@ package repository
 import "github.com/mikaelstaldal/mycal/internal/model"
 
 type EventRepository interface {
-	List(from, to string, calendarNames []string) ([]model.Event, error)
-	ListAll(calendarNames []string) ([]model.Event, error)
-	ListRecurring(to string, calendarNames []string) ([]model.Event, error)
-	Search(query, from, to string, calendarNames []string) ([]model.Event, error)
+	List(from, to string, calendarIDs []int64) ([]model.Event, error)
+	ListAll(calendarIDs []int64) ([]model.Event, error)
+	ListRecurring(to string, calendarIDs []int64) ([]model.Event, error)
+	Search(query, from, to string, calendarIDs []int64) ([]model.Event, error)
 	GetByID(id int64) (*model.Event, error)
 	Create(event *model.Event) error
 	Update(event *model.Event) error
@@ -30,4 +30,11 @@ type PreferencesRepository interface {
 	GetPreference(key string) (string, bool, error)
 	SetPreference(key, value string) error
 	DeletePreference(key string) error
+}
+
+type CalendarRepository interface {
+	ListCalendars() ([]model.Calendar, error)
+	GetCalendarByName(name string) (*model.Calendar, error)
+	CreateCalendar(cal *model.Calendar) error
+	UpdateCalendarColor(id int64, color string) error
 }

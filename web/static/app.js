@@ -11,7 +11,8 @@ import { ImportSingleForm, ImportBulkForm } from './components/import-form.js';
 import { FeedsDialog } from './components/feeds.js';
 import { Toast } from './components/toast.js';
 import { Settings } from './components/settings.js';
-import { listEvents, searchEvents, createEvent, updateEvent, deleteEvent, getEvent, importSingleEvent, getPreferences } from './lib/api.js';
+import { CalendarSidebar } from './components/calendar-sidebar.js';
+import { listEvents, searchEvents, createEvent, updateEvent, deleteEvent, getEvent, importSingleEvent, listCalendars } from './lib/api.js';
 import { addMonths, addWeeks, startOfWeek, toRFC3339 } from './lib/date-utils.js';
 import { getConfig, hasUserDefaultView } from './lib/config.js';
 import { checkAndNotify, requestPermission } from './lib/notifications.js';
@@ -38,6 +39,24 @@ function App() {
     const searchTimer = useRef(null);
     const [isDragging, setIsDragging] = useState(false);
     const dragCounter = useRef(0);
+    const [calendars, setCalendars] = useState([]);
+    const [selectedCalendarIds, setSelectedCalendarIds] = useState(null); // null = all
+
+    const loadCalendars = useCallback(async () => {
+        try {
+            const cals = await listCalendars();
+            setCalendars(cals);
+            // Set default event color from default calendar (id=0)
+            const defaultCal = cals.find(c => c.id === 0);
+            if (defaultCal) {
+                setConfig(prev => ({ ...prev, defaultEventColor: defaultCal.color }));
+            }
+        } catch (err) {
+            console.error('Failed to load calendars:', err);
+        }
+    }, []);
+
+    useEffect(() => { loadCalendars(); }, [loadCalendars]);
 
     const loadEvents = useCallback(async () => {
         let from, to;
@@ -62,28 +81,42 @@ function App() {
             to = new Date(year, month + 1, 7);
         }
         try {
-            const data = await listEvents(toRFC3339(from), toRFC3339(to));
+            const data = await listEvents(toRFC3339(from), toRFC3339(to), selectedCalendarIds);
             setEvents(data);
         } catch (err) {
             console.error('Failed to load events:', err);
         }
-    }, [currentDate, viewMode, config.weekStartDay]);
+    }, [currentDate, viewMode, config.weekStartDay, selectedCalendarIds]);
 
     useEffect(() => { loadEvents(); }, [loadEvents]);
-
-    useEffect(() => {
-        getPreferences().then(prefs => {
-            if (prefs.defaultEventColor) {
-                setConfig(prev => ({ ...prev, defaultEventColor: prefs.defaultEventColor }));
-            }
-        }).catch(err => console.error('Failed to load preferences:', err));
-    }, []);
 
     useEffect(() => {
         checkAndNotify(events);
         const id = setInterval(() => checkAndNotify(events), 30000);
         return () => clearInterval(id);
     }, [events]);
+
+    function handleToggleCalendar(calId) {
+        setSelectedCalendarIds(prev => {
+            if (prev === null) {
+                // Currently showing all - switch to all except this one
+                const allIds = calendars.map(c => c.id);
+                return allIds.filter(id => id !== calId);
+            }
+            if (prev.includes(calId)) {
+                const next = prev.filter(id => id !== calId);
+                return next.length === 0 ? [] : next;
+            }
+            const next = [...prev, calId];
+            // If all are selected, switch back to null (all)
+            if (next.length === calendars.length) return null;
+            return next;
+        });
+    }
+
+    function handleToggleAll() {
+        setSelectedCalendarIds(prev => prev === null ? [] : null);
+    }
 
     function handlePrev() {
         if (viewMode === 'schedule') {
@@ -311,41 +344,51 @@ function App() {
                     <${Settings} config=${config} onConfigChange=${setConfig} />
                 </div>
             </div>
-            ${searchResults !== null ? html`
-                <div class="search-results">
-                    ${searchResults.length === 0 ? html`
-                        <div class="search-empty">No events found for "${searchQuery}"</div>
-                    ` : searchResults.map(event => html`
-                        <div class="search-result-item" key=${event.id}
-                             onClick=${() => handleEventClick(event)}>
-                            <div class="search-result-title">${event.title}</div>
-                            <div class="search-result-date">${formatSearchDate(event.start_time)}</div>
-                            <div class="search-result-time">${formatSearchTime(event.start_time, event.end_time)}</div>
-                            ${event.description && html`<div class="search-result-desc" dangerouslySetInnerHTML=${{ __html: event.description }} />`}
+            <div class="app-layout">
+                ${calendars.length > 1 ? html`
+                    <${CalendarSidebar} calendars=${calendars}
+                                        selectedCalendarIds=${selectedCalendarIds}
+                                        onToggleCalendar=${handleToggleCalendar}
+                                        onToggleAll=${handleToggleAll} />
+                ` : null}
+                <div class="app-main">
+                    ${searchResults !== null ? html`
+                        <div class="search-results">
+                            ${searchResults.length === 0 ? html`
+                                <div class="search-empty">No events found for "${searchQuery}"</div>
+                            ` : searchResults.map(event => html`
+                                <div class="search-result-item" key=${event.id}
+                                     onClick=${() => handleEventClick(event)}>
+                                    <div class="search-result-title">${event.title}</div>
+                                    <div class="search-result-date">${formatSearchDate(event.start_time)}</div>
+                                    <div class="search-result-time">${formatSearchTime(event.start_time, event.end_time)}</div>
+                                    ${event.description && html`<div class="search-result-desc" dangerouslySetInnerHTML=${{ __html: event.description }} />`}
+                                </div>
+                            `)}
                         </div>
-                    `)}
+                    ` : viewMode === 'year' ? html`
+                        <${YearView} currentDate=${currentDate} events=${events}
+                                     onMonthClick=${handleYearMonthClick} onWeekClick=${handleYearWeekClick}
+                                     onDayClick=${handleYearDayClick} config=${config} />
+                    ` : viewMode === 'schedule' ? html`
+                        <${ScheduleView} currentDate=${currentDate} events=${events}
+                                         onEventClick=${handleEventClick} onDayClick=${handleDayClick} config=${config} />
+                    ` : viewMode === 'day' ? html`
+                        <${DayView} currentDate=${currentDate} events=${events}
+                                    onDayClick=${handleDayClick} onEventClick=${handleEventClick}
+                                    onAllDayClick=${handleAllDayClick} onEventDrag=${handleEventDrag} config=${config} />
+                    ` : viewMode === 'week' ? html`
+                        <${WeekView} currentDate=${currentDate} events=${events}
+                                     onDayClick=${handleDayClick} onEventClick=${handleEventClick}
+                                     onAllDayClick=${handleAllDayClick} onEventDrag=${handleEventDrag} config=${config} />
+                    ` : html`
+                        <${Calendar} currentDate=${currentDate} events=${events}
+                                     onDayClick=${handleDayClick} onEventClick=${handleEventClick}
+                                     onWeekClick=${handleYearWeekClick}
+                                     config=${config} />
+                    `}
                 </div>
-            ` : viewMode === 'year' ? html`
-                <${YearView} currentDate=${currentDate} events=${events}
-                             onMonthClick=${handleYearMonthClick} onWeekClick=${handleYearWeekClick}
-                             onDayClick=${handleYearDayClick} config=${config} />
-            ` : viewMode === 'schedule' ? html`
-                <${ScheduleView} currentDate=${currentDate} events=${events}
-                                 onEventClick=${handleEventClick} onDayClick=${handleDayClick} config=${config} />
-            ` : viewMode === 'day' ? html`
-                <${DayView} currentDate=${currentDate} events=${events}
-                            onDayClick=${handleDayClick} onEventClick=${handleEventClick}
-                            onAllDayClick=${handleAllDayClick} onEventDrag=${handleEventDrag} config=${config} />
-            ` : viewMode === 'week' ? html`
-                <${WeekView} currentDate=${currentDate} events=${events}
-                             onDayClick=${handleDayClick} onEventClick=${handleEventClick}
-                             onAllDayClick=${handleAllDayClick} onEventDrag=${handleEventDrag} config=${config} />
-            ` : html`
-                <${Calendar} currentDate=${currentDate} events=${events}
-                             onDayClick=${handleDayClick} onEventClick=${handleEventClick}
-                             onWeekClick=${handleYearWeekClick}
-                             config=${config} />
-            `}
+            </div>
             ${showForm && html`
                 <${EventForm} event=${selectedEvent} defaultDate=${defaultDate}
                               defaultAllDay=${defaultAllDay}
@@ -362,7 +405,7 @@ function App() {
             `}
             ${showFeeds && html`
                 <${FeedsDialog} onClose=${() => setShowFeeds(false)}
-                                onRefreshed=${loadEvents} />
+                                onRefreshed=${() => { loadEvents(); loadCalendars(); }} />
             `}
             ${toast && html`<${Toast} message=${toast} isError=${toastError} onDone=${() => setToast(null)} />`}
         </div>

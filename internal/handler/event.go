@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -14,9 +15,9 @@ import (
 	"github.com/mikaelstaldal/mycal/internal/service"
 )
 
-func registerEventRoutes(mux *http.ServeMux, svc *service.EventService) {
-	mux.HandleFunc("GET /api/v1/events", listEvents(svc))
-	mux.HandleFunc("GET /api/v1/events.ics", exportICalFeed(svc))
+func registerEventRoutes(mux *http.ServeMux, svc *service.EventService, calSvc *service.CalendarService) {
+	mux.HandleFunc("GET /api/v1/events", listEvents(svc, calSvc))
+	mux.HandleFunc("GET /api/v1/events.ics", exportICalFeed(svc, calSvc))
 	mux.HandleFunc("POST /api/v1/events", createEvent(svc))
 	mux.HandleFunc("GET /api/v1/events/{id...}", getEvent(svc))
 	mux.HandleFunc("PATCH /api/v1/events/{id...}", updateEvent(svc))
@@ -37,12 +38,44 @@ func setStringIDs(events []model.Event) {
 
 const maxSearchQueryLength = 200
 
-func listEvents(svc *service.EventService) http.HandlerFunc {
+func parseCalendarIDs(r *http.Request, calSvc *service.CalendarService) []int64 {
+	// Support calendar_id query param (new)
+	idStrs := r.URL.Query()["calendar_id"]
+	// Support calendar name param (backward compat)
+	nameStrs := r.URL.Query()["calendar"]
+
+	if idStrs == nil && nameStrs == nil {
+		return nil // nil = all calendars
+	}
+
+	var ids []int64
+	for _, s := range idStrs {
+		id, err := strconv.ParseInt(s, 10, 64)
+		if err == nil {
+			ids = append(ids, id)
+		}
+	}
+	// Resolve names to IDs
+	if calSvc != nil {
+		for _, name := range nameStrs {
+			calID, err := calSvc.GetOrCreateByName(name)
+			if err == nil {
+				ids = append(ids, calID)
+			}
+		}
+	}
+	if ids == nil {
+		ids = []int64{} // empty = match nothing
+	}
+	return ids
+}
+
+func listEvents(svc *service.EventService, calSvc *service.CalendarService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query().Get("q")
 		from := r.URL.Query().Get("from")
 		to := r.URL.Query().Get("to")
-		calendarNames := r.URL.Query()["calendar"] // nil if absent = all calendars
+		calendarIDs := parseCalendarIDs(r, calSvc)
 
 		if len(q) > maxSearchQueryLength {
 			writeError(w, http.StatusBadRequest, "search query too long")
@@ -50,7 +83,7 @@ func listEvents(svc *service.EventService) http.HandlerFunc {
 		}
 
 		if q != "" {
-			events, err := svc.Search(q, from, to, calendarNames)
+			events, err := svc.Search(q, from, to, calendarIDs)
 			if err != nil {
 				writeError(w, http.StatusInternalServerError, "failed to search events")
 				return
@@ -64,7 +97,7 @@ func listEvents(svc *service.EventService) http.HandlerFunc {
 			writeError(w, http.StatusBadRequest, "from and to query parameters are required")
 			return
 		}
-		events, err := svc.List(from, to, calendarNames)
+		events, err := svc.List(from, to, calendarIDs)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to list events")
 			return
@@ -213,8 +246,8 @@ func deleteEvent(svc *service.EventService) http.HandlerFunc {
 }
 
 // NewCalendarFeedHandler returns a handler for the /calendar.ics convenience URL.
-func NewCalendarFeedHandler(svc *service.EventService) http.Handler {
-	return withMiddleware(exportICalFeed(svc))
+func NewCalendarFeedHandler(svc *service.EventService, calSvc *service.CalendarService) http.Handler {
+	return withMiddleware(exportICalFeed(svc, calSvc))
 }
 
 const maxImportSize = 10 * 1024 * 1024 // 10 MiB
@@ -318,10 +351,10 @@ func importEvents(svc *service.EventService) http.HandlerFunc {
 	}
 }
 
-func exportICalFeed(svc *service.EventService) http.HandlerFunc {
+func exportICalFeed(svc *service.EventService, calSvc *service.CalendarService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		calendarNames := r.URL.Query()["calendar"] // nil if absent = all calendars
-		events, err := svc.ListAll(calendarNames)
+		calendarIDs := parseCalendarIDs(r, calSvc)
+		events, err := svc.ListAll(calendarIDs)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to list events")
 			return

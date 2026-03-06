@@ -2,8 +2,14 @@
 const APP_BASE = new URL('.', document.baseURI).pathname.replace(/\/$/, '');
 const BASE = APP_BASE + '/api/v1/events';
 
-export async function listEvents(from, to) {
-    const res = await fetch(`${BASE}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+export async function listEvents(from, to, calendarIds) {
+    let url = `${BASE}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+    if (calendarIds) {
+        for (const id of calendarIds) {
+            url += `&calendar_id=${encodeURIComponent(id)}`;
+        }
+    }
+    const res = await fetch(url);
     if (!res.ok) throw new Error((await res.json()).error);
     return res.json();
 }
@@ -114,6 +120,15 @@ export async function importSingleEvent(icsContentOrUrl, calendarName) {
         headers: { 'Content-Type': isUrl ? 'application/json' : 'text/calendar' },
         body: isUrl ? JSON.stringify({ url: icsContentOrUrl }) : icsContentOrUrl,
     });
+    if (!res.ok) throw new Error((await res.json()).error);
+    return res.json();
+}
+
+// Calendars
+const CALENDARS_BASE = APP_BASE + '/api/v1/calendars';
+
+export async function listCalendars() {
+    const res = await fetch(CALENDARS_BASE);
     if (!res.ok) throw new Error((await res.json()).error);
     return res.json();
 }

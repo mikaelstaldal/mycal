@@ -9,6 +9,7 @@ type Feed struct {
 	ID                     int64  `json:"-"`
 	StringID               string `json:"id"`
 	URL                    string `json:"url"`
+	CalendarID             int64  `json:"calendar_id"`
 	CalendarName           string `json:"calendar_name"`
 	RefreshIntervalMinutes int    `json:"refresh_interval_minutes"`
 	LastRefreshedAt        string `json:"last_refreshed_at"`

@@ -10,10 +10,10 @@ import (
 
 // mockRepo implements repository.EventRepository with configurable behavior per test.
 type mockRepo struct {
-	listFn             func(from, to string, calendarNames []string) ([]model.Event, error)
-	listAllFn          func(calendarNames []string) ([]model.Event, error)
-	listRecurringFn    func(to string, calendarNames []string) ([]model.Event, error)
-	searchFn           func(query, from, to string, calendarNames []string) ([]model.Event, error)
+	listFn             func(from, to string, calendarIDs []int64) ([]model.Event, error)
+	listAllFn          func(calendarIDs []int64) ([]model.Event, error)
+	listRecurringFn    func(to string, calendarIDs []int64) ([]model.Event, error)
+	searchFn           func(query, from, to string, calendarIDs []int64) ([]model.Event, error)
 	getByIDFn          func(id int64) (*model.Event, error)
 	createFn           func(event *model.Event) error
 	updateFn           func(event *model.Event) error
@@ -31,32 +31,48 @@ func (m *mockRepo) ExistsByIcsUID(uid string) (bool, error) {
 	return false, nil
 }
 
-func (m *mockRepo) List(from, to string, calendarNames []string) ([]model.Event, error) {
+func (m *mockRepo) List(from, to string, calendarIDs []int64) ([]model.Event, error) {
 	if m.listFn != nil {
-		return m.listFn(from, to, calendarNames)
+		return m.listFn(from, to, calendarIDs)
 	}
 	return nil, nil
 }
 
-func (m *mockRepo) ListAll(calendarNames []string) ([]model.Event, error) {
+func (m *mockRepo) ListAll(calendarIDs []int64) ([]model.Event, error) {
 	if m.listAllFn != nil {
-		return m.listAllFn(calendarNames)
+		return m.listAllFn(calendarIDs)
 	}
 	return nil, nil
 }
 
-func (m *mockRepo) ListRecurring(to string, calendarNames []string) ([]model.Event, error) {
+func (m *mockRepo) ListRecurring(to string, calendarIDs []int64) ([]model.Event, error) {
 	if m.listRecurringFn != nil {
-		return m.listRecurringFn(to, calendarNames)
+		return m.listRecurringFn(to, calendarIDs)
 	}
 	return nil, nil
 }
 
-func (m *mockRepo) Search(query, from, to string, calendarNames []string) ([]model.Event, error) {
+func (m *mockRepo) Search(query, from, to string, calendarIDs []int64) ([]model.Event, error) {
 	if m.searchFn != nil {
-		return m.searchFn(query, from, to, calendarNames)
+		return m.searchFn(query, from, to, calendarIDs)
 	}
 	return nil, nil
+}
+
+// mockCalRepo implements repository.CalendarRepository
+type mockCalRepo struct{}
+
+func (m *mockCalRepo) ListCalendars() ([]model.Calendar, error) {
+	return []model.Calendar{{ID: 0, Name: "Default", Color: "dodgerblue"}}, nil
+}
+func (m *mockCalRepo) GetCalendarByName(name string) (*model.Calendar, error) {
+	return nil, nil
+}
+func (m *mockCalRepo) CreateCalendar(cal *model.Calendar) error {
+	return nil
+}
+func (m *mockCalRepo) UpdateCalendarColor(id int64, color string) error {
+	return nil
 }
 
 func (m *mockRepo) GetByID(id int64) (*model.Event, error) {
@@ -118,12 +134,10 @@ var errRepo = errors.New("repo error")
 
 func TestNewEventService(t *testing.T) {
 	repo := &mockRepo{}
-	svc := NewEventService(repo)
+	calRepo := &mockCalRepo{}
+	svc := NewEventService(repo, calRepo)
 	if svc == nil {
 		t.Fatal("expected non-nil service")
-	}
-	if svc.repo != repo {
-		t.Fatal("expected repo to be set")
 	}
 }
 
@@ -131,11 +145,11 @@ func TestNewEventService(t *testing.T) {
 
 func TestListAll_ReturnsEvents(t *testing.T) {
 	repo := &mockRepo{
-		listAllFn: func(calendarNames []string) ([]model.Event, error) {
+		listAllFn: func(calendarIDs []int64) ([]model.Event, error) {
 			return []model.Event{{ID: 1, Title: "A"}, {ID: 2, Title: "B"}}, nil
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	events, err := svc.ListAll(nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -147,11 +161,11 @@ func TestListAll_ReturnsEvents(t *testing.T) {
 
 func TestListAll_NilNormalizesToEmptySlice(t *testing.T) {
 	repo := &mockRepo{
-		listAllFn: func(calendarNames []string) ([]model.Event, error) {
+		listAllFn: func(calendarIDs []int64) ([]model.Event, error) {
 			return nil, nil
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	events, err := svc.ListAll(nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -166,11 +180,11 @@ func TestListAll_NilNormalizesToEmptySlice(t *testing.T) {
 
 func TestListAll_RepoError(t *testing.T) {
 	repo := &mockRepo{
-		listAllFn: func(calendarNames []string) ([]model.Event, error) {
+		listAllFn: func(calendarIDs []int64) ([]model.Event, error) {
 			return nil, errRepo
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	_, err := svc.ListAll(nil)
 	if !errors.Is(err, errRepo) {
 		t.Fatalf("expected repo error, got: %v", err)
@@ -181,14 +195,14 @@ func TestListAll_RepoError(t *testing.T) {
 
 func TestList_BasicList(t *testing.T) {
 	repo := &mockRepo{
-		listFn: func(from, to string, calendarNames []string) ([]model.Event, error) {
+		listFn: func(from, to string, calendarIDs []int64) ([]model.Event, error) {
 			return []model.Event{{ID: 1, Title: "Meeting"}}, nil
 		},
-		listRecurringFn: func(to string, calendarNames []string) ([]model.Event, error) {
+		listRecurringFn: func(to string, calendarIDs []int64) ([]model.Event, error) {
 			return nil, nil
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	events, err := svc.List("2026-02-01T00:00:00Z", "2026-03-01T00:00:00Z", nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -200,14 +214,14 @@ func TestList_BasicList(t *testing.T) {
 
 func TestList_NilNormalizesToEmptySlice(t *testing.T) {
 	repo := &mockRepo{
-		listFn: func(from, to string, calendarNames []string) ([]model.Event, error) {
+		listFn: func(from, to string, calendarIDs []int64) ([]model.Event, error) {
 			return nil, nil
 		},
-		listRecurringFn: func(to string, calendarNames []string) ([]model.Event, error) {
+		listRecurringFn: func(to string, calendarIDs []int64) ([]model.Event, error) {
 			return nil, nil
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	events, err := svc.List("2026-02-01T00:00:00Z", "2026-03-01T00:00:00Z", nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -219,11 +233,11 @@ func TestList_NilNormalizesToEmptySlice(t *testing.T) {
 
 func TestList_RepoListError(t *testing.T) {
 	repo := &mockRepo{
-		listFn: func(from, to string, calendarNames []string) ([]model.Event, error) {
+		listFn: func(from, to string, calendarIDs []int64) ([]model.Event, error) {
 			return nil, errRepo
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	_, err := svc.List("2026-02-01T00:00:00Z", "2026-03-01T00:00:00Z", nil)
 	if !errors.Is(err, errRepo) {
 		t.Fatalf("expected repo error, got: %v", err)
@@ -232,14 +246,14 @@ func TestList_RepoListError(t *testing.T) {
 
 func TestList_RepoListRecurringError(t *testing.T) {
 	repo := &mockRepo{
-		listFn: func(from, to string, calendarNames []string) ([]model.Event, error) {
+		listFn: func(from, to string, calendarIDs []int64) ([]model.Event, error) {
 			return []model.Event{}, nil
 		},
-		listRecurringFn: func(to string, calendarNames []string) ([]model.Event, error) {
+		listRecurringFn: func(to string, calendarIDs []int64) ([]model.Event, error) {
 			return nil, errRepo
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	_, err := svc.List("2026-02-01T00:00:00Z", "2026-03-01T00:00:00Z", nil)
 	if !errors.Is(err, errRepo) {
 		t.Fatalf("expected repo error, got: %v", err)
@@ -249,10 +263,10 @@ func TestList_RepoListRecurringError(t *testing.T) {
 func TestList_WithRecurringAndOverrides(t *testing.T) {
 	parentID := int64(10)
 	repo := &mockRepo{
-		listFn: func(from, to string, calendarNames []string) ([]model.Event, error) {
+		listFn: func(from, to string, calendarIDs []int64) ([]model.Event, error) {
 			return []model.Event{}, nil
 		},
-		listRecurringFn: func(to string, calendarNames []string) ([]model.Event, error) {
+		listRecurringFn: func(to string, calendarIDs []int64) ([]model.Event, error) {
 			return []model.Event{{
 				ID:             parentID,
 				Title:          "Daily",
@@ -272,7 +286,7 @@ func TestList_WithRecurringAndOverrides(t *testing.T) {
 			}}, nil
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	events, err := svc.List("2026-02-01T00:00:00Z", "2026-02-04T00:00:00Z", nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -295,10 +309,10 @@ func TestList_WithRecurringAndOverrides(t *testing.T) {
 
 func TestList_ListOverridesError(t *testing.T) {
 	repo := &mockRepo{
-		listFn: func(from, to string, calendarNames []string) ([]model.Event, error) {
+		listFn: func(from, to string, calendarIDs []int64) ([]model.Event, error) {
 			return []model.Event{}, nil
 		},
-		listRecurringFn: func(to string, calendarNames []string) ([]model.Event, error) {
+		listRecurringFn: func(to string, calendarIDs []int64) ([]model.Event, error) {
 			return []model.Event{{
 				ID:             1,
 				Title:          "Daily",
@@ -311,7 +325,7 @@ func TestList_ListOverridesError(t *testing.T) {
 			return nil, errRepo
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	_, err := svc.List("2026-02-01T00:00:00Z", "2026-02-04T00:00:00Z", nil)
 	if !errors.Is(err, errRepo) {
 		t.Fatalf("expected repo error, got: %v", err)
@@ -322,11 +336,11 @@ func TestList_ListOverridesError(t *testing.T) {
 
 func TestSearch_ReturnsResults(t *testing.T) {
 	repo := &mockRepo{
-		searchFn: func(query, from, to string, calendarNames []string) ([]model.Event, error) {
+		searchFn: func(query, from, to string, calendarIDs []int64) ([]model.Event, error) {
 			return []model.Event{{ID: 1, Title: "Meeting"}}, nil
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	events, err := svc.Search("meet", "2026-02-01T00:00:00Z", "2026-03-01T00:00:00Z", nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -338,11 +352,11 @@ func TestSearch_ReturnsResults(t *testing.T) {
 
 func TestSearch_NilNormalizesToEmptySlice(t *testing.T) {
 	repo := &mockRepo{
-		searchFn: func(query, from, to string, calendarNames []string) ([]model.Event, error) {
+		searchFn: func(query, from, to string, calendarIDs []int64) ([]model.Event, error) {
 			return nil, nil
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	events, err := svc.Search("nothing", "2026-02-01T00:00:00Z", "2026-03-01T00:00:00Z", nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -354,11 +368,11 @@ func TestSearch_NilNormalizesToEmptySlice(t *testing.T) {
 
 func TestSearch_RepoError(t *testing.T) {
 	repo := &mockRepo{
-		searchFn: func(query, from, to string, calendarNames []string) ([]model.Event, error) {
+		searchFn: func(query, from, to string, calendarIDs []int64) ([]model.Event, error) {
 			return nil, errRepo
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	_, err := svc.Search("test", "2026-02-01T00:00:00Z", "2026-03-01T00:00:00Z", nil)
 	if !errors.Is(err, errRepo) {
 		t.Fatalf("expected repo error, got: %v", err)
@@ -373,7 +387,7 @@ func TestGetByID_Found(t *testing.T) {
 			return &model.Event{ID: id, Title: "Found"}, nil
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	e, err := svc.GetByID(42)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -389,7 +403,7 @@ func TestGetByID_NotFound(t *testing.T) {
 			return nil, nil
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	_, err := svc.GetByID(42)
 	if !errors.Is(err, ErrNotFound) {
 		t.Fatalf("expected ErrNotFound, got: %v", err)
@@ -402,7 +416,7 @@ func TestGetByID_RepoError(t *testing.T) {
 			return nil, errRepo
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	_, err := svc.GetByID(42)
 	if !errors.Is(err, errRepo) {
 		t.Fatalf("expected repo error, got: %v", err)
@@ -420,7 +434,7 @@ func TestCreate_Valid(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	req := &model.CreateEventRequest{
 		Title:     "New Event",
 		StartTime: "2026-02-15T10:00:00Z",
@@ -440,7 +454,7 @@ func TestCreate_Valid(t *testing.T) {
 
 func TestCreate_ValidationFailure(t *testing.T) {
 	repo := &mockRepo{}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	req := &model.CreateEventRequest{
 		Title: "", // required
 	}
@@ -456,7 +470,7 @@ func TestCreate_RepoError(t *testing.T) {
 			return errRepo
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	req := &model.CreateEventRequest{
 		Title:     "Test",
 		StartTime: "2026-02-15T10:00:00Z",
@@ -476,7 +490,7 @@ func TestCreate_HTMLSanitization(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	req := &model.CreateEventRequest{
 		Title:       "Test",
 		Description: `<b>bold</b><script>alert('xss')</script>`,
@@ -508,7 +522,7 @@ func TestUpdate_PartialUpdate(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	req := &model.UpdateEventRequest{
 		Title: strPtr("Updated"),
 	}
@@ -531,7 +545,7 @@ func TestUpdate_NotFound(t *testing.T) {
 			return nil, nil
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	req := &model.UpdateEventRequest{Title: strPtr("X")}
 	_, err := svc.Update(1, req)
 	if !errors.Is(err, ErrNotFound) {
@@ -541,7 +555,7 @@ func TestUpdate_NotFound(t *testing.T) {
 
 func TestUpdate_ValidationFailure(t *testing.T) {
 	repo := &mockRepo{}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	req := &model.UpdateEventRequest{Title: strPtr("")} // an empty title isn't allowed
 	_, err := svc.Update(1, req)
 	if !errors.Is(err, ErrValidation) {
@@ -560,7 +574,7 @@ func TestUpdate_EndBeforeStart(t *testing.T) {
 			}, nil
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	req := &model.UpdateEventRequest{
 		EndTime: strPtr("2026-02-15T09:00:00Z"),
 	}
@@ -584,7 +598,7 @@ func TestUpdate_DurationRecomputesEndTime(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	req := &model.UpdateEventRequest{
 		Duration: strPtr("PT2H"),
 	}
@@ -612,7 +626,7 @@ func TestUpdate_AllDayDateHandling(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	req := &model.UpdateEventRequest{
 		StartTime: strPtr("2026-02-20"),
 		EndTime:   strPtr("2026-02-22"),
@@ -644,7 +658,7 @@ func TestUpdate_ToggleToAllDay(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	req := &model.UpdateEventRequest{
 		AllDay: boolPtr(true),
 	}
@@ -675,7 +689,7 @@ func TestUpdate_AllFieldUpdates(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	req := &model.UpdateEventRequest{
 		Color:                strPtr("blue"),
 		RecurrenceFreq:       strPtr("WEEKLY"),
@@ -744,7 +758,7 @@ func TestUpdate_HTMLSanitization(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	req := &model.UpdateEventRequest{
 		Description: strPtr(`<em>hi</em><script>bad</script>`),
 	}
@@ -771,7 +785,7 @@ func TestUpdate_RepoError(t *testing.T) {
 			return errRepo
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	req := &model.UpdateEventRequest{Title: strPtr("New")}
 	_, err := svc.Update(1, req)
 	if !errors.Is(err, errRepo) {
@@ -801,7 +815,7 @@ func TestCreateOrUpdateOverride_NewOverride(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	req := &model.UpdateEventRequest{Title: strPtr("Modified Instance")}
 	e, err := svc.CreateOrUpdateOverride(parentID, "2026-02-08T09:00:00Z", req)
 	if err != nil {
@@ -860,7 +874,7 @@ func TestCreateOrUpdateOverride_ExistingOverride(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	req := &model.UpdateEventRequest{Title: strPtr("Updated Override")}
 	e, err := svc.CreateOrUpdateOverride(parentID, "2026-02-08T09:00:00Z", req)
 	if err != nil {
@@ -877,7 +891,7 @@ func TestCreateOrUpdateOverride_ParentNotFound(t *testing.T) {
 			return nil, nil
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	req := &model.UpdateEventRequest{Title: strPtr("X")}
 	_, err := svc.CreateOrUpdateOverride(999, "2026-02-08T09:00:00Z", req)
 	if !errors.Is(err, ErrNotFound) {
@@ -897,7 +911,7 @@ func TestCreateOrUpdateOverride_ParentNotRecurring(t *testing.T) {
 			}, nil
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	req := &model.UpdateEventRequest{Title: strPtr("X")}
 	_, err := svc.CreateOrUpdateOverride(1, "2026-02-08T09:00:00Z", req)
 	if !errors.Is(err, ErrValidation) {
@@ -907,7 +921,7 @@ func TestCreateOrUpdateOverride_ParentNotRecurring(t *testing.T) {
 
 func TestCreateOrUpdateOverride_InvalidInstanceStart(t *testing.T) {
 	repo := &mockRepo{}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	req := &model.UpdateEventRequest{Title: strPtr("X")}
 	_, err := svc.CreateOrUpdateOverride(1, "not-a-date", req)
 	if !errors.Is(err, ErrValidation) {
@@ -942,7 +956,7 @@ func TestCreateOrUpdateOverride_NewOverrideWithAllFields(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	req := &model.UpdateEventRequest{
 		Title:           strPtr("New Title"),
 		Description:     strPtr("<b>bold</b><script>bad</script>"),
@@ -1017,7 +1031,7 @@ func TestCreateOrUpdateOverride_GetOverrideError(t *testing.T) {
 			return nil, errRepo
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	req := &model.UpdateEventRequest{Title: strPtr("X")}
 	_, err := svc.CreateOrUpdateOverride(parentID, "2026-02-08T09:00:00Z", req)
 	if !errors.Is(err, errRepo) {
@@ -1027,7 +1041,7 @@ func TestCreateOrUpdateOverride_GetOverrideError(t *testing.T) {
 
 func TestCreateOrUpdateOverride_ValidationFailure(t *testing.T) {
 	repo := &mockRepo{}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	req := &model.UpdateEventRequest{Title: strPtr("")} // an empty title isn't allowed
 	_, err := svc.CreateOrUpdateOverride(1, "2026-02-08T09:00:00Z", req)
 	if !errors.Is(err, ErrValidation) {
@@ -1044,7 +1058,7 @@ func TestImportSingle_SingleEvent(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	events := []model.Event{{
 		Title:     "Imported",
 		StartTime: "2026-02-15T10:00:00Z",
@@ -1061,7 +1075,7 @@ func TestImportSingle_SingleEvent(t *testing.T) {
 
 func TestImportSingle_NoEvents(t *testing.T) {
 	repo := &mockRepo{}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	_, err := svc.ImportSingle(nil, "")
 	if !errors.Is(err, ErrValidation) {
 		t.Fatalf("expected ErrValidation, got: %v", err)
@@ -1070,7 +1084,7 @@ func TestImportSingle_NoEvents(t *testing.T) {
 
 func TestImportSingle_MultipleParents(t *testing.T) {
 	repo := &mockRepo{}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	events := []model.Event{
 		{Title: "A", StartTime: "2026-02-15T10:00:00Z", EndTime: "2026-02-15T11:00:00Z"},
 		{Title: "B", StartTime: "2026-02-16T10:00:00Z", EndTime: "2026-02-16T11:00:00Z"},
@@ -1084,7 +1098,7 @@ func TestImportSingle_MultipleParents(t *testing.T) {
 func TestImportSingle_RejectsOverrides(t *testing.T) {
 	parentID := int64(5)
 	repo := &mockRepo{}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 
 	t.Run("parent with override", func(t *testing.T) {
 		events := []model.Event{
@@ -1119,7 +1133,7 @@ func TestImportSingle_AllDayFormatConversion(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	events := []model.Event{{
 		Title:     "All Day",
 		StartTime: "2026-02-15T00:00:00Z",
@@ -1138,7 +1152,7 @@ func TestImportSingle_AllDayFormatConversion(t *testing.T) {
 
 func TestImportSingle_ValidationFailure(t *testing.T) {
 	repo := &mockRepo{}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	events := []model.Event{{
 		Title:     "", // empty title
 		StartTime: "2026-02-15T10:00:00Z",
@@ -1163,7 +1177,7 @@ func TestImport_ParentsAndOverrides(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	events := []model.Event{
 		{
 			Title:          "Weekly Meeting",
@@ -1204,7 +1218,7 @@ func TestImport_SkipsInvalidEvents(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	events := []model.Event{
 		{Title: "", StartTime: "2026-02-15T10:00:00Z", EndTime: "2026-02-15T11:00:00Z"}, // invalid: no title
 		{Title: "Valid", StartTime: "2026-02-15T10:00:00Z", EndTime: "2026-02-15T11:00:00Z"},
@@ -1225,7 +1239,7 @@ func TestImport_OverrideWithoutParent(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	events := []model.Event{
 		{
 			Title:                   "Orphan Override",
@@ -1253,7 +1267,7 @@ func TestImport_AllDayFormatConversion(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	events := []model.Event{{
 		Title:     "All Day Import",
 		StartTime: "2026-03-10T00:00:00Z",
@@ -1278,7 +1292,7 @@ func TestImport_RepoCreateError(t *testing.T) {
 			return errRepo
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	events := []model.Event{
 		{Title: "Test", StartTime: "2026-02-15T10:00:00Z", EndTime: "2026-02-15T11:00:00Z"},
 	}
@@ -1314,7 +1328,7 @@ func TestAddExDate_Appends(t *testing.T) {
 			return nil, nil
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	e, err := svc.AddExDate(1, "2026-02-15T09:00:00Z")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -1348,7 +1362,7 @@ func TestAddExDate_FirstExDate(t *testing.T) {
 			return nil, nil
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	_, err := svc.AddExDate(1, "2026-02-08T09:00:00Z")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -1364,7 +1378,7 @@ func TestAddExDate_NotFound(t *testing.T) {
 			return nil, nil
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	_, err := svc.AddExDate(999, "2026-02-08T09:00:00Z")
 	if !errors.Is(err, ErrNotFound) {
 		t.Fatalf("expected ErrNotFound, got: %v", err)
@@ -1382,7 +1396,7 @@ func TestAddExDate_NotRecurring(t *testing.T) {
 			}, nil
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	_, err := svc.AddExDate(1, "2026-02-08T09:00:00Z")
 	if !errors.Is(err, ErrValidation) {
 		t.Fatalf("expected ErrValidation, got: %v", err)
@@ -1391,7 +1405,7 @@ func TestAddExDate_NotRecurring(t *testing.T) {
 
 func TestAddExDate_InvalidFormat(t *testing.T) {
 	repo := &mockRepo{}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	_, err := svc.AddExDate(1, "not-a-date")
 	if !errors.Is(err, ErrValidation) {
 		t.Fatalf("expected ErrValidation, got: %v", err)
@@ -1422,7 +1436,7 @@ func TestAddExDate_DeletesAssociatedOverride(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	_, err := svc.AddExDate(1, "2026-02-08T09:00:00Z")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -1452,7 +1466,7 @@ func TestRemoveExDate_RemovesSpecific(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	_, err := svc.RemoveExDate(1, "2026-02-15T09:00:00Z")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -1469,7 +1483,7 @@ func TestRemoveExDate_NotFound(t *testing.T) {
 			return nil, nil
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	_, err := svc.RemoveExDate(999, "2026-02-08T09:00:00Z")
 	if !errors.Is(err, ErrNotFound) {
 		t.Fatalf("expected ErrNotFound, got: %v", err)
@@ -1489,7 +1503,7 @@ func TestDelete_Success(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	err := svc.Delete(1)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -1508,7 +1522,7 @@ func TestDelete_NotFound(t *testing.T) {
 			return sql.ErrNoRows
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	err := svc.Delete(999)
 	if !errors.Is(err, ErrNotFound) {
 		t.Fatalf("expected ErrNotFound, got: %v", err)
@@ -1524,7 +1538,7 @@ func TestDelete_RepoError(t *testing.T) {
 			return errRepo
 		},
 	}
-	svc := NewEventService(repo)
+	svc := NewEventService(repo, &mockCalRepo{})
 	err := svc.Delete(1)
 	if !errors.Is(err, errRepo) {
 		t.Fatalf("expected repo error, got: %v", err)

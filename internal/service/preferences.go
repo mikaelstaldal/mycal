@@ -6,9 +6,7 @@ import (
 	"github.com/mikaelstaldal/mycal/internal/repository"
 )
 
-var allowedPreferences = map[string]string{
-	"defaultEventColor": "dodgerblue",
-}
+var allowedPreferences = map[string]string{}
 
 type PreferencesService struct {
 	repo repository.PreferencesRepository

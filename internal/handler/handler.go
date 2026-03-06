@@ -8,11 +8,12 @@ import (
 	"github.com/mikaelstaldal/mycal/internal/service"
 )
 
-func NewRouter(svc *service.EventService, prefSvc *service.PreferencesService, feedSvc *service.FeedService) http.Handler {
+func NewRouter(svc *service.EventService, prefSvc *service.PreferencesService, feedSvc *service.FeedService, calSvc *service.CalendarService) http.Handler {
 	mux := http.NewServeMux()
-	registerEventRoutes(mux, svc)
+	registerEventRoutes(mux, svc, calSvc)
 	registerPreferencesRoutes(mux, prefSvc)
 	registerFeedRoutes(mux, feedSvc)
+	registerCalendarRoutes(mux, calSvc)
 	return withMiddleware(mux)
 }
 

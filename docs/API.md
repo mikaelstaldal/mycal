@@ -6,8 +6,9 @@ All endpoints are under `/api/v1`. Datetimes use RFC 3339 format (or `YYYY-MM-DD
 |--------|----------------------------------|-----------------------------------------------------------------------------|
 | GET    | `/api/v1/preferences`            | Get all preferences                                                         |
 | PATCH  | `/api/v1/preferences`            | Update preferences (partial)                                                |
-| GET    | `/api/v1/events?from=...&to=...` | List events in a time range (optional `calendar` filter)                    |
-| GET    | `/api/v1/events?q=...`           | Search events by text (optional `calendar` filter)                          |
+| GET    | `/api/v1/calendars`              | List all calendars                                                          |
+| GET    | `/api/v1/events?from=...&to=...` | List events in a time range (optional `calendar_id` or `calendar` filter)   |
+| GET    | `/api/v1/events?q=...`           | Search events by text (optional `calendar_id` or `calendar` filter)         |
 | POST   | `/api/v1/events`                 | Create an event                                                             |
 | GET    | `/api/v1/events/{id}`            | Get a single event (id may be composite, URL-encoded)                       |
 | PATCH  | `/api/v1/events/{id}`            | Update an event (use composite ID to override a single recurrence instance) |
@@ -28,14 +29,22 @@ All endpoints are under `/api/v1`. Datetimes use RFC 3339 format (or `YYYY-MM-DD
 `GET /api/v1/preferences` returns all preferences with their current values (defaults filled in for unset keys):
 
 ```json
-{"defaultEventColor": "dodgerblue"}
+{}
 ```
 
 `PATCH /api/v1/preferences` accepts a JSON object with a subset of preference keys to update. Only included keys are changed; omitted keys are left unchanged. Unknown keys return 400. Returns the full preferences state after update.
 
-| Key                 | Type   | Default        | Description                           |
-|---------------------|--------|----------------|---------------------------------------|
-| `defaultEventColor` | string | `"dodgerblue"` | Default CSS color for new events      |
+There are currently no user-configurable server-side preferences. The default event color is now managed per-calendar via the calendars table.
+
+## Calendars
+
+`GET /api/v1/calendars` returns all calendars:
+
+```json
+[{"id": 0, "name": "Default", "color": "dodgerblue"}]
+```
+
+Calendars are auto-created when importing events or creating feed subscriptions with a `calendar_name`. The default calendar (id=0) always exists.
 
 ## Event Fields
 
@@ -67,6 +76,7 @@ All endpoints are under `/api/v1`. Datetimes use RFC 3339 format (or `YYYY-MM-DD
 | `location`                  | string | Location text (max 500 chars)                                                    |
 | `latitude`                  | float  | Location latitude (-90 to 90)                                                    |
 | `longitude`                 | float  | Location longitude (-180 to 180)                                                 |
+| `calendar_id`               | int    | Calendar ID (read-only, set via import)                                          |
 | `calendar_name`             | string | Calendar name (read-only via create/update, set via import; max 100 chars)       |
 | `created_at`                | string | Creation timestamp (read-only)                                                   |
 | `updated_at`                | string | Last update timestamp (read-only)                                                |
@@ -93,16 +103,19 @@ curl -X POST http://localhost:8080/api/v1/import \
 
 ## Calendar Filtering
 
-Events can be assigned to a named calendar via the `calendar` query parameter on import endpoints. The `calendar_name` field is read-only through the regular create/update API (always defaults to empty string).
+Events can be assigned to a calendar via the `calendar` query parameter on import endpoints. The `calendar_id` and `calendar_name` fields are read-only through the regular create/update API.
 
-**Filtering by calendar** — pass one or more `calendar` query parameters to list, search, and iCal feed endpoints:
+**Filtering by calendar** — pass one or more `calendar_id` (integer) or `calendar` (name, for backward compatibility) query parameters to list, search, and iCal feed endpoints:
 
 ```bash
-# List events from a specific calendar
-curl 'http://localhost:8080/api/v1/events?from=2026-02-01T00:00:00Z&to=2026-03-01T00:00:00Z&calendar=work'
+# List events from a specific calendar by ID
+curl 'http://localhost:8080/api/v1/events?from=2026-02-01T00:00:00Z&to=2026-03-01T00:00:00Z&calendar_id=1'
 
 # List events from multiple calendars
-curl 'http://localhost:8080/api/v1/events?from=2026-02-01T00:00:00Z&to=2026-03-01T00:00:00Z&calendar=work&calendar=personal'
+curl 'http://localhost:8080/api/v1/events?from=2026-02-01T00:00:00Z&to=2026-03-01T00:00:00Z&calendar_id=1&calendar_id=2'
+
+# Filter by calendar name (backward compatible)
+curl 'http://localhost:8080/api/v1/events?from=2026-02-01T00:00:00Z&to=2026-03-01T00:00:00Z&calendar=work'
 
 # Import events into a specific calendar
 curl -X POST 'http://localhost:8080/api/v1/import?calendar=work' \
@@ -110,10 +123,10 @@ curl -X POST 'http://localhost:8080/api/v1/import?calendar=work' \
   --data-binary @events.ics
 
 # Filter iCal feed by calendar
-curl 'http://localhost:8080/api/v1/events.ics?calendar=work'
+curl 'http://localhost:8080/api/v1/events.ics?calendar_id=1'
 ```
 
-When the `calendar` parameter is omitted, all events are returned regardless of calendar name.
+When the `calendar_id`/`calendar` parameter is omitted, all events are returned regardless of calendar.
 
 ## Feed Subscriptions
 
