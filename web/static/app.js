@@ -48,9 +48,13 @@ function App() {
             setCalendars(cals);
             // Set default event color from default calendar (id=0)
             const defaultCal = cals.find(c => c.id === 0);
-            if (defaultCal) {
-                setConfig(prev => ({ ...prev, defaultEventColor: defaultCal.color }));
-            }
+            const calColors = {};
+            for (const c of cals) { calColors[c.id] = c.color; }
+            setConfig(prev => ({
+                ...prev,
+                defaultEventColor: defaultCal ? defaultCal.color : 'dodgerblue',
+                calendarColors: calColors
+            }));
         } catch (err) {
             console.error('Failed to load calendars:', err);
         }

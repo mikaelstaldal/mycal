@@ -2,6 +2,7 @@ import { html } from 'htm/preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { isToday, formatHour, formatTime, isPastEvent } from '../lib/date-utils.js';
 import { startDrag } from '../lib/drag.js';
+import { eventColor } from '../lib/event-utils.js';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
@@ -52,7 +53,7 @@ export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDa
         return {
             top: `${top}px`,
             height: `${height}px`,
-            backgroundColor: event.color || config.defaultEventColor || 'dodgerblue'
+            backgroundColor: eventColor(event, config)
         };
     }
 
@@ -85,7 +86,7 @@ export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDa
                         <div class=${`allday-event${isPastEvent(e) ? ' past-event' : ''}`}
                              key=${e.id}
                              title=${e.title}
-                             style=${`background-color: ${e.color || config.defaultEventColor || 'dodgerblue'}`}
+                             style=${`background-color: ${eventColor(e, config)}`}
                              onClick=${(ev) => { ev.stopPropagation(); onEventClick(e); }}>
                             ${e.title}
                         </div>

@@ -39,7 +39,7 @@ func (s *FeedService) Create(req *model.CreateFeedRequest) (*model.Feed, error) 
 		return nil, fmt.Errorf("%w: %s", ErrValidation, err.Error())
 	}
 
-	calendarID, err := s.resolveCalendarName(req.CalendarName)
+	calendarID, err := s.resolveCalendarName(req.CalendarName, req.CalendarColor)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +47,6 @@ func (s *FeedService) Create(req *model.CreateFeedRequest) (*model.Feed, error) 
 	feed := &model.Feed{
 		URL:                    req.URL,
 		CalendarID:             calendarID,
-		CalendarName:           req.CalendarName,
 		RefreshIntervalMinutes: req.RefreshIntervalMinutes,
 		Enabled:                true,
 	}
@@ -97,7 +96,11 @@ func (s *FeedService) Update(id int64, req *model.UpdateFeedRequest) (*model.Fee
 		existing.URL = *req.URL
 	}
 	if req.CalendarName != nil {
-		existing.CalendarName = *req.CalendarName
+		calID, err := s.resolveCalendarName(*req.CalendarName, "")
+		if err != nil {
+			return nil, err
+		}
+		existing.CalendarID = calID
 	}
 	if req.RefreshIntervalMinutes != nil {
 		existing.RefreshIntervalMinutes = *req.RefreshIntervalMinutes
@@ -131,7 +134,7 @@ func (s *FeedService) RefreshFeed(id int64) (*model.Feed, error) {
 	return feed, nil
 }
 
-func (s *FeedService) resolveCalendarName(name string) (int64, error) {
+func (s *FeedService) resolveCalendarName(name, color string) (int64, error) {
 	if name == "" {
 		return 0, nil
 	}
@@ -142,7 +145,10 @@ func (s *FeedService) resolveCalendarName(name string) (int64, error) {
 	if cal != nil {
 		return cal.ID, nil
 	}
-	newCal := &model.Calendar{Name: name, Color: "dodgerblue"}
+	if color == "" {
+		color = "dodgerblue"
+	}
+	newCal := &model.Calendar{Name: name, Color: color}
 	if err := s.calRepo.CreateCalendar(newCal); err != nil {
 		return 0, err
 	}
@@ -150,7 +156,7 @@ func (s *FeedService) resolveCalendarName(name string) (int64, error) {
 }
 
 func (s *FeedService) doRefresh(feed *model.Feed) {
-	imported, err := s.fetchAndImport(feed.URL, feed.CalendarID, feed.CalendarName)
+	imported, err := s.fetchAndImport(feed.URL, feed.CalendarID)
 	now := time.Now().UTC().Format(time.RFC3339)
 	feed.LastRefreshedAt = now
 	if err != nil {
@@ -167,7 +173,7 @@ func (s *FeedService) doRefresh(feed *model.Feed) {
 	}
 }
 
-func (s *FeedService) fetchAndImport(feedURL string, calendarID int64, calendarName string) (int, error) {
+func (s *FeedService) fetchAndImport(feedURL string, calendarID int64) (int, error) {
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Get(feedURL)
 	if err != nil {
@@ -197,7 +203,7 @@ func (s *FeedService) fetchAndImport(feedURL string, calendarID int64, calendarN
 				continue
 			}
 		}
-		ev, err := buildEventForImport(e, calendarName)
+		ev, err := buildEventForImport(e)
 		if err != nil {
 			continue
 		}

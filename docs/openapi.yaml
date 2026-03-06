@@ -583,7 +583,8 @@ components:
           description: Calendar ID for imported events
         calendar_name:
           type: string
-          maxLength: 100
+          readOnly: true
+          description: Calendar name (derived from calendar_id, read-only)
         refresh_interval_minutes:
           type: integer
           minimum: 5
@@ -623,6 +624,9 @@ components:
         calendar_name:
           type: string
           maxLength: 100
+        calendar_color:
+          type: string
+          description: CSS color for the new calendar (only used when calendar_name creates a new calendar)
         refresh_interval_minutes:
           type: integer
           minimum: 5
@@ -761,9 +765,8 @@ components:
           description: Calendar ID (set via import, read-only via create/update API)
         calendar_name:
           type: string
-          maxLength: 100
           readOnly: true
-          description: Calendar name (set via import, read-only via create/update API)
+          description: Calendar name (derived from calendar_id, read-only)
         created_at:
           type: string
           format: date-time

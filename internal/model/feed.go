@@ -41,6 +41,7 @@ const (
 type CreateFeedRequest struct {
 	URL                    string `json:"url"`
 	CalendarName           string `json:"calendar_name"`
+	CalendarColor          string `json:"calendar_color"`
 	RefreshIntervalMinutes int    `json:"refresh_interval_minutes"`
 }
 

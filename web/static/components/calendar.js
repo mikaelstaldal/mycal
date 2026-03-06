@@ -1,5 +1,6 @@
 import { html } from 'htm/preact';
 import { getCalendarDays, getWeekdays, isToday, formatTime, getISOWeekNumber, isPastEvent } from '../lib/date-utils.js';
+import { eventColor } from '../lib/event-utils.js';
 
 export function Calendar({ currentDate, events, onDayClick, onEventClick, onWeekClick, config }) {
     const weekStartDay = config.weekStartDay;
@@ -54,7 +55,7 @@ export function Calendar({ currentDate, events, onDayClick, onEventClick, onWeek
                                         <div class=${`event-chip${isPastEvent(e) ? ' past-event' : ''}`}
                                              key=${e.id}
                                              title=${e.title}
-                                             style=${`background-color: ${e.color || config.defaultEventColor || 'dodgerblue'}`}
+                                             style=${`background-color: ${eventColor(e, config)}`}
                                              onClick=${(ev) => { ev.stopPropagation(); onEventClick(e); }}>
                                             ${e.all_day ? '' : formatTime(e.start_time, config.clockFormat) + ' '}${e.title}
                                         </div>

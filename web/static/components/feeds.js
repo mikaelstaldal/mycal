@@ -1,6 +1,7 @@
 import { html } from 'htm/preact';
 import { useState, useRef, useEffect } from 'preact/hooks';
 import { listFeeds, createFeed, deleteFeed, refreshFeed } from '../lib/api.js';
+import { COLORS } from '../lib/colors.js';
 
 export function FeedsDialog({ onClose, onRefreshed }) {
     const [feeds, setFeeds] = useState([]);
@@ -123,6 +124,7 @@ export function FeedsDialog({ onClose, onRefreshed }) {
 function AddFeedForm({ onAdd, onCancel }) {
     const [url, setUrl] = useState('');
     const [calendarName, setCalendarName] = useState('');
+    const [calendarColor, setCalendarColor] = useState('dodgerblue');
     const [interval, setInterval] = useState(60);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -132,11 +134,13 @@ function AddFeedForm({ onAdd, onCancel }) {
         setLoading(true);
         setError('');
         try {
-            await onAdd({
+            const data = {
                 url: url.trim(),
                 calendar_name: calendarName.trim(),
                 refresh_interval_minutes: Number(interval),
-            });
+            };
+            if (calendarName.trim()) data.calendar_color = calendarColor;
+            await onAdd(data);
         } catch (err) {
             setError(err.message);
         } finally {
@@ -156,6 +160,19 @@ function AddFeedForm({ onAdd, onCancel }) {
                 <input type="text" value=${calendarName} onInput=${e => setCalendarName(e.target.value)}
                        placeholder="e.g. work, personal" maxlength="100" />
             </label>
+            ${calendarName.trim() && html`
+                <div class="color-picker">
+                    <span>Calendar color</span>
+                    <div class="color-options">
+                        ${COLORS.map(c => html`
+                            <div class="color-swatch ${calendarColor === c.name ? 'selected' : ''}"
+                                 style="background-color: ${c.name}"
+                                 title=${c.name}
+                                 onClick=${() => setCalendarColor(c.name)} />
+                        `)}
+                    </div>
+                </div>
+            `}
             <label>
                 Refresh interval (minutes)
                 <input type="number" value=${interval} onInput=${e => setInterval(e.target.value)}

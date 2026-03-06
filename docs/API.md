@@ -77,7 +77,7 @@ Calendars are auto-created when importing events or creating feed subscriptions 
 | `latitude`                  | float  | Location latitude (-90 to 90)                                                    |
 | `longitude`                 | float  | Location longitude (-180 to 180)                                                 |
 | `calendar_id`               | int    | Calendar ID (read-only, set via import)                                          |
-| `calendar_name`             | string | Calendar name (read-only via create/update, set via import; max 100 chars)       |
+| `calendar_name`             | string | Calendar name (read-only, derived from calendar_id)                              |
 | `created_at`                | string | Creation timestamp (read-only)                                                   |
 | `updated_at`                | string | Last update timestamp (read-only)                                                |
 
@@ -138,7 +138,8 @@ Feed subscriptions periodically re-import events from an ICS URL with automatic 
 |----------------------------|--------|--------------------------------------------------------------|
 | `id`                       | string | Unique feed ID (read-only)                                   |
 | `url`                      | string | URL to fetch iCalendar data from (required, max 2000 chars)  |
-| `calendar_name`            | string | Calendar name for imported events (max 100 chars)            |
+| `calendar_name`            | string | Calendar name (read-only, derived from calendar_id)          |
+| `calendar_color`           | string | CSS color for the new calendar (only when creating a feed)   |
 | `refresh_interval_minutes` | int    | How often to refresh (5–10080, default 60)                   |
 | `last_refreshed_at`        | string | Last refresh timestamp (read-only)                           |
 | `last_error`               | string | Last refresh error message (read-only, empty if OK)          |

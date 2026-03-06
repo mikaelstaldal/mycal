@@ -1,6 +1,7 @@
 import { html } from 'htm/preact';
 import { useEffect, useRef } from 'preact/hooks';
 import { formatTime, isPastEvent } from '../lib/date-utils.js';
+import { eventColor } from '../lib/event-utils.js';
 
 export function ScheduleView({ currentDate, events, onEventClick, onDayClick, config }) {
     const containerRef = useRef(null);
@@ -99,7 +100,7 @@ export function ScheduleView({ currentDate, events, onEventClick, onDayClick, co
                         ${dayEvents.map(event => html`
                             <div class="schedule-event${isPastEvent(event) ? ' past-event' : ''}"
                                  key=${event.id + ':' + event.start_time}
-                                 style=${'background:' + (event.color || config.defaultEventColor || 'dodgerblue')}
+                                 style=${'background:' + (eventColor(event, config))}
                                  onClick=${(e) => { e.stopPropagation(); onEventClick(event); }}>
                                 <div class="schedule-event-title">${event.title}</div>
                                 ${formatEventTime(event) && html`

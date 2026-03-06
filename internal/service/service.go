@@ -477,7 +477,7 @@ func (s *EventService) CreateOrUpdateOverride(parentID int64, instanceStart stri
 }
 
 // buildEventForImport validates a parsed event and returns a model.Event ready to persist.
-func buildEventForImport(e model.Event, calendarName string) (*model.Event, error) {
+func buildEventForImport(e model.Event) (*model.Event, error) {
 	startTime := e.StartTime
 	endTime := e.EndTime
 	if e.AllDay {
@@ -540,7 +540,6 @@ func buildEventForImport(e model.Event, calendarName string) (*model.Event, erro
 		Location:             e.Location,
 		Latitude:             e.Latitude,
 		Longitude:            e.Longitude,
-		CalendarName:         calendarName,
 		IcsUID:               e.ImportUID,
 	}, nil
 }
@@ -567,7 +566,7 @@ func (s *EventService) ImportSingle(events []model.Event, calendarName string) (
 		return nil, err
 	}
 
-	ev, err := buildEventForImport(events[0], calendarName)
+	ev, err := buildEventForImport(events[0])
 	if err != nil {
 		return nil, err
 	}
@@ -605,7 +604,7 @@ func (s *EventService) Import(events []model.Event, calendarName string) (int, e
 	parentByUID := make(map[string]int64)
 
 	for _, e := range parents {
-		ev, err := buildEventForImport(e, calendarName)
+		ev, err := buildEventForImport(e)
 		if err != nil {
 			continue
 		}
@@ -640,7 +639,6 @@ func (s *EventService) Import(events []model.Event, calendarName string) (int, e
 			Latitude:                e.Latitude,
 			Longitude:               e.Longitude,
 			CalendarID:              calendarID,
-			CalendarName:            calendarName,
 			RecurrenceParentID:      &parentID,
 			RecurrenceOriginalStart: e.RecurrenceOriginalStart,
 		}
