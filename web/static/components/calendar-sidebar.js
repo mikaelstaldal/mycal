@@ -6,10 +6,9 @@ export function CalendarSidebar({ calendars, selectedCalendarIds, onToggleCalend
     return html`
         <div class="calendar-sidebar">
             <div class="calendar-sidebar-header">Calendars</div>
-            <label class="calendar-sidebar-item" onClick=${(e) => { e.preventDefault(); onToggleAll(); }}>
+            <label class="calendar-sidebar-toggle-all" onClick=${(e) => { e.preventDefault(); onToggleAll(); }}>
                 <input type="checkbox" checked=${allSelected} readOnly />
-                <span class="calendar-dot" style="background: #888" />
-                <span class="calendar-sidebar-name">All</span>
+                <span class="calendar-sidebar-name">${allSelected ? 'Deselect all' : 'Select all'}</span>
             </label>
             ${calendars.map(cal => {
                 const isChecked = allSelected || (selectedCalendarIds && selectedCalendarIds.includes(cal.id));
