@@ -34,6 +34,7 @@ type PreferencesRepository interface {
 
 type CalendarRepository interface {
 	ListCalendars() ([]model.Calendar, error)
+	GetCalendarByID(id int64) (*model.Calendar, error)
 	GetCalendarByName(name string) (*model.Calendar, error)
 	CreateCalendar(cal *model.Calendar) error
 	UpdateCalendarColor(id int64, color string) error

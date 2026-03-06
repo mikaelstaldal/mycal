@@ -451,6 +451,7 @@ func (r *SQLiteRepository) CreateFeed(feed *model.Feed) error {
 	return r.db.QueryRow(
 		`SELECT f.created_at, f.updated_at, COALESCE(c.name, '') FROM feeds f LEFT JOIN calendars c ON f.calendar_id = c.id WHERE f.id = ?`, id,
 	).Scan(&feed.CreatedAt, &feed.UpdatedAt, &feed.CalendarName)
+
 }
 
 func (r *SQLiteRepository) GetFeedByID(id int64) (*model.Feed, error) {
@@ -573,6 +574,18 @@ func (r *SQLiteRepository) ListCalendars() ([]model.Calendar, error) {
 		calendars = append(calendars, c)
 	}
 	return calendars, rows.Err()
+}
+
+func (r *SQLiteRepository) GetCalendarByID(id int64) (*model.Calendar, error) {
+	var c model.Calendar
+	err := r.db.QueryRow(`SELECT id, name, color FROM calendars WHERE id = ?`, id).Scan(&c.ID, &c.Name, &c.Color)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &c, nil
 }
 
 func (r *SQLiteRepository) GetCalendarByName(name string) (*model.Calendar, error) {

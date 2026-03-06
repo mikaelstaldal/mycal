@@ -156,7 +156,13 @@ func (s *FeedService) resolveCalendarName(name, color string) (int64, error) {
 }
 
 func (s *FeedService) doRefresh(feed *model.Feed) {
-	imported, err := s.fetchAndImport(feed.URL, feed.CalendarID)
+	eventColor := ""
+	if feed.CalendarID != 0 {
+		if cal, err := s.calRepo.GetCalendarByID(feed.CalendarID); err == nil && cal != nil {
+			eventColor = cal.Color
+		}
+	}
+	imported, err := s.fetchAndImport(feed.URL, feed.CalendarID, eventColor)
 	now := time.Now().UTC().Format(time.RFC3339)
 	feed.LastRefreshedAt = now
 	if err != nil {
@@ -173,7 +179,7 @@ func (s *FeedService) doRefresh(feed *model.Feed) {
 	}
 }
 
-func (s *FeedService) fetchAndImport(feedURL string, calendarID int64) (int, error) {
+func (s *FeedService) fetchAndImport(feedURL string, calendarID int64, eventColor string) (int, error) {
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Get(feedURL)
 	if err != nil {
@@ -208,6 +214,9 @@ func (s *FeedService) fetchAndImport(feedURL string, calendarID int64) (int, err
 			continue
 		}
 		ev.CalendarID = calendarID
+		if eventColor != "" && ev.Color == "" {
+			ev.Color = eventColor
+		}
 		if err := s.eventRepo.Create(ev); err != nil {
 			continue
 		}

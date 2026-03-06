@@ -65,6 +65,9 @@ type mockCalRepo struct{}
 func (m *mockCalRepo) ListCalendars() ([]model.Calendar, error) {
 	return []model.Calendar{{ID: 0, Name: "Default", Color: "dodgerblue"}}, nil
 }
+func (m *mockCalRepo) GetCalendarByID(id int64) (*model.Calendar, error) {
+	return nil, nil
+}
 func (m *mockCalRepo) GetCalendarByName(name string) (*model.Calendar, error) {
 	return nil, nil
 }
