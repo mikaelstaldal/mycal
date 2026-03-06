@@ -333,7 +333,7 @@ function App() {
                 <div class="top-bar-actions">
                     <input type="search" class="search-input" placeholder="Search events..."
                            value=${searchQuery} onInput=${handleSearchInput} />
-                    <button class="settings-btn" onClick=${loadEvents} title="Refresh">
+                    <button class="settings-btn" onClick=${() => { loadEvents(); loadCalendars(); }} title="Refresh">
                         \u21BB
                     </button>
                     <button class="settings-btn" onClick=${() => setShowImportSingle(true)} title="Import Event">
