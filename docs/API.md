@@ -15,6 +15,12 @@ All endpoints are under `/api/v1`. Datetimes use RFC 3339 format (or `YYYY-MM-DD
 | POST   | `/api/v1/import`                 | Import events from iCalendar data (optional `calendar` query param)         |
 | POST   | `/api/v1/import-single`          | Import a single event from iCalendar data (optional `calendar` query param) |
 | GET    | `/api/v1/events.ics`             | iCalendar feed (optional `calendar` filter)                                 |
+| GET    | `/api/v1/feeds`                  | List all feed subscriptions                                                 |
+| POST   | `/api/v1/feeds`                  | Create a feed subscription                                                  |
+| GET    | `/api/v1/feeds/{id}`             | Get a feed subscription                                                     |
+| PUT    | `/api/v1/feeds/{id}`             | Update a feed subscription                                                  |
+| DELETE | `/api/v1/feeds/{id}`             | Delete a feed subscription                                                  |
+| POST   | `/api/v1/feeds/{id}/refresh`     | Manually refresh a feed                                                     |
 | GET    | `/calendar.ics`                  | iCalendar feed (convenience URL)                                            |
 
 ## Preferences
@@ -108,6 +114,42 @@ curl 'http://localhost:8080/api/v1/events.ics?calendar=work'
 ```
 
 When the `calendar` parameter is omitted, all events are returned regardless of calendar name.
+
+## Feed Subscriptions
+
+Feed subscriptions periodically re-import events from an ICS URL with automatic deduplication (events with the same ICS UID are skipped).
+
+### Feed Fields
+
+| Field                      | Type   | Description                                                  |
+|----------------------------|--------|--------------------------------------------------------------|
+| `id`                       | string | Unique feed ID (read-only)                                   |
+| `url`                      | string | URL to fetch iCalendar data from (required, max 2000 chars)  |
+| `calendar_name`            | string | Calendar name for imported events (max 100 chars)            |
+| `refresh_interval_minutes` | int    | How often to refresh (5–10080, default 60)                   |
+| `last_refreshed_at`        | string | Last refresh timestamp (read-only)                           |
+| `last_error`               | string | Last refresh error message (read-only, empty if OK)          |
+| `enabled`                  | bool   | Whether automatic refresh is enabled (default true)          |
+| `created_at`               | string | Creation timestamp (read-only)                               |
+| `updated_at`               | string | Last update timestamp (read-only)                            |
+
+### Create a feed
+
+```bash
+curl -X POST http://localhost:8080/api/v1/feeds \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "url": "https://example.com/calendar.ics",
+    "calendar_name": "work",
+    "refresh_interval_minutes": 60
+  }'
+```
+
+### Manually refresh a feed
+
+```bash
+curl -X POST http://localhost:8080/api/v1/feeds/1/refresh
+```
 
 ## iCalendar Feed
 

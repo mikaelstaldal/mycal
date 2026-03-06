@@ -124,7 +124,17 @@ func main() {
 
 	svc := service.NewEventService(repo)
 	prefSvc := service.NewPreferencesService(repo)
-	apiRouter := handler.NewRouter(svc, prefSvc)
+	feedSvc := service.NewFeedService(repo, repo)
+	apiRouter := handler.NewRouter(svc, prefSvc, feedSvc)
+
+	// Start background feed refresh goroutine
+	go func() {
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			feedSvc.RefreshAllDue()
+		}
+	}()
 
 	calendarFeed := handler.NewCalendarFeedHandler(svc)
 

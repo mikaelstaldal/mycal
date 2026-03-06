@@ -37,6 +37,7 @@ type Event struct {
 	Latitude                *float64 `json:"latitude"`
 	Longitude               *float64 `json:"longitude"`
 	CalendarName            string   `json:"calendar_name"`
+	IcsUID                  string   `json:"ics_uid,omitempty"`
 	CreatedAt               string   `json:"created_at"`
 	UpdatedAt               string   `json:"updated_at"`
 	ImportUID               string   `json:"-"` // transient field for iCal import UID matching

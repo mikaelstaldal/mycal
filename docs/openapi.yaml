@@ -314,6 +314,135 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/v1/feeds:
+    get:
+      summary: List feed subscriptions
+      responses:
+        "200":
+          description: List of feeds
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Feed"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    post:
+      summary: Create a feed subscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFeedRequest"
+      responses:
+        "201":
+          description: Feed created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Feed"
+        "400":
+          description: Invalid JSON or validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/feeds/{id}:
+    get:
+      summary: Get a feed subscription
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The feed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Feed"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    put:
+      summary: Update a feed subscription
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateFeedRequest"
+      responses:
+        "200":
+          description: Updated feed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Feed"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      summary: Delete a feed subscription
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Feed deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/feeds/{id}/refresh:
+    post:
+      summary: Manually refresh a feed
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Feed after refresh (includes updated last_refreshed_at and last_error)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Feed"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /api/v1/events.ics:
     get:
       summary: iCalendar feed
@@ -387,6 +516,82 @@ components:
           type: string
           description: Default CSS color for new events
           default: "dodgerblue"
+
+    Feed:
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        url:
+          type: string
+          format: uri
+          maxLength: 2000
+        calendar_name:
+          type: string
+          maxLength: 100
+        refresh_interval_minutes:
+          type: integer
+          minimum: 5
+          maximum: 10080
+          default: 60
+        last_refreshed_at:
+          type: string
+          format: date-time
+          readOnly: true
+        last_error:
+          type: string
+          readOnly: true
+        enabled:
+          type: boolean
+          default: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+        - id
+        - url
+
+    CreateFeedRequest:
+      type: object
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          format: uri
+          maxLength: 2000
+        calendar_name:
+          type: string
+          maxLength: 100
+        refresh_interval_minutes:
+          type: integer
+          minimum: 5
+          maximum: 10080
+          default: 60
+
+    UpdateFeedRequest:
+      type: object
+      description: All fields are optional. Only included fields are changed.
+      properties:
+        url:
+          type: string
+          format: uri
+          maxLength: 2000
+        calendar_name:
+          type: string
+          maxLength: 100
+        refresh_interval_minutes:
+          type: integer
+          minimum: 5
+          maximum: 10080
+        enabled:
+          type: boolean
 
     Error:
       type: object

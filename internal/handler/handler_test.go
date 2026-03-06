@@ -30,7 +30,8 @@ func setupTestServer(t *testing.T) *httptest.Server {
 	}
 	svc := service.NewEventService(repo)
 	prefSvc := service.NewPreferencesService(repo)
-	router := handler.NewRouter(svc, prefSvc)
+	feedSvc := service.NewFeedService(repo, repo)
+	router := handler.NewRouter(svc, prefSvc, feedSvc)
 	ts := httptest.NewServer(router)
 	t.Cleanup(func() {
 		ts.Close()
@@ -971,4 +972,3 @@ func TestUpdatePreferencesUnknownKey(t *testing.T) {
 		t.Errorf("got status %d, want %d", resp.StatusCode, http.StatusBadRequest)
 	}
 }
-

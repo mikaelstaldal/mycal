@@ -8,6 +8,7 @@ import { ScheduleView } from './components/schedule-view.js';
 import { YearView } from './components/year-view.js';
 import { EventForm } from './components/event-form.js';
 import { ImportSingleForm, ImportBulkForm } from './components/import-form.js';
+import { FeedsDialog } from './components/feeds.js';
 import { Toast } from './components/toast.js';
 import { Settings } from './components/settings.js';
 import { listEvents, searchEvents, createEvent, updateEvent, deleteEvent, getEvent, importSingleEvent, getPreferences } from './lib/api.js';
@@ -25,6 +26,7 @@ function App() {
     const [config, setConfig] = useState(getConfig);
     const [showImportSingle, setShowImportSingle] = useState(false);
     const [showImportBulk, setShowImportBulk] = useState(false);
+    const [showFeeds, setShowFeeds] = useState(false);
     const [toast, setToast] = useState(null);
     const [toastError, setToastError] = useState(false);
     const [viewMode, setViewMode] = useState(() => {
@@ -303,6 +305,9 @@ function App() {
                     <button class="settings-btn" onClick=${() => setShowImportBulk(true)} title="Bulk Import">
                         \u21CA\uFE0E
                     </button>
+                    <button class="settings-btn" onClick=${() => setShowFeeds(true)} title="Feed Subscriptions">
+                        \u{1F517}\uFE0E
+                    </button>
                     <${Settings} config=${config} onConfigChange=${setConfig} />
                 </div>
             </div>
@@ -354,6 +359,10 @@ function App() {
             ${showImportBulk && html`
                 <${ImportBulkForm} onImported=${(message, isError) => { setShowImportBulk(false); if (!isError) loadEvents(); setToastError(!!isError); setToast(message); }}
                                    onClose=${() => setShowImportBulk(false)} />
+            `}
+            ${showFeeds && html`
+                <${FeedsDialog} onClose=${() => setShowFeeds(false)}
+                                onRefreshed=${loadEvents} />
             `}
             ${toast && html`<${Toast} message=${toast} isError=${toastError} onDone=${() => setToast(null)} />`}
         </div>

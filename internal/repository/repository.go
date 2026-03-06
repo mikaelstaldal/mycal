@@ -14,6 +14,15 @@ type EventRepository interface {
 	ListOverrides(parentIDs []int64) ([]model.Event, error)
 	GetOverride(parentID int64, originalStart string) (*model.Event, error)
 	DeleteByParentID(parentID int64) error
+	ExistsByIcsUID(uid string) (bool, error)
+}
+
+type FeedRepository interface {
+	CreateFeed(feed *model.Feed) error
+	GetFeedByID(id int64) (*model.Feed, error)
+	ListFeeds() ([]model.Feed, error)
+	UpdateFeed(feed *model.Feed) error
+	DeleteFeed(id int64) error
 }
 
 type PreferencesRepository interface {

@@ -21,6 +21,14 @@ type mockRepo struct {
 	listOverridesFn    func(parentIDs []int64) ([]model.Event, error)
 	getOverrideFn      func(parentID int64, originalStart string) (*model.Event, error)
 	deleteByParentIDFn func(parentID int64) error
+	existsByIcsUIDFn   func(uid string) (bool, error)
+}
+
+func (m *mockRepo) ExistsByIcsUID(uid string) (bool, error) {
+	if m.existsByIcsUIDFn != nil {
+		return m.existsByIcsUIDFn(uid)
+	}
+	return false, nil
 }
 
 func (m *mockRepo) List(from, to string, calendarNames []string) ([]model.Event, error) {

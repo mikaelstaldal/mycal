@@ -540,6 +540,7 @@ func buildEventForImport(e model.Event, calendarName string) (*model.Event, erro
 		Latitude:             e.Latitude,
 		Longitude:            e.Longitude,
 		CalendarName:         calendarName,
+		IcsUID:               e.ImportUID,
 	}, nil
 }
 

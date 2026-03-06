@@ -75,6 +75,36 @@ export async function updatePreferences(prefs) {
     return res.json();
 }
 
+// Feed subscriptions
+const FEEDS_BASE = APP_BASE + '/api/v1/feeds';
+
+export async function listFeeds() {
+    const res = await fetch(FEEDS_BASE);
+    if (!res.ok) throw new Error((await res.json()).error);
+    return res.json();
+}
+
+export async function createFeed(data) {
+    const res = await fetch(FEEDS_BASE, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error((await res.json()).error);
+    return res.json();
+}
+
+export async function deleteFeed(id) {
+    const res = await fetch(`${FEEDS_BASE}/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error((await res.json()).error);
+}
+
+export async function refreshFeed(id) {
+    const res = await fetch(`${FEEDS_BASE}/${encodeURIComponent(id)}/refresh`, { method: 'POST' });
+    if (!res.ok) throw new Error((await res.json()).error);
+    return res.json();
+}
+
 export async function importSingleEvent(icsContentOrUrl, calendarName) {
     const isUrl = typeof icsContentOrUrl === 'string' && icsContentOrUrl.startsWith('http');
     let url = APP_BASE + '/api/v1/import-single';
