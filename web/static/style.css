@@ -1170,7 +1170,7 @@ body {
         padding: 4px 8px;
         font-size: 1.1rem;
     }
-    .calendar-sidebar {
+    .left-sidebar {
         display: none;
     }
 }
@@ -1576,13 +1576,10 @@ body {
 
 /* Calendar sidebar */
 .calendar-sidebar {
-    width: 180px;
-    flex-shrink: 0;
     background: #fff;
     border: 1px solid #ddd;
     border-radius: 4px;
     padding: 8px;
-    align-self: flex-start;
 }
 
 .calendar-sidebar-header {
@@ -1728,4 +1725,110 @@ body {
 
 .calendar-color-swatch:hover {
     opacity: 0.8;
+}
+
+/* Left sidebar wrapper */
+.left-sidebar {
+    width: 180px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-self: flex-start;
+}
+
+/* Mini month calendar */
+.mini-month {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.mini-month-header {
+    padding: 4px 8px;
+    font-weight: 600;
+    font-size: 0.8rem;
+    background: #fafafa;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.mini-month-title {
+    cursor: pointer;
+}
+
+.mini-month-title:hover {
+    color: #1a73e8;
+}
+
+.mini-month-nav {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.6rem;
+    padding: 2px 4px;
+    color: #555;
+    border-radius: 3px;
+}
+
+.mini-month-nav:hover {
+    background: #e8f0fe;
+    color: #1a73e8;
+}
+
+.mini-month-grid {
+    padding: 2px 4px 3px;
+}
+
+.mini-month-weekday-row {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    font-size: 0.55rem;
+    color: #999;
+    font-weight: 600;
+}
+
+.mini-month-weekday {
+    padding: 1px 0;
+    line-height: 1.8;
+}
+
+.mini-month-week-row {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    align-items: center;
+}
+
+.mini-month-day {
+    font-size: 0.65rem;
+    line-height: 2.2;
+    border-radius: 50%;
+    text-align: center;
+}
+
+.mini-month-day:hover {
+    background: #f0f0f0;
+}
+
+.mini-month-day-other {
+    color: #ccc;
+}
+
+.mini-month-day-today {
+    background: #4285f4;
+    color: #fff;
+    font-weight: 600;
+    width: 20px;
+    height: 20px;
+    line-height: 20px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: auto;
 }

@@ -12,6 +12,7 @@ import { FeedsDialog } from './components/feeds.js';
 import { Toast } from './components/toast.js';
 import { Settings } from './components/settings.js';
 import { CalendarSidebar } from './components/calendar-sidebar.js';
+import { MiniMonth } from './components/mini-month.js';
 import { listEvents, searchEvents, createEvent, updateEvent, deleteEvent, getEvent, importSingleEvent, listCalendars, updateCalendar } from './lib/api.js';
 import { addMonths, addWeeks, startOfWeek, toRFC3339 } from './lib/date-utils.js';
 import { getConfig, hasUserDefaultView } from './lib/config.js';
@@ -367,13 +368,19 @@ function App() {
                 </div>
             </div>
             <div class="app-layout">
-                ${calendars.length > 1 ? html`
-                    <${CalendarSidebar} calendars=${calendars}
-                                        selectedCalendarIds=${selectedCalendarIds}
-                                        onToggleCalendar=${handleToggleCalendar}
-                                        onToggleAll=${handleToggleAll}
-                                        onEditCalendar=${handleEditCalendar} />
-                ` : null}
+                <div class="left-sidebar">
+                    <${MiniMonth} currentDate=${currentDate}
+                                  onDayClick=${handleYearDayClick}
+                                  onMonthClick=${handleYearMonthClick}
+                                  config=${config} />
+                    ${calendars.length > 1 ? html`
+                        <${CalendarSidebar} calendars=${calendars}
+                                            selectedCalendarIds=${selectedCalendarIds}
+                                            onToggleCalendar=${handleToggleCalendar}
+                                            onToggleAll=${handleToggleAll}
+                                            onEditCalendar=${handleEditCalendar} />
+                    ` : null}
+                </div>
                 <div class="app-main">
                     ${searchResults !== null ? html`
                         <div class="search-results">

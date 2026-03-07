@@ -1,17 +1,13 @@
-# TODO
+# iCalendar (RFC 5545) compliance
 
-## Current
-
-## iCalendar (RFC 5545) compliance
-
-### Recurrence
+## Recurrence
 - [x] Support RRULE:INTERVAL=N, recurring events every N day/week/month/year
 - [x] Support RRULE BYDAY, BYMONTH, BYMONTHDAY and other BY* parameters for complex patterns
 - [x] Support EXDATE, removing instances of recurring events
 - [x] Support RDATE for explicit additional recurrence dates
 - [x] Support RECURRENCE-ID for identifying and editing individual instances of recurring events
 
-### Event properties
+## Event properties
 - [ ] Support STATUS property (TENTATIVE, CONFIRMED, CANCELLED)
 - [ ] Support CLASS property (PUBLIC, PRIVATE, CONFIDENTIAL)
 - [ ] Support TRANSP property (OPAQUE, TRANSPARENT)
@@ -24,15 +20,15 @@
 - [ ] Support RELATED-TO property for parent/child event relationships
 - [x] Support COLOR according to RFC 7986
 
-### Multi-user
+## Multi-user
 - [ ] Support ORGANIZER property
 - [ ] Support ATTENDEE property with PARTSTAT, RSVP, ROLE
 - [ ] Support METHOD values beyond PUBLISH (REQUEST, REPLY, CANCEL)
 
-### Alarms
+## Alarms
 - [ ] Support AUDIO and EMAIL alarm actions (currently only DISPLAY)
 
-### Other
+## Other
 - [ ] Support VFREEBUSY component for availability scheduling
 - [ ] Support CONTACT property
 - [ ] Support RESOURCES property
