@@ -307,6 +307,52 @@ func TestDecodeRRuleWithByParams(t *testing.T) {
 	}
 }
 
+func TestDecodeValidColor(t *testing.T) {
+	input := "BEGIN:VCALENDAR\r\n" +
+		"BEGIN:VEVENT\r\n" +
+		"SUMMARY:Golden\r\n" +
+		"DTSTART:20260115T100000Z\r\n" +
+		"DTEND:20260115T110000Z\r\n" +
+		"COLOR:gold\r\n" +
+		"END:VEVENT\r\n" +
+		"END:VCALENDAR\r\n"
+
+	events, err := Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode failed: %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("expected 1 event, got %d", len(events))
+	}
+	e := events[0]
+	if e.Color != "gold" {
+		t.Errorf("color = %q", e.Color)
+	}
+}
+
+func TestDecodeInvalidColor(t *testing.T) {
+	input := "BEGIN:VCALENDAR\r\n" +
+		"BEGIN:VEVENT\r\n" +
+		"SUMMARY:Golden\r\n" +
+		"DTSTART:20260115T100000Z\r\n" +
+		"DTEND:20260115T110000Z\r\n" +
+		"COLOR:bogus\r\n" +
+		"END:VEVENT\r\n" +
+		"END:VCALENDAR\r\n"
+
+	events, err := Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode failed: %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("expected 1 event, got %d", len(events))
+	}
+	e := events[0]
+	if e.Color != "" {
+		t.Errorf("color = %q", e.Color)
+	}
+}
+
 func TestEncodeEmpty(t *testing.T) {
 	var buf bytes.Buffer
 	if err := Encode(&buf, []model.Event{}); err != nil {

@@ -380,6 +380,9 @@ func parseEvent(props []string, alarmProps []string, tzMap map[string]*time.Loca
 			googleConference = value
 		case "COLOR":
 			color = strings.ToLower(strings.TrimSpace(value))
+			if err := model.ValidateColor(color); err != nil {
+				color = ""
+			}
 		case "DTSTART":
 			upperParams := strings.ToUpper(params)
 			if strings.Contains(upperParams, "VALUE=DATE") {
@@ -434,29 +437,29 @@ func parseEvent(props []string, alarmProps []string, tzMap map[string]*time.Loca
 	reminderMinutes := parseTriggerMinutes(alarmProps)
 
 	ev := model.Event{
-		Title:              summary,
-		Description:        description,
-		StartTime:          dtstart,
-		EndTime:            dtend,
-		AllDay:             allDay,
-		Color:              color,
-		RecurrenceFreq:     rrule.Freq,
-		RecurrenceCount:    rrule.Count,
-		RecurrenceUntil:    rrule.Until,
-		RecurrenceInterval: rrule.Interval,
-		RecurrenceByDay:    rrule.ByDay,
+		Title:                summary,
+		Description:          description,
+		StartTime:            dtstart,
+		EndTime:              dtend,
+		AllDay:               allDay,
+		Color:                color,
+		RecurrenceFreq:       rrule.Freq,
+		RecurrenceCount:      rrule.Count,
+		RecurrenceUntil:      rrule.Until,
+		RecurrenceInterval:   rrule.Interval,
+		RecurrenceByDay:      rrule.ByDay,
 		RecurrenceByMonthDay: rrule.ByMonthDay,
-		RecurrenceByMonth:  rrule.ByMonth,
-		ExDates:            strings.Join(exdates, ","),
-		RDates:             strings.Join(rdates, ","),
-		Duration:           duration,
-		Categories:         categories,
-		URL:                eventURL,
-		ReminderMinutes:    reminderMinutes,
-		Location:           location,
-		Latitude:           latitude,
-		Longitude:          longitude,
-		ImportUID:          uid,
+		RecurrenceByMonth:    rrule.ByMonth,
+		ExDates:              strings.Join(exdates, ","),
+		RDates:               strings.Join(rdates, ","),
+		Duration:             duration,
+		Categories:           categories,
+		URL:                  eventURL,
+		ReminderMinutes:      reminderMinutes,
+		Location:             location,
+		Latitude:             latitude,
+		Longitude:            longitude,
+		ImportUID:            uid,
 	}
 
 	// If this has a RECURRENCE-ID, mark it as an override
@@ -545,11 +548,15 @@ func parseRRule(value string, tzMap map[string]*time.Location) rruleResult {
 		case "FREQ":
 			r.Freq = strings.ToUpper(kv[1])
 		case "COUNT":
-			fmt.Sscanf(kv[1], "%d", &r.Count)
+			if count, err := strconv.Atoi(kv[1]); err == nil {
+				r.Count = count
+			}
 		case "UNTIL":
 			r.Until = parseICalTime(kv[1], "", tzMap)
 		case "INTERVAL":
-			fmt.Sscanf(kv[1], "%d", &r.Interval)
+			if interval, err := strconv.Atoi(kv[1]); err == nil {
+				r.Interval = interval
+			}
 		case "BYDAY":
 			r.ByDay = strings.ToUpper(kv[1])
 		case "BYMONTHDAY":
