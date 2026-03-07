@@ -2,6 +2,7 @@ import { html } from 'htm/preact';
 import { useState, useRef, useEffect } from 'preact/hooks';
 import { listFeeds, createFeed, deleteFeed, refreshFeed } from '../lib/api.js';
 import { COLORS } from '../lib/colors.js';
+import { showConfirm } from '../lib/confirm.js';
 
 export function FeedsDialog({ onClose, onRefreshed }) {
     const [feeds, setFeeds] = useState([]);
@@ -31,7 +32,12 @@ export function FeedsDialog({ onClose, onRefreshed }) {
     }
 
     async function handleDelete(id) {
-        if (!confirm('Delete this feed subscription?')) return;
+        const confirmed = await showConfirm('Delete this feed subscription?', {
+            title: 'Delete Feed',
+            okText: 'Delete',
+            danger: true
+        });
+        if (!confirmed) return;
         try {
             await deleteFeed(id);
             await loadFeeds();

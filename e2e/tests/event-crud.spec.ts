@@ -100,11 +100,13 @@ test.describe('Event CRUD', () => {
     const dialog = page.locator('dialog.event-dialog');
     await expect(dialog).toBeVisible();
 
-    // Handle the browser confirm dialog before clicking Delete
-    page.on('dialog', (d) => d.accept());
-
     // Click Delete button (available directly in read-only view)
     await dialog.getByRole('button', { name: 'Delete' }).click();
+
+    // Confirm in the custom confirm dialog
+    const confirmDialog = page.locator('dialog.confirm-dialog');
+    await expect(confirmDialog).toBeVisible();
+    await confirmDialog.getByRole('button', { name: 'Delete' }).click();
 
     // Event should be removed
     await expect(page.locator('.event-chip', { hasText: 'Delete Me' })).not.toBeVisible();

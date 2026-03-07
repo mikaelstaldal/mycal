@@ -16,6 +16,7 @@ import { listEvents, searchEvents, createEvent, updateEvent, deleteEvent, getEve
 import { addMonths, addWeeks, startOfWeek, toRFC3339 } from './lib/date-utils.js';
 import { getConfig, hasUserDefaultView } from './lib/config.js';
 import { checkAndNotify, requestPermission } from './lib/notifications.js';
+import { showChoice } from './lib/confirm.js';
 
 function App() {
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -189,8 +190,15 @@ function App() {
         if (event.recurrence_freq && event.parent_id) {
             // Recurring instance (not the first one) - ask user what to edit
             const parentId = event.parent_id;
-            const choice = confirm('Edit this instance only?\n\nOK = Edit this instance\nCancel = Edit all instances');
-            if (choice) {
+            const choice = await showChoice('What would you like to edit?', {
+                title: 'Edit Recurring Event',
+                choices: [
+                    { label: 'All instances', value: 'all' },
+                    { label: 'This instance', value: 'instance', primary: true },
+                ]
+            });
+            if (choice === null) return;
+            if (choice === 'instance') {
                 // Edit single instance - composite ID encodes the instance
                 event._editInstance = true;
                 setSelectedEvent(event);

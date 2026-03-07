@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'preact/hooks';
 import { toLocalDatetimeValue, fromLocalDatetimeValue, formatDate, formatTime, toLocalDateValue, formatDateOnly, exclusiveToInclusiveDate, inclusiveToExclusiveDate } from '../lib/date-utils.js';
 import { MapPicker } from './map-picker.js';
 import { RichEditor } from './rich-editor.js';
+import { showConfirm } from '../lib/confirm.js';
 
 import { COLORS } from '../lib/colors.js';
 const WEEKDAYS = [
@@ -267,8 +268,13 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
         }
     }
 
-    function handleDelete() {
-        if (confirm('Delete this event?')) {
+    async function handleDelete() {
+        const confirmed = await showConfirm('Delete this event?', {
+            title: 'Delete Event',
+            okText: 'Delete',
+            danger: true
+        });
+        if (confirmed) {
             onDelete(event.id).catch(err => setError(err.message));
         }
     }
