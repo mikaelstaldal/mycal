@@ -1,6 +1,7 @@
 import { html } from 'htm/preact';
 import { useState, useRef, useEffect } from 'preact/hooks';
 import { saveConfig } from '../lib/config.js';
+import { formatHour } from '../lib/date-utils.js';
 
 // Google Maps API keys are 39 chars starting with "AIza"
 function isValidGoogleMapsApiKey(key) {
@@ -95,23 +96,6 @@ export function Settings({ config, onConfigChange }) {
                     </select>
                 </label>
                 <label>
-                    Clock format
-                    <select value=${config.clockFormat}
-                            onChange=${e => handleChange('clockFormat', e.target.value)}>
-                        <option value="24h">24-hour</option>
-                        <option value="12h">12-hour</option>
-                    </select>
-                </label>
-                <label>
-                    Date format
-                    <select value=${config.dateFormat}
-                            onChange=${e => handleChange('dateFormat', e.target.value)}>
-                        <option value="yyyy-MM-dd">yyyy-MM-dd</option>
-                        <option value="MM/dd/yyyy">MM/dd/yyyy</option>
-                        <option value="dd/MM/yyyy">dd/MM/yyyy</option>
-                    </select>
-                </label>
-                <label>
                     Default view
                     <select value=${config.defaultView}
                             onChange=${e => handleChange('defaultView', e.target.value)}>
@@ -127,9 +111,7 @@ export function Settings({ config, onConfigChange }) {
                     <select value=${config.dayStartHour}
                             onChange=${e => handleChange('dayStartHour', e.target.value)}>
                         ${Array.from({ length: 24 }, (_, i) => html`
-                            <option value=${i}>${config.clockFormat === '12h'
-                                ? (i === 0 ? '12 AM' : i < 12 ? i + ' AM' : i === 12 ? '12 PM' : (i - 12) + ' PM')
-                                : String(i).padStart(2, '0') + ':00'}</option>
+                            <option value=${i}>${formatHour(i)}</option>
                         `)}
                     </select>
                 </label>

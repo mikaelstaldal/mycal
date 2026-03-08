@@ -57,7 +57,7 @@ export function Calendar({ currentDate, events, onDayClick, onEventClick, onWeek
                                              title=${e.title}
                                              style=${`background-color: ${eventColor(e, config)}`}
                                              onClick=${(ev) => { ev.stopPropagation(); onEventClick(e); }}>
-                                            ${e.all_day ? '' : formatTime(e.start_time, config.clockFormat) + ' '}${e.title}
+                                            ${e.all_day ? '' : formatTime(e.start_time) + ' '}${e.title}
                                         </div>
                                     `)}
                                 </div>

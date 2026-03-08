@@ -68,7 +68,7 @@ export function ScheduleView({ currentDate, events, onEventClick, onDayClick, co
 
     function formatEventTime(event) {
         if (event.all_day) return null;
-        return `${formatTime(event.start_time, config.clockFormat)} – ${formatTime(event.end_time, config.clockFormat)}`;
+        return `${formatTime(event.start_time)} – ${formatTime(event.end_time)}`;
     }
 
     function dedup(evts) {

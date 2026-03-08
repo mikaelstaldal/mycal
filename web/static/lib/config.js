@@ -2,8 +2,6 @@ const STORAGE_KEY = 'mycal-settings';
 
 const DEFAULTS = {
     weekStartDay: 1,   // 0=Sunday, 1=Monday
-    clockFormat: '24h', // '24h' or '12h'
-    dateFormat: 'yyyy-MM-dd', // 'yyyy-MM-dd', 'MM/dd/yyyy', 'dd/MM/yyyy'
     defaultView: 'week', // 'year', 'month', 'week', 'day', or 'schedule'
     dayStartHour: 8, // 0-23, hour to scroll to in week view
     defaultEventColor: 'dodgerblue', // fallback until server preferences load

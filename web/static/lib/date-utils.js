@@ -60,27 +60,13 @@ export function getWeekdays(weekStartDay = 1) {
     return [...ALL_WEEKDAYS.slice(weekStartDay), ...ALL_WEEKDAYS.slice(0, weekStartDay)];
 }
 
-export function formatTime(dateStr, clockFormat = '24h') {
+export function formatTime(dateStr) {
     const d = new Date(dateStr);
-    const h = d.getHours();
-    const m = String(d.getMinutes()).padStart(2, '0');
-    if (clockFormat === '12h') {
-        const period = h >= 12 ? 'PM' : 'AM';
-        const h12 = h % 12 || 12;
-        return `${h12}:${m} ${period}`;
-    }
-    return `${String(h).padStart(2, '0')}:${m}`;
+    return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 }
 
-export function formatDate(date, dateFormat = 'yyyy-MM-dd') {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    switch (dateFormat) {
-        case 'MM/dd/yyyy': return `${m}/${d}/${y}`;
-        case 'dd/MM/yyyy': return `${d}/${m}/${y}`;
-        default: return `${y}-${m}-${d}`;
-    }
+export function formatDate(date) {
+    return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 export function toLocalDatetimeValue(dateStr) {
@@ -102,9 +88,9 @@ export function toLocalDateValue(dateStr) {
     return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 }
 
-export function formatDateOnly(dateStr, dateFormat) {
+export function formatDateOnly(dateStr) {
     const d = new Date(dateStr);
-    return formatDate(d, dateFormat);
+    return formatDate(d);
 }
 
 // Convert exclusive end date (server) to inclusive end date (UI).
@@ -177,12 +163,7 @@ export function formatDayHeading(date) {
     return date.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-export function formatHour(hour, clockFormat = '24h') {
-    if (clockFormat === '12h') {
-        if (hour === 0) return '12 AM';
-        if (hour < 12) return `${hour} AM`;
-        if (hour === 12) return '12 PM';
-        return `${hour - 12} PM`;
-    }
-    return `${String(hour).padStart(2, '0')}:00`;
+export function formatHour(hour) {
+    const d = new Date(2000, 0, 1, hour, 0, 0);
+    return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 }

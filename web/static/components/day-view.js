@@ -96,7 +96,7 @@ export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDa
             <div class="day-view-body" ref=${dayBodyRef}>
                 <div class="day-view-grid">
                     ${HOURS.map(hour => html`
-                        <div class="time-gutter">${formatHour(hour, config.clockFormat)}</div>
+                        <div class="time-gutter">${formatHour(hour)}</div>
                         <div class="hour-cell"
                              onClick=${() => {
                                  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate(), hour);
@@ -133,11 +133,11 @@ export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDa
                                          });
                                      } : undefined}>
                                     ${isShort ? html`
-                                        <span class="week-event-time">${formatTime(e.start_time, config.clockFormat)}</span>
+                                        <span class="week-event-time">${formatTime(e.start_time)}</span>
                                         <span class="week-event-title">${e.title}</span>
                                     ` : html`
                                         <span class="week-event-title">${e.title}</span>
-                                        <span class="week-event-time">${formatTime(e.start_time, config.clockFormat)}</span>
+                                        <span class="week-event-time">${formatTime(e.start_time)}</span>
                                     `}
                                     ${canDrag && html`<div class="resize-handle"
                                         onMouseDown=${(ev) => {

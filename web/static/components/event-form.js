@@ -1,6 +1,6 @@
 import { html } from 'htm/preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
-import { toLocalDatetimeValue, fromLocalDatetimeValue, formatDate, formatTime, toLocalDateValue, formatDateOnly, exclusiveToInclusiveDate, inclusiveToExclusiveDate } from '../lib/date-utils.js';
+import { toLocalDatetimeValue, fromLocalDatetimeValue, formatTime, toLocalDateValue, formatDateOnly, exclusiveToInclusiveDate, inclusiveToExclusiveDate } from '../lib/date-utils.js';
 import { MapPicker } from './map-picker.js';
 import { RichEditor } from './rich-editor.js';
 import { showConfirm } from '../lib/confirm.js';
@@ -16,9 +16,9 @@ const WEEKDAYS = [
     { key: 'SU', label: 'Sun' },
 ];
 
-function formatDatetime(isoStr, config) {
+function formatDatetime(isoStr) {
     const d = new Date(isoStr);
-    return `${formatDate(d, config.dateFormat)} ${formatTime(isoStr, config.clockFormat)}`;
+    return d.toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
 function getWeekdayAbbr(date) {
@@ -307,14 +307,14 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
 
     function displayStart() {
         if (!event) return '';
-        if (event.all_day) return formatDateOnly(event.start_time, config.dateFormat);
-        return formatDatetime(event.start_time, config);
+        if (event.all_day) return formatDateOnly(event.start_time);
+        return formatDatetime(event.start_time);
     }
 
     function displayEnd() {
         if (!event) return '';
-        if (event.all_day) return formatDateOnly(exclusiveToInclusiveDate(event.end_time), config.dateFormat);
-        return formatDatetime(event.end_time, config);
+        if (event.all_day) return formatDateOnly(exclusiveToInclusiveDate(event.end_time));
+        return formatDatetime(event.end_time);
     }
 
     function displayReminder() {
