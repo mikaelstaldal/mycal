@@ -882,7 +882,7 @@ body {
 
 .year-weekday-row {
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: 16px repeat(7, 1fr);
     text-align: center;
     font-size: 0.55rem;
     color: #999;

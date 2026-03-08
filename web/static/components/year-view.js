@@ -45,6 +45,7 @@ export function YearView({ currentDate, events, onMonthClick, onWeekClick, onDay
                 </div>
                 <div class="year-month-grid">
                     <div class="year-weekday-row">
+                        <div></div>
                         ${weekdays.map(d => html`<div class="year-weekday">${d.charAt(0)}</div>`)}
                     </div>
                     ${weeks.map(week => html`
