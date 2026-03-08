@@ -25,3 +25,17 @@ In the web UI, show the week number as "week 11" instead of "W11".
 </details>
 
 ---
+
+## Bundle web dependencies
+
+- **Status:** completed
+- **Completed:** 2026-03-08 12:24:38
+
+<details>
+<summary>Prompt</summary>
+
+Download and bundle all external web dependencies (.js and .css) to not depend on the CDN:s at runtime.
+
+</details>
+
+---
