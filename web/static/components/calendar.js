@@ -39,7 +39,7 @@ export function Calendar({ currentDate, events, onDayClick, onEventClick, onWeek
             </div>
             <div class="calendar-grid">
                 ${weeks.map(week => html`
-                    <div class="week-number" onClick=${() => onWeekClick(week[0].date)}>${getISOWeekNumber(week[0].date)}</div>
+                    <div class="week-number" onClick=${() => onWeekClick(week[0].date)}>week ${getISOWeekNumber(week[0].date)}</div>
                     ${week.map(({ date, currentMonth }) => {
                         const dayEvents = eventsForDay(date);
                         const classes = ['day',

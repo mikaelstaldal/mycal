@@ -50,7 +50,7 @@ export function YearView({ currentDate, events, onMonthClick, onWeekClick, onDay
                     ${weeks.map(week => html`
                         <div class="year-week-row">
                             <div class="year-week-number" onClick=${(ev) => { ev.stopPropagation(); onWeekClick(week[0].date); }}>
-                                ${getISOWeekNumber(week[0].date)}
+                                week ${getISOWeekNumber(week[0].date)}
                             </div>
                             ${week.map(({ date, currentMonth }) => {
                                 const hasEvents = currentMonth && eventsForDay(date).length > 0;

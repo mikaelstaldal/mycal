@@ -81,7 +81,7 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, onAllD
     return html`
         <div class="week-view">
             <div class="week-header">
-                <div class="time-gutter-header">W${getISOWeekNumber(days[0])}</div>
+                <div class="time-gutter-header">week ${getISOWeekNumber(days[0])}</div>
                 ${days.map(date => {
                     const classes = ['week-day-header', isToday(date) && 'today'].filter(Boolean).join(' ');
                     return html`
