@@ -1,14 +1,14 @@
 import { html } from 'htm/preact';
-import { useEffect, useRef } from 'preact/hooks';
+import { useRef } from 'preact/hooks';
 import { formatTime, isPastEvent } from '../lib/date-utils.js';
 import { eventColor } from '../lib/event-utils.js';
 
 export function ScheduleView({ currentDate, events, onEventClick, onDayClick, config }) {
     const containerRef = useRef(null);
-    const todayRef = useRef(null);
 
-    const from = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - 30);
-    const to = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() + 30);
+    const today = new Date();
+    const from = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const to = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 90);
 
     // Group events by date
     const dayMap = new Map();
@@ -34,19 +34,9 @@ export function ScheduleView({ currentDate, events, onEventClick, onDayClick, co
 
     const fromKey = toDateKey(from);
     const toKey = toDateKey(to);
-    const todayKey = toDateKey(new Date());
     const sortedDays = Array.from(dayMap.keys())
         .filter(k => k >= fromKey && k < toKey)
         .sort();
-
-    // Find the first day >= today to scroll to
-    const todayIndex = sortedDays.findIndex(k => k >= todayKey);
-
-    useEffect(() => {
-        if (todayRef.current && containerRef.current) {
-            containerRef.current.scrollTop = todayRef.current.offsetTop - containerRef.current.offsetTop;
-        }
-    }, [events, currentDate]);
 
     function toDateKey(d) {
         const pad = n => String(n).padStart(2, '0');
@@ -86,13 +76,11 @@ export function ScheduleView({ currentDate, events, onEventClick, onDayClick, co
             ${sortedDays.length === 0 && html`
                 <div class="schedule-empty">No upcoming events</div>
             `}
-            ${sortedDays.map((dateKey, i) => {
+            ${sortedDays.map((dateKey) => {
                 const dayDate = new Date(dateKey + 'T12:00:00');
                 const dayEvents = dedup(sortEvents(dayMap.get(dateKey)));
-                const isScrollTarget = i === todayIndex;
                 return html`
-                    <div class="schedule-date-group" key=${dateKey}
-                         ref=${isScrollTarget ? todayRef : null}>
+                    <div class="schedule-date-group" key=${dateKey}>
                         <div class="schedule-date-header"
                              onClick=${() => onDayClick(dayDate)}>
                             ${formatDateHeader(dateKey)}

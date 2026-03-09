@@ -67,8 +67,9 @@ function App() {
     const loadEvents = useCallback(async () => {
         let from, to;
         if (viewMode === 'schedule') {
-            from = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - 30);
-            to = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() + 30);
+            const today = new Date();
+            from = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+            to = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 90);
         } else if (viewMode === 'day') {
             from = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - 1);
             to = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() + 2);
