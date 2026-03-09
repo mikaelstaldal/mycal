@@ -965,6 +965,13 @@ body {
     overflow: hidden;
 }
 
+.app:has(.schedule-view) .app-main {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+
 .schedule-view {
     width: 100%;
     overflow-y: auto;
@@ -1033,6 +1040,10 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.schedule-sentinel {
+    height: 1px;
 }
 
 /* Search */

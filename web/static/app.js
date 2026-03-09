@@ -43,6 +43,8 @@ function App() {
     const dragCounter = useRef(0);
     const [calendars, setCalendars] = useState([]);
     const [selectedCalendarIds, setSelectedCalendarIds] = useState(null); // null = all
+    const [scheduleDaysLoaded, setScheduleDaysLoaded] = useState(30);
+    const [loadingMoreSchedule, setLoadingMoreSchedule] = useState(false);
 
     const loadCalendars = useCallback(async () => {
         try {
@@ -69,7 +71,7 @@ function App() {
         if (viewMode === 'schedule') {
             const today = new Date();
             from = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-            to = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 90);
+            to = new Date(today.getFullYear(), today.getMonth(), today.getDate() + scheduleDaysLoaded);
         } else if (viewMode === 'day') {
             from = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - 1);
             to = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() + 2);
@@ -93,9 +95,32 @@ function App() {
         } catch (err) {
             console.error('Failed to load events:', err);
         }
-    }, [currentDate, viewMode, config.weekStartDay, selectedCalendarIds]);
+    }, [currentDate, viewMode, config.weekStartDay, selectedCalendarIds, scheduleDaysLoaded]);
 
     useEffect(() => { loadEvents(); }, [loadEvents]);
+
+    // Reset schedule days loaded when switching away from schedule view
+    useEffect(() => {
+        if (viewMode === 'schedule') setScheduleDaysLoaded(30);
+    }, [viewMode]);
+
+    const loadMoreScheduleEvents = useCallback(async () => {
+        if (loadingMoreSchedule) return;
+        setLoadingMoreSchedule(true);
+        const today = new Date();
+        const from = new Date(today.getFullYear(), today.getMonth(), today.getDate() + scheduleDaysLoaded);
+        const newDays = scheduleDaysLoaded + 30;
+        const to = new Date(today.getFullYear(), today.getMonth(), today.getDate() + newDays);
+        try {
+            const data = await listEvents(toRFC3339(from), toRFC3339(to), selectedCalendarIds);
+            setEvents(prev => [...prev, ...data]);
+            setScheduleDaysLoaded(newDays);
+        } catch (err) {
+            console.error('Failed to load more schedule events:', err);
+        } finally {
+            setLoadingMoreSchedule(false);
+        }
+    }, [scheduleDaysLoaded, selectedCalendarIds, loadingMoreSchedule]);
 
     useEffect(() => {
         checkAndNotify(events);
@@ -403,7 +428,8 @@ function App() {
                                      onDayClick=${handleYearDayClick} config=${config} />
                     ` : viewMode === 'schedule' ? html`
                         <${ScheduleView} currentDate=${currentDate} events=${events}
-                                         onEventClick=${handleEventClick} onDayClick=${handleDayClick} config=${config} />
+                                         onEventClick=${handleEventClick} onDayClick=${handleDayClick} config=${config}
+                                         onLoadMore=${loadMoreScheduleEvents} daysLoaded=${scheduleDaysLoaded} />
                     ` : viewMode === 'day' ? html`
                         <${DayView} currentDate=${currentDate} events=${events}
                                     onDayClick=${handleDayClick} onEventClick=${handleEventClick}

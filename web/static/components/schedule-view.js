@@ -1,14 +1,27 @@
 import { html } from 'htm/preact';
-import { useRef } from 'preact/hooks';
+import { useRef, useEffect } from 'preact/hooks';
 import { formatTime, isPastEvent } from '../lib/date-utils.js';
 import { eventColor } from '../lib/event-utils.js';
 
-export function ScheduleView({ currentDate, events, onEventClick, onDayClick, config }) {
+export function ScheduleView({ currentDate, events, onEventClick, onDayClick, config, onLoadMore, daysLoaded }) {
     const containerRef = useRef(null);
+    const sentinelRef = useRef(null);
 
     const today = new Date();
     const from = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const to = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 90);
+    const to = new Date(today.getFullYear(), today.getMonth(), today.getDate() + (daysLoaded || 90));
+
+    // Infinite scroll: observe sentinel element
+    useEffect(() => {
+        if (!onLoadMore || !sentinelRef.current) return;
+        const observer = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting) {
+                onLoadMore();
+            }
+        }, { rootMargin: '200px' });
+        observer.observe(sentinelRef.current);
+        return () => observer.disconnect();
+    }, [onLoadMore]);
 
     // Group events by date
     const dayMap = new Map();
@@ -102,6 +115,7 @@ export function ScheduleView({ currentDate, events, onEventClick, onDayClick, co
                     </div>
                 `;
             })}
+            <div ref=${sentinelRef} class="schedule-sentinel"></div>
         </div>
     `;
 }
