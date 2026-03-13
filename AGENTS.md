@@ -29,8 +29,10 @@ Playwright end-to-end tests live in `e2e/`. The server must be running on port 8
 /tmp/claude/mycal -port 8089 -data /tmp/claude/ &
 
 # Run tests
-cd e2e && bash playwright-test
+cd e2e && playwright-test
 ```
+
+*Important:* Use the `playwright-test` command to run the e2e tests and nothing else.
 
 ## Verification
 

@@ -316,6 +316,10 @@ function App() {
         setViewMode(preSearchViewMode.current || viewMode);
         setHighlightEventId(event.id + '|' + event.start_time);
         clearSearch();
+        // Open the event dialog with details
+        setSelectedEvent(event);
+        setDefaultDate(null);
+        setShowForm(true);
         setTimeout(() => {
             document.querySelector('.highlight-event')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }, 100);

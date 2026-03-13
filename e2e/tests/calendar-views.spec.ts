@@ -19,22 +19,24 @@ test.describe('Calendar Views', () => {
 
   test('navigate months with prev/next buttons', async ({ page }) => {
     const heading = page.locator('nav h1');
+    const nav = page.getByRole('navigation');
     const initialText = await heading.textContent();
 
-    await page.getByRole('button', { name: '▶' }).click();
+    await nav.getByRole('button', { name: '▶' }).click();
     await expect(heading).not.toHaveText(initialText!);
 
-    await page.getByRole('button', { name: '◀' }).click();
+    await nav.getByRole('button', { name: '◀' }).click();
     await expect(heading).toHaveText(initialText!);
   });
 
   test('today button returns to current week', async ({ page }) => {
     const heading = page.locator('nav h1');
+    const nav = page.getByRole('navigation');
     const initialText = await heading.textContent();
 
     // Navigate away
-    await page.getByRole('button', { name: '▶' }).click();
-    await page.getByRole('button', { name: '▶' }).click();
+    await nav.getByRole('button', { name: '▶' }).click();
+    await nav.getByRole('button', { name: '▶' }).click();
     await expect(heading).not.toHaveText(initialText!);
 
     // Click Today

@@ -36,7 +36,7 @@ export function Settings({ config, onConfigChange }) {
     }
 
     function handleChange(key, value) {
-        const numericKeys = ['dayStartHour'];
+        const numericKeys = ['dayStartHour', 'weekStartDay'];
         const updated = { ...config, [key]: numericKeys.includes(key) ? Number(value) : value };
         saveConfig(updated);
         onConfigChange(updated);
@@ -96,6 +96,19 @@ export function Settings({ config, onConfigChange }) {
                         <option value="week">Week</option>
                         <option value="day">Day</option>
                         <option value="schedule">Schedule</option>
+                    </select>
+                </label>
+                <label>
+                    Week starts on
+                    <select value=${config.weekStartDay}
+                            onChange=${e => handleChange('weekStartDay', e.target.value)}>
+                        <option value="0">Sunday</option>
+                        <option value="1">Monday</option>
+                        <option value="2">Tuesday</option>
+                        <option value="3">Wednesday</option>
+                        <option value="4">Thursday</option>
+                        <option value="5">Friday</option>
+                        <option value="6">Saturday</option>
                     </select>
                 </label>
                 <label>

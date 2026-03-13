@@ -19,6 +19,7 @@ function getLocaleWeekStartDay() {
 const DEFAULTS = {
     defaultView: 'week', // 'year', 'month', 'week', 'day', or 'schedule'
     dayStartHour: 8, // 0-23, hour to scroll to in week view
+    weekStartDay: null, // null = auto-detect from locale, 0 = Sunday, 1 = Monday
     defaultEventColor: 'dodgerblue', // fallback until server preferences load
     mapProvider: 'none', // 'none', 'openstreetmap', 'google'
     googleMapsApiKey: '', // only needed when mapProvider is 'google'
@@ -29,8 +30,10 @@ export function getConfig() {
         const stored = localStorage.getItem(STORAGE_KEY);
         if (stored) {
             const parsed = JSON.parse(stored);
-            delete parsed.weekStartDay; // no longer a user setting
-            return { ...DEFAULTS, weekStartDay: getLocaleWeekStartDay(), ...parsed };
+            const localeDefault = getLocaleWeekStartDay();
+            // If weekStartDay is null or absent, use locale detection
+            const weekStartDay = parsed.weekStartDay != null ? parsed.weekStartDay : localeDefault;
+            return { ...DEFAULTS, ...parsed, weekStartDay };
         }
     } catch (e) {
         // ignore corrupt data
