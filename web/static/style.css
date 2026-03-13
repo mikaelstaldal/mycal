@@ -1409,6 +1409,15 @@ body {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* Highlight event from search */
+.highlight-event {
+    animation: event-highlight 2s ease-out;
+}
+@keyframes event-highlight {
+    0%, 20% { box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.7); }
+    100% { box-shadow: 0 0 0 3px rgba(26, 115, 232, 0); }
+}
+
 /* Past events */
 .event-chip.past-event,
 .week-event.past-event,

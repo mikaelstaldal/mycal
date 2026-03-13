@@ -6,7 +6,7 @@ import { eventColor } from '../lib/event-utils.js';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
-export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDayClick, onEventDrag, config }) {
+export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDayClick, onEventDrag, config, highlightEventId }) {
     const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
 
     function eventsForDay() {
@@ -83,7 +83,7 @@ export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDa
                 <div class="allday-label">all-day</div>
                 <div class="day-view-allday-cell" onClick=${() => onAllDayClick(date)}>
                     ${adEvents.map(e => html`
-                        <div class=${`allday-event${isPastEvent(e) ? ' past-event' : ''}`}
+                        <div class=${`allday-event${isPastEvent(e) ? ' past-event' : ''}${highlightEventId === e.id + '|' + e.start_time ? ' highlight-event' : ''}`}
                              key=${e.id}
                              title=${e.title}
                              style=${`background-color: ${eventColor(e, config)}`}
@@ -111,7 +111,8 @@ export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDa
                         ${timedEvents().map(e => {
                             const durationMin = (new Date(e.end_time) - new Date(e.start_time)) / 60000;
                             const isShort = durationMin <= 30;
-                            const classes = ['week-event', isShort && 'short-event', isPastEvent(e) && 'past-event'].filter(Boolean).join(' ');
+                            const isHighlighted = highlightEventId === e.id + '|' + e.start_time;
+                            const classes = ['week-event', isShort && 'short-event', isPastEvent(e) && 'past-event', isHighlighted && 'highlight-event'].filter(Boolean).join(' ');
                             const canDrag = !e.parent_id;
                             return html`
                                 <div class=${classes}

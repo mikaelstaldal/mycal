@@ -2,7 +2,7 @@ import { html } from 'htm/preact';
 import { getCalendarDays, getWeekdays, isToday, formatTime, getISOWeekNumber, isPastEvent } from '../lib/date-utils.js';
 import { eventColor } from '../lib/event-utils.js';
 
-export function Calendar({ currentDate, events, onDayClick, onEventClick, onWeekClick, config }) {
+export function Calendar({ currentDate, events, onDayClick, onEventClick, onWeekClick, config, highlightEventId }) {
     const weekStartDay = config.weekStartDay;
     const days = getCalendarDays(currentDate.getFullYear(), currentDate.getMonth(), weekStartDay);
     const weekdays = getWeekdays(weekStartDay);
@@ -52,7 +52,7 @@ export function Calendar({ currentDate, events, onDayClick, onEventClick, onWeek
                                 <span class="day-number">${date.getDate()}</span>
                                 <div class="day-events">
                                     ${dayEvents.map(e => html`
-                                        <div class=${`event-chip${isPastEvent(e) ? ' past-event' : ''}`}
+                                        <div class=${`event-chip${isPastEvent(e) ? ' past-event' : ''}${highlightEventId === e.id + '|' + e.start_time ? ' highlight-event' : ''}`}
                                              key=${e.id}
                                              title=${e.title}
                                              style=${`background-color: ${eventColor(e, config)}`}

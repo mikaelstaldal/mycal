@@ -3,7 +3,7 @@ import { useRef, useEffect } from 'preact/hooks';
 import { formatTime, isPastEvent } from '../lib/date-utils.js';
 import { eventColor } from '../lib/event-utils.js';
 
-export function ScheduleView({ currentDate, events, onEventClick, onDayClick, config, onLoadMore, daysLoaded }) {
+export function ScheduleView({ currentDate, events, onEventClick, onDayClick, config, onLoadMore, daysLoaded, highlightEventId }) {
     const containerRef = useRef(null);
     const sentinelRef = useRef(null);
 
@@ -99,7 +99,7 @@ export function ScheduleView({ currentDate, events, onEventClick, onDayClick, co
                             ${formatDateHeader(dateKey)}
                         </div>
                         ${dayEvents.map(event => html`
-                            <div class="schedule-event${isPastEvent(event) ? ' past-event' : ''}"
+                            <div class="schedule-event${isPastEvent(event) ? ' past-event' : ''}${highlightEventId === event.id + '|' + event.start_time ? ' highlight-event' : ''}"
                                  key=${event.id + ':' + event.start_time}
                                  style=${'background:' + (eventColor(event, config))}
                                  onClick=${(e) => { e.stopPropagation(); onEventClick(event); }}>

@@ -39,6 +39,8 @@ function App() {
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState(null);
     const searchTimer = useRef(null);
+    const preSearchViewMode = useRef(null);
+    const [highlightEventId, setHighlightEventId] = useState(null);
     const [isDragging, setIsDragging] = useState(false);
     const dragCounter = useRef(0);
     const [calendars, setCalendars] = useState([]);
@@ -103,6 +105,13 @@ function App() {
     useEffect(() => {
         if (viewMode === 'schedule') setScheduleDaysLoaded(30);
     }, [viewMode]);
+
+    // Auto-clear highlight after 2 seconds
+    useEffect(() => {
+        if (!highlightEventId) return;
+        const timer = setTimeout(() => setHighlightEventId(null), 2000);
+        return () => clearTimeout(timer);
+    }, [highlightEventId]);
 
     const loadMoreScheduleEvents = useCallback(async () => {
         if (loadingMoreSchedule) return;
@@ -302,6 +311,16 @@ function App() {
         if (searchTimer.current) clearTimeout(searchTimer.current);
     }
 
+    function handleSearchResultClick(event) {
+        setCurrentDate(new Date(event.start_time));
+        setViewMode(preSearchViewMode.current || viewMode);
+        setHighlightEventId(event.id + '|' + event.start_time);
+        clearSearch();
+        setTimeout(() => {
+            document.querySelector('.highlight-event')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 100);
+    }
+
     function handleSearchInput(e) {
         const value = e.target.value;
         setSearchQuery(value);
@@ -309,6 +328,9 @@ function App() {
         if (!value.trim()) {
             setSearchResults(null);
             return;
+        }
+        if (!searchQuery.trim()) {
+            preSearchViewMode.current = viewMode;
         }
         searchTimer.current = setTimeout(async () => {
             try {
@@ -424,7 +446,7 @@ function App() {
                                 <div class="search-empty">No events found</div>
                             ` : searchResults.map(event => html`
                                 <div class="search-result-item${new Date(event.end_time) < new Date() ? ' search-result-past' : ''}" key=${event.id}
-                                     onClick=${() => handleEventClick(event)}>
+                                     onClick=${() => handleSearchResultClick(event)}>
                                     <div class="search-result-title">${event.title}</div>
                                     <div class="search-result-date">${formatSearchDate(event.start_time)}</div>
                                     <div class="search-result-time">${formatSearchTime(event.start_time, event.end_time)}</div>
@@ -435,24 +457,29 @@ function App() {
                     ` : viewMode === 'year' ? html`
                         <${YearView} currentDate=${currentDate} events=${events}
                                      onMonthClick=${handleYearMonthClick} onWeekClick=${handleYearWeekClick}
-                                     onDayClick=${handleYearDayClick} config=${config} />
+                                     onDayClick=${handleYearDayClick} config=${config}
+                                     highlightEventId=${highlightEventId} />
                     ` : viewMode === 'schedule' ? html`
                         <${ScheduleView} currentDate=${currentDate} events=${events}
                                          onEventClick=${handleEventClick} onDayClick=${handleDayClick} config=${config}
-                                         onLoadMore=${loadMoreScheduleEvents} daysLoaded=${scheduleDaysLoaded} />
+                                         onLoadMore=${loadMoreScheduleEvents} daysLoaded=${scheduleDaysLoaded}
+                                         highlightEventId=${highlightEventId} />
                     ` : viewMode === 'day' ? html`
                         <${DayView} currentDate=${currentDate} events=${events}
                                     onDayClick=${handleDayClick} onEventClick=${handleEventClick}
-                                    onAllDayClick=${handleAllDayClick} onEventDrag=${handleEventDrag} config=${config} />
+                                    onAllDayClick=${handleAllDayClick} onEventDrag=${handleEventDrag} config=${config}
+                                    highlightEventId=${highlightEventId} />
                     ` : viewMode === 'week' ? html`
                         <${WeekView} currentDate=${currentDate} events=${events}
                                      onDayClick=${handleDayClick} onEventClick=${handleEventClick}
-                                     onAllDayClick=${handleAllDayClick} onEventDrag=${handleEventDrag} config=${config} />
+                                     onAllDayClick=${handleAllDayClick} onEventDrag=${handleEventDrag} config=${config}
+                                     highlightEventId=${highlightEventId} />
                     ` : html`
                         <${Calendar} currentDate=${currentDate} events=${events}
                                      onDayClick=${handleDayClick} onEventClick=${handleEventClick}
                                      onWeekClick=${handleYearWeekClick}
-                                     config=${config} />
+                                     config=${config}
+                                     highlightEventId=${highlightEventId} />
                     `}
                 </div>
             </div>

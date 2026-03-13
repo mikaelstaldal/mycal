@@ -1,7 +1,7 @@
 import { html } from 'htm/preact';
 import { getCalendarDays, getWeekdays, isToday, getISOWeekNumber } from '../lib/date-utils.js';
 
-export function YearView({ currentDate, events, onMonthClick, onWeekClick, onDayClick, config }) {
+export function YearView({ currentDate, events, onMonthClick, onWeekClick, onDayClick, config, highlightEventId }) {
     const year = currentDate.getFullYear();
     const weekStartDay = config.weekStartDay;
     const weekdays = getWeekdays(weekStartDay);
@@ -54,11 +54,14 @@ export function YearView({ currentDate, events, onMonthClick, onWeekClick, onDay
                                 week ${getISOWeekNumber(week[0].date)}
                             </div>
                             ${week.map(({ date, currentMonth }) => {
-                                const hasEvents = currentMonth && eventsForDay(date).length > 0;
+                                const dayEvents = currentMonth ? eventsForDay(date) : [];
+                                const hasEvents = dayEvents.length > 0;
+                                const isHighlighted = highlightEventId && dayEvents.some(e => (e.id + '|' + e.start_time) === highlightEventId);
                                 const classes = ['year-day',
                                     !currentMonth && 'year-day-other',
                                     currentMonth && isToday(date) && 'year-day-today',
-                                    hasEvents && 'year-day-has-events'
+                                    hasEvents && 'year-day-has-events',
+                                    isHighlighted && 'highlight-event'
                                 ].filter(Boolean).join(' ');
                                 return html`<div class=${classes}
                                     style=${currentMonth ? 'cursor: pointer' : ''}
