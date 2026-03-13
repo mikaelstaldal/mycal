@@ -368,6 +368,20 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                     <button type="button" class="close-btn" onClick=${handleClose}>\u00D7</button>
                 </div>
 
+                <div class="dialog-actions">
+                    ${event && !editing && html`
+                        <button type="button" onClick=${() => setEditing(true)}>Edit</button>
+                        <button type="button" class="danger" onClick=${handleDelete}>Delete</button>
+                    `}
+                    ${editing && html`
+                        <button type="submit">Save</button>
+                        ${event && html`
+                            <button type="button" class="danger" onClick=${handleDelete}>Delete</button>
+                        `}
+                    `}
+                    <button type="button" onClick=${handleClose}>Cancel</button>
+                </div>
+
                 ${error && html`<div class="error">${error}</div>`}
 
                 <label>
@@ -721,19 +735,6 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                     </label>
                 ` : null}
 
-                <div class="dialog-actions">
-                    ${event && !editing && html`
-                        <button type="button" onClick=${() => setEditing(true)}>Edit</button>
-                        <button type="button" class="danger" onClick=${handleDelete}>Delete</button>
-                    `}
-                    ${editing && html`
-                        <button type="submit">Save</button>
-                        ${event && html`
-                            <button type="button" class="danger" onClick=${handleDelete}>Delete</button>
-                        `}
-                    `}
-                    <button type="button" onClick=${handleClose}>Cancel</button>
-                </div>
             </form>
         </dialog>
     `;
