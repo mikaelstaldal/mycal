@@ -365,21 +365,19 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
             <form onSubmit=${handleSubmit}>
                 <div class="dialog-header">
                     <h2>${event ? (editing ? (isInstanceEdit ? 'Edit Instance' : 'Edit Event') : 'Event') : 'New Event'}</h2>
-                    <button type="button" class="close-btn" onClick=${handleClose}>\u00D7</button>
-                </div>
-
-                <div class="dialog-actions">
-                    ${event && !editing && html`
-                        <button type="button" onClick=${() => setEditing(true)}>Edit</button>
-                        <button type="button" class="danger" onClick=${handleDelete}>Delete</button>
-                    `}
-                    ${editing && html`
-                        <button type="submit">Save</button>
-                        ${event && html`
+                    <div class="dialog-actions">
+                        ${event && !editing && html`
+                            <button type="button" onClick=${() => setEditing(true)}>Edit</button>
                             <button type="button" class="danger" onClick=${handleDelete}>Delete</button>
                         `}
-                    `}
-                    <button type="button" onClick=${handleClose}>Cancel</button>
+                        ${editing && html`
+                            <button type="submit">Save</button>
+                            ${event && html`
+                                <button type="button" class="danger" onClick=${handleDelete}>Delete</button>
+                            `}
+                        `}
+                        <button type="button" onClick=${handleClose}>Cancel</button>
+                    </div>
                 </div>
 
                 ${error && html`<div class="error">${error}</div>`}

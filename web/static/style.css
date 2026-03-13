@@ -260,8 +260,7 @@ body {
 .dialog-actions {
     display: flex;
     gap: 8px;
-    margin-top: 12px;
-    justify-content: flex-end;
+    align-items: center;
 }
 
 .dialog-actions button {
