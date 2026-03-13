@@ -274,7 +274,7 @@ func (r *SQLiteRepository) Search(query, from, to string, calendarIDs []int64) (
 		args = append(args, filterArgs...)
 	}
 
-	sb.WriteString(` ORDER BY f.rank`)
+	sb.WriteString(` ORDER BY e.start_time DESC`)
 
 	rows, err := r.db.Query(sb.String(), args...)
 	if err != nil {

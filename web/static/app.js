@@ -296,6 +296,12 @@ function App() {
         setViewMode('day');
     }
 
+    function clearSearch() {
+        setSearchQuery('');
+        setSearchResults(null);
+        if (searchTimer.current) clearTimeout(searchTimer.current);
+    }
+
     function handleSearchInput(e) {
         const value = e.target.value;
         setSearchQuery(value);
@@ -410,10 +416,14 @@ function App() {
                 <div class="app-main">
                     ${searchResults !== null ? html`
                         <div class="search-results">
+                            <div class="search-results-header">
+                                <span>Search results for "${searchQuery}"</span>
+                                <button class="search-clear-btn" onClick=${clearSearch} title="Clear search">\u2715</button>
+                            </div>
                             ${searchResults.length === 0 ? html`
-                                <div class="search-empty">No events found for "${searchQuery}"</div>
+                                <div class="search-empty">No events found</div>
                             ` : searchResults.map(event => html`
-                                <div class="search-result-item" key=${event.id}
+                                <div class="search-result-item${new Date(event.end_time) < new Date() ? ' search-result-past' : ''}" key=${event.id}
                                      onClick=${() => handleEventClick(event)}>
                                     <div class="search-result-title">${event.title}</div>
                                     <div class="search-result-date">${formatSearchDate(event.start_time)}</div>

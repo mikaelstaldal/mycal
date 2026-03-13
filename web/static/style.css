@@ -1068,6 +1068,32 @@ body {
     overflow: hidden;
 }
 
+.search-results-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background: #f5f5f5;
+    border-bottom: 1px solid #ddd;
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.search-clear-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    color: #888;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.search-clear-btn:hover {
+    background: #e0e0e0;
+    color: #333;
+}
+
 .search-result-item {
     padding: 12px 16px;
     border-bottom: 1px solid #eee;
@@ -1080,6 +1106,10 @@ body {
 
 .search-result-item:hover {
     background: #f8f8f8;
+}
+
+.search-result-item.search-result-past {
+    opacity: 0.55;
 }
 
 .search-result-title {
