@@ -504,6 +504,7 @@ body {
     padding: 8px 4px;
     font-size: 0.85rem;
     border-right: 1px solid #eee;
+    cursor: pointer;
 }
 
 .week-day-header:last-child {
@@ -772,6 +773,7 @@ body {
     text-align: center;
     padding: 8px 4px;
     font-size: 0.85rem;
+    cursor: pointer;
 }
 
 .day-view-day-header.today .day-view-day-number {

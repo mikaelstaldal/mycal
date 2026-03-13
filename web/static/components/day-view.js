@@ -74,7 +74,7 @@ export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDa
     return html`
         <div class="day-view">
             <div class="day-view-header">
-                <div class=${'day-view-day-header' + todayClass}>
+                <div class=${'day-view-day-header' + todayClass} onClick=${() => onAllDayClick(date)}>
                     <span class="day-view-day-name">${dayNames[date.getDay()]}</span>
                     <span class="day-view-day-number">${date.getDate()}</span>
                 </div>

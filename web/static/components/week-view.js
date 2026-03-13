@@ -85,7 +85,7 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, onAllD
                 ${days.map(date => {
                     const classes = ['week-day-header', isToday(date) && 'today'].filter(Boolean).join(' ');
                     return html`
-                        <div class=${classes}>
+                        <div class=${classes} onClick=${() => onAllDayClick(date)}>
                             <span class="week-day-name">${dayNames[date.getDay()]}</span>
                             <span class="week-day-number">${date.getDate()}</span>
                         </div>
