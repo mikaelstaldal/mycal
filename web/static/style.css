@@ -648,8 +648,16 @@ body {
     cursor: pointer;
 }
 
-.hour-cell:hover {
+.hour-cell--hover-full {
     background: var(--week-hover);
+}
+
+.hour-cell--hover-top-half {
+    background: linear-gradient(to bottom, var(--week-hover) 50%, transparent 50%);
+}
+
+.hour-cell--hover-bottom-half {
+    background: linear-gradient(to bottom, transparent 50%, var(--week-hover) 50%);
 }
 
 .week-events-overlay {

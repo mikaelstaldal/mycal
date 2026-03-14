@@ -6,6 +6,9 @@ import { eventColor } from '../lib/event-utils.js';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
+const HOVER_CLASSES = ['hour-cell--hover-full', 'hour-cell--hover-top-half', 'hour-cell--hover-bottom-half'];
+let _dayHoverCells = [];
+
 export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDayClick, onEventDrag, config, highlightEventId }) {
     const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
 
@@ -98,8 +101,32 @@ export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDa
                     ${HOURS.map(hour => html`
                         <div class="time-gutter">${formatHour(hour)}</div>
                         <div class="hour-cell"
-                             onClick=${() => {
-                                 const d = new Date(date.getFullYear(), date.getMonth(), date.getDate(), hour);
+                             onMouseMove=${(ev) => {
+                                 _dayHoverCells.forEach(c => c.classList.remove(...HOVER_CLASSES));
+                                 const cell = ev.currentTarget;
+                                 if (ev.offsetY < 24) {
+                                     cell.classList.add('hour-cell--hover-full');
+                                     _dayHoverCells = [cell];
+                                 } else {
+                                     cell.classList.add('hour-cell--hover-bottom-half');
+                                     const allCells = cell.closest('.day-view-grid').querySelectorAll('.hour-cell');
+                                     const idx = Array.from(allCells).indexOf(cell);
+                                     const nextCell = allCells[idx + 1];
+                                     if (nextCell) {
+                                         nextCell.classList.add('hour-cell--hover-top-half');
+                                         _dayHoverCells = [cell, nextCell];
+                                     } else {
+                                         _dayHoverCells = [cell];
+                                     }
+                                 }
+                             }}
+                             onMouseLeave=${(ev) => {
+                                 _dayHoverCells.forEach(c => c.classList.remove(...HOVER_CLASSES));
+                                 _dayHoverCells = [];
+                             }}
+                             onClick=${(ev) => {
+                                 const minutes = ev.offsetY >= 24 ? 30 : 0;
+                                 const d = new Date(date.getFullYear(), date.getMonth(), date.getDate(), hour, minutes);
                                  onDayClick(d);
                              }}>
                         </div>
