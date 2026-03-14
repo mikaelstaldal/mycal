@@ -1,3 +1,57 @@
+:root {
+    --bg: #f5f5f5;
+    --surface: #fff;
+    --surface-alt: #fafafa;
+    --border: #ddd;
+    --border-light: #eee;
+    --text: #333;
+    --text-muted: #555;
+    --text-subtle: #666;
+    --text-faint: #888;
+    --text-disabled: #999;
+    --text-placeholder: #bbb;
+    --hover-bg: #f0f0f0;
+    --hover-bg-light: #f8f8f8;
+    --accent-hover-bg: #e8f0fe;
+    --week-hover: #f0f4ff;
+    --week-num-hover: #eef;
+    --error-bg: #fce4e4;
+    --error-color: #c62828;
+    --success-bg: #e8f5e9;
+    --success-color: #2e7d32;
+    --tag-bg: #e3f2fd;
+    --tag-color: #1565c0;
+    --feed-disabled-bg: #fce4ec;
+    --feed-disabled-color: #c62828;
+}
+
+[data-theme="dark"] {
+    --bg: #121212;
+    --surface: #1e1e1e;
+    --surface-alt: #252525;
+    --border: #3a3a3a;
+    --border-light: #2c2c2c;
+    --text: #e0e0e0;
+    --text-muted: #bbb;
+    --text-subtle: #999;
+    --text-faint: #777;
+    --text-disabled: #666;
+    --text-placeholder: #555;
+    --hover-bg: #2c2c2c;
+    --hover-bg-light: #262626;
+    --accent-hover-bg: #1c2f50;
+    --week-hover: #1c2a3c;
+    --week-num-hover: #1c2a3c;
+    --error-bg: #3c1515;
+    --error-color: #f48a8a;
+    --success-bg: #1a3c1a;
+    --success-color: #81c784;
+    --tag-bg: #1a3050;
+    --tag-color: #90caf9;
+    --feed-disabled-bg: #3c1520;
+    --feed-disabled-color: #f48a8a;
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -6,8 +60,8 @@
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: #f5f5f5;
-    color: #333;
+    background: var(--bg);
+    color: var(--text);
 }
 
 .app {
@@ -56,15 +110,16 @@ body {
 
 .nav button {
     padding: 6px 14px;
-    border: 1px solid #ddd;
-    background: #fff;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
     border-radius: 4px;
     cursor: pointer;
     font-size: 0.9rem;
 }
 
 .nav button:hover {
-    background: #f0f0f0;
+    background: var(--hover-bg);
 }
 
 /* Calendar */
@@ -74,7 +129,7 @@ body {
     text-align: center;
     font-weight: 600;
     font-size: 0.85rem;
-    color: #666;
+    color: var(--text-subtle);
     margin-bottom: 4px;
 }
 
@@ -90,29 +145,29 @@ body {
     display: grid;
     grid-template-columns: 28px repeat(7, minmax(0, 1fr));
     gap: 1px;
-    background: #ddd;
-    border: 1px solid #ddd;
+    background: var(--border);
+    border: 1px solid var(--border);
     border-radius: 4px;
     overflow: hidden;
 }
 
 .week-number {
-    background: #fafafa;
+    background: var(--surface-alt);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 0.7rem;
-    color: #999;
+    color: var(--text-disabled);
     cursor: pointer;
 }
 
 .week-number:hover {
-    background: #eef;
+    background: var(--week-num-hover);
     color: #4285f4;
 }
 
 .day {
-    background: #fff;
+    background: var(--surface);
     min-height: 100px;
     min-width: 0;
     padding: 4px;
@@ -121,12 +176,12 @@ body {
 }
 
 .day:hover {
-    background: #f8f8f8;
+    background: var(--hover-bg-light);
 }
 
 .day.other-month {
-    background: #fafafa;
-    color: #bbb;
+    background: var(--surface-alt);
+    color: var(--text-placeholder);
 }
 
 .day.today .day-number {
@@ -176,6 +231,8 @@ body {
     width: 90%;
     max-width: 450px;
     box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    background: var(--surface);
+    color: var(--text);
 }
 
 .event-dialog::backdrop {
@@ -199,7 +256,7 @@ body {
     border: none;
     font-size: 1.5rem;
     cursor: pointer;
-    color: #666;
+    color: var(--text-subtle);
     padding: 0 4px;
 }
 
@@ -207,7 +264,7 @@ body {
     display: block;
     margin-bottom: 8px;
     font-size: 0.85rem;
-    color: #555;
+    color: var(--text-muted);
 }
 
 .event-dialog input,
@@ -216,22 +273,24 @@ body {
     width: 100%;
     margin-top: 4px;
     padding: 8px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border);
     border-radius: 4px;
     font-size: 0.95rem;
     font-family: inherit;
+    background: var(--surface);
+    color: var(--text);
 }
 
 .event-dialog input:disabled,
 .event-dialog textarea:disabled {
-    background: #f5f5f5;
-    color: #333;
+    background: var(--bg);
+    color: var(--text);
 }
 
 .color-picker {
     margin-bottom: 12px;
     font-size: 0.85rem;
-    color: #555;
+    color: var(--text-muted);
 }
 
 .color-options {
@@ -250,7 +309,7 @@ body {
 }
 
 .color-swatch.selected {
-    border-color: #333;
+    border-color: var(--text);
 }
 
 .color-swatch:hover {
@@ -265,8 +324,9 @@ body {
 
 .dialog-actions button {
     padding: 8px 16px;
-    border: 1px solid #ddd;
-    background: #fff;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
     border-radius: 4px;
     cursor: pointer;
     font-size: 0.9rem;
@@ -288,8 +348,8 @@ body {
 }
 
 .error {
-    background: #fce4e4;
-    color: #c62828;
+    background: var(--error-bg);
+    color: var(--error-color);
     padding: 8px 12px;
     border-radius: 4px;
     margin-bottom: 12px;
@@ -299,16 +359,16 @@ body {
 /* Settings */
 .settings-btn {
     background: none;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border);
     border-radius: 4px;
     font-size: 1.3rem;
     cursor: pointer;
     padding: 4px 10px;
-    color: #666;
+    color: var(--text-subtle);
 }
 
 .settings-btn:hover {
-    background: #f0f0f0;
+    background: var(--hover-bg);
 }
 
 .settings-dialog {
@@ -318,6 +378,8 @@ body {
     width: 90%;
     max-width: 420px;
     box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    background: var(--surface);
+    color: var(--text);
 }
 
 .settings-dialog::backdrop {
@@ -328,7 +390,7 @@ body {
     display: block;
     margin-bottom: 12px;
     font-size: 0.85rem;
-    color: #555;
+    color: var(--text-muted);
 }
 
 .settings-dialog input[type="text"] {
@@ -336,10 +398,12 @@ body {
     width: 100%;
     margin-top: 4px;
     padding: 8px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border);
     border-radius: 4px;
     font-size: 0.95rem;
     font-family: inherit;
+    background: var(--surface);
+    color: var(--text);
 }
 
 .settings-dialog select {
@@ -347,10 +411,12 @@ body {
     width: 100%;
     margin-top: 4px;
     padding: 8px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border);
     border-radius: 4px;
     font-size: 0.95rem;
     font-family: inherit;
+    background: var(--surface);
+    color: var(--text);
 }
 
 /* Top bar actions */
@@ -358,6 +424,22 @@ body {
     display: flex;
     align-items: center;
     gap: 8px;
+}
+
+/* Dark mode toggle button */
+.dark-mode-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 4px 10px;
+    color: var(--text-subtle);
+    line-height: 1.4;
+}
+
+.dark-mode-btn:hover {
+    background: var(--hover-bg);
 }
 
 /* Import dialog */
@@ -369,8 +451,9 @@ body {
 
 .import-tab {
     padding: 6px 16px;
-    border: 1px solid #ddd;
-    background: #fff;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
     border-radius: 4px;
     cursor: pointer;
     font-size: 0.9rem;
@@ -383,8 +466,8 @@ body {
 }
 
 .import-success {
-    background: #e8f5e9;
-    color: #2e7d32;
+    background: var(--success-bg);
+    color: var(--success-color);
     padding: 8px 12px;
     border-radius: 4px;
     margin-bottom: 12px;
@@ -393,7 +476,7 @@ body {
 
 .import-hint {
     font-size: 0.8rem;
-    color: #888;
+    color: var(--text-faint);
     margin-bottom: 8px;
 }
 
@@ -432,8 +515,9 @@ body {
 
 .view-toggle button {
     padding: 6px 12px;
-    border: 1px solid #ddd;
-    background: #fff;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
     cursor: pointer;
     font-size: 0.85rem;
 }
@@ -457,7 +541,7 @@ body {
 }
 
 .view-toggle button:hover:not(.active) {
-    background: #f0f0f0;
+    background: var(--hover-bg);
 }
 
 /* Checkbox label in form */
@@ -468,7 +552,7 @@ body {
     gap: 8px;
     margin-bottom: 8px;
     font-size: 0.85rem;
-    color: #555;
+    color: var(--text-muted);
     cursor: pointer;
 }
 
@@ -479,9 +563,9 @@ body {
 
 /* Week view */
 .week-view {
-    border: 1px solid #ddd;
+    border: 1px solid var(--border);
     border-radius: 4px;
-    background: #fff;
+    background: var(--surface);
     display: flex;
     flex-direction: column;
     max-height: calc(100vh - 100px);
@@ -490,19 +574,19 @@ body {
 .week-header {
     display: grid;
     grid-template-columns: 60px repeat(7, minmax(0, 1fr));
-    border-bottom: 1px solid #ddd;
-    background: #fafafa;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-alt);
 }
 
 .time-gutter-header {
-    border-right: 1px solid #ddd;
+    border-right: 1px solid var(--border);
 }
 
 .week-day-header {
     text-align: center;
     padding: 8px 4px;
     font-size: 0.85rem;
-    border-right: 1px solid #eee;
+    border-right: 1px solid var(--border-light);
     cursor: pointer;
 }
 
@@ -524,7 +608,7 @@ body {
 .week-day-name {
     display: block;
     font-weight: 600;
-    color: #666;
+    color: var(--text-subtle);
     font-size: 0.75rem;
     text-transform: uppercase;
 }
@@ -549,23 +633,23 @@ body {
 
 .time-gutter {
     font-size: 0.7rem;
-    color: #999;
+    color: var(--text-disabled);
     text-align: right;
     padding: 2px 8px 0 0;
     height: 48px;
-    border-right: 1px solid #ddd;
-    border-bottom: 1px solid #eee;
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border-light);
 }
 
 .hour-cell {
     height: 48px;
-    border-bottom: 1px solid #eee;
-    border-right: 1px solid #eee;
+    border-bottom: 1px solid var(--border-light);
+    border-right: 1px solid var(--border-light);
     cursor: pointer;
 }
 
 .hour-cell:hover {
-    background: #f0f4ff;
+    background: var(--week-hover);
 }
 
 .week-events-overlay {
@@ -669,17 +753,17 @@ body {
 .week-allday-row {
     display: grid;
     grid-template-columns: 60px repeat(7, minmax(0, 1fr));
-    border-bottom: 1px solid #ddd;
+    border-bottom: 1px solid var(--border);
     min-height: 28px;
     flex-shrink: 0;
 }
 
 .allday-label {
     font-size: 0.7rem;
-    color: #999;
+    color: var(--text-disabled);
     text-align: right;
     padding: 4px 8px 4px 0;
-    border-right: 1px solid #ddd;
+    border-right: 1px solid var(--border);
     display: flex;
     flex-direction: column;
     align-items: flex-end;
@@ -699,7 +783,7 @@ body {
 
 .allday-more {
     font-size: 0.6rem;
-    color: #666;
+    color: var(--text-subtle);
     cursor: pointer;
     padding: 0 4px;
 }
@@ -710,7 +794,7 @@ body {
 
 .allday-cell {
     padding: 2px;
-    border-right: 1px solid #eee;
+    border-right: 1px solid var(--border-light);
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -752,9 +836,9 @@ body {
 
 /* Day view */
 .day-view {
-    border: 1px solid #ddd;
+    border: 1px solid var(--border);
     border-radius: 4px;
-    background: #fff;
+    background: var(--surface);
     display: flex;
     flex-direction: column;
     max-height: calc(100vh - 100px);
@@ -763,8 +847,8 @@ body {
 .day-view-header {
     display: grid;
     grid-template-columns: 60px 1fr;
-    border-bottom: 1px solid #ddd;
-    background: #fafafa;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-alt);
 }
 
 .day-view-day-header {
@@ -789,7 +873,7 @@ body {
 .day-view-day-name {
     display: block;
     font-weight: 600;
-    color: #666;
+    color: var(--text-subtle);
     font-size: 0.75rem;
     text-transform: uppercase;
 }
@@ -803,7 +887,7 @@ body {
 .day-view-allday-row {
     display: grid;
     grid-template-columns: 60px 1fr;
-    border-bottom: 1px solid #ddd;
+    border-bottom: 1px solid var(--border);
     min-height: 28px;
     flex-shrink: 0;
 }
@@ -857,8 +941,8 @@ body {
 }
 
 .year-month {
-    background: #fff;
-    border: 1px solid #ddd;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 4px;
     overflow: hidden;
 }
@@ -867,13 +951,13 @@ body {
     padding: 5px 8px;
     font-weight: 600;
     font-size: 0.8rem;
-    background: #fafafa;
-    border-bottom: 1px solid #eee;
+    background: var(--surface-alt);
+    border-bottom: 1px solid var(--border-light);
     cursor: pointer;
 }
 
 .year-month-header:hover {
-    background: #e8f0fe;
+    background: var(--accent-hover-bg);
     color: #1a73e8;
 }
 
@@ -886,7 +970,7 @@ body {
     grid-template-columns: 16px repeat(7, 1fr);
     text-align: center;
     font-size: 0.55rem;
-    color: #999;
+    color: var(--text-disabled);
     font-weight: 600;
 }
 
@@ -904,13 +988,13 @@ body {
 
 .year-week-number {
     font-size: 0.5rem;
-    color: #bbb;
+    color: var(--text-placeholder);
     cursor: pointer;
     border-radius: 2px;
 }
 
 .year-week-number:hover {
-    background: #e8f0fe;
+    background: var(--accent-hover-bg);
     color: #1a73e8;
 }
 
@@ -923,7 +1007,7 @@ body {
 }
 
 .year-day-other {
-    color: #ccc;
+    color: var(--text-placeholder);
 }
 
 .year-day-today {
@@ -983,24 +1067,24 @@ body {
 .schedule-empty {
     padding: 24px 16px;
     text-align: center;
-    color: #888;
+    color: var(--text-faint);
     font-size: 0.9rem;
 }
 
 .schedule-date-header {
     position: sticky;
     top: 0;
-    background: #f5f5f5;
+    background: var(--bg);
     padding: 10px 16px;
     font-weight: 600;
     font-size: 0.9rem;
-    color: #333;
+    color: var(--text);
     cursor: pointer;
     z-index: 1;
 }
 
 .schedule-date-header:hover {
-    background: #e8f0fe;
+    background: var(--accent-hover-bg);
     color: #1a73e8;
 }
 
@@ -1050,11 +1134,13 @@ body {
 /* Search */
 .search-input {
     padding: 6px 12px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border);
     border-radius: 4px;
     font-size: 0.9rem;
     font-family: inherit;
     width: 200px;
+    background: var(--surface);
+    color: var(--text);
 }
 
 .search-input:focus {
@@ -1063,8 +1149,8 @@ body {
 }
 
 .search-results {
-    background: #fff;
-    border: 1px solid #ddd;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 4px;
     overflow: hidden;
 }
@@ -1074,10 +1160,10 @@ body {
     align-items: center;
     justify-content: space-between;
     padding: 8px 16px;
-    background: #f5f5f5;
-    border-bottom: 1px solid #ddd;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
     font-size: 0.85rem;
-    color: #666;
+    color: var(--text-subtle);
 }
 
 .search-clear-btn {
@@ -1085,19 +1171,19 @@ body {
     border: none;
     cursor: pointer;
     font-size: 1rem;
-    color: #888;
+    color: var(--text-faint);
     padding: 2px 6px;
     border-radius: 4px;
 }
 
 .search-clear-btn:hover {
-    background: #e0e0e0;
-    color: #333;
+    background: var(--hover-bg);
+    color: var(--text);
 }
 
 .search-result-item {
     padding: 12px 16px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--border-light);
     cursor: pointer;
 }
 
@@ -1106,7 +1192,7 @@ body {
 }
 
 .search-result-item:hover {
-    background: #f8f8f8;
+    background: var(--hover-bg-light);
 }
 
 .search-result-item.search-result-past {
@@ -1121,17 +1207,17 @@ body {
 
 .search-result-date {
     font-size: 0.8rem;
-    color: #666;
+    color: var(--text-subtle);
 }
 
 .search-result-time {
     font-size: 0.8rem;
-    color: #888;
+    color: var(--text-faint);
 }
 
 .search-result-desc {
     font-size: 0.8rem;
-    color: #888;
+    color: var(--text-faint);
     margin-top: 4px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1141,7 +1227,7 @@ body {
 .search-empty {
     padding: 24px 16px;
     text-align: center;
-    color: #888;
+    color: var(--text-faint);
     font-size: 0.9rem;
 }
 
@@ -1221,8 +1307,8 @@ body {
 .description-display {
     margin-top: 4px;
     padding: 8px;
-    background: #f5f5f5;
-    border: 1px solid #ddd;
+    background: var(--bg);
+    border: 1px solid var(--border);
     border-radius: 4px;
     font-size: 0.95rem;
     line-height: 1.5;
@@ -1249,22 +1335,48 @@ body {
 /* Rich text editor (Quill) overrides */
 .event-dialog .ql-toolbar {
     border-radius: 4px 4px 0 0;
-    border-color: #ddd;
+    border-color: var(--border);
     font-family: inherit;
+    background: var(--surface);
 }
 
 .event-dialog .ql-container {
     border-radius: 0 0 4px 4px;
-    border-color: #ddd;
+    border-color: var(--border);
     font-family: inherit;
     font-size: 0.95rem;
     min-height: 80px;
     max-height: 200px;
     overflow-y: auto;
+    background: var(--surface);
+    color: var(--text);
 }
 
 .event-dialog .ql-editor {
     min-height: 80px;
+}
+
+/* Quill dark mode icon overrides */
+[data-theme="dark"] .ql-toolbar .ql-stroke {
+    stroke: var(--text-subtle);
+}
+[data-theme="dark"] .ql-toolbar .ql-fill {
+    fill: var(--text-subtle);
+}
+[data-theme="dark"] .ql-toolbar .ql-picker {
+    color: var(--text-subtle);
+}
+[data-theme="dark"] .ql-toolbar .ql-picker-options {
+    background: var(--surface);
+    border-color: var(--border);
+}
+[data-theme="dark"] .ql-toolbar button:hover .ql-stroke,
+[data-theme="dark"] .ql-toolbar button.ql-active .ql-stroke {
+    stroke: #4285f4;
+}
+[data-theme="dark"] .ql-toolbar button:hover .ql-fill,
+[data-theme="dark"] .ql-toolbar button.ql-active .ql-fill {
+    fill: #4285f4;
 }
 
 .form-row {
@@ -1280,10 +1392,12 @@ body {
     width: 100%;
     margin-top: 4px;
     padding: 8px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border);
     border-radius: 4px;
     font-size: 0.95rem;
     font-family: inherit;
+    background: var(--surface);
+    color: var(--text);
 }
 
 .coord-row {
@@ -1316,9 +1430,10 @@ body {
 }
 .byday-btn {
     padding: 4px 8px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--border);
     border-radius: 4px;
-    background: #fff;
+    background: var(--surface);
+    color: var(--text);
     cursor: pointer;
     font-size: 0.8rem;
     min-width: 36px;
@@ -1364,7 +1479,7 @@ body {
     align-items: center;
     justify-content: space-between;
     padding: 4px 8px;
-    background: #f5f5f5;
+    background: var(--bg);
     border-radius: 4px;
     font-size: 0.85rem;
 }
@@ -1380,20 +1495,21 @@ body {
 .small-btn {
     padding: 2px 8px;
     font-size: 0.8rem;
-    border: 1px solid #ccc;
+    border: 1px solid var(--border);
     border-radius: 3px;
-    background: #fff;
+    background: var(--surface);
+    color: var(--text);
     cursor: pointer;
 }
 .small-btn:hover {
-    background: #f0f0f0;
+    background: var(--hover-bg);
 }
 .small-btn.danger {
     color: #d32f2f;
     border-color: #d32f2f;
 }
 .small-btn.danger:hover {
-    background: #ffebee;
+    background: var(--error-bg);
 }
 
 /* Import spinner */
@@ -1441,8 +1557,8 @@ body {
 .category-tag {
     display: inline-block;
     padding: 2px 8px;
-    background: #e3f2fd;
-    color: #1565c0;
+    background: var(--tag-bg);
+    color: var(--tag-color);
     border-radius: 12px;
     font-size: 0.85em;
 }
@@ -1466,7 +1582,7 @@ body {
     justify-content: space-between;
     gap: 8px;
     padding: 8px;
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--border-light);
     border-radius: 6px;
 }
 .feed-item-info {
@@ -1482,27 +1598,27 @@ body {
 }
 .feed-item-meta {
     font-size: 0.8em;
-    color: #666;
+    color: var(--text-subtle);
     display: flex;
     gap: 6px;
     flex-wrap: wrap;
     margin-top: 2px;
 }
 .feed-calendar {
-    background: #e3f2fd;
-    color: #1565c0;
+    background: var(--tag-bg);
+    color: var(--tag-color);
     padding: 0 6px;
     border-radius: 8px;
 }
 .feed-disabled {
-    background: #fce4ec;
-    color: #c62828;
+    background: var(--feed-disabled-bg);
+    color: var(--feed-disabled-color);
     padding: 0 6px;
     border-radius: 8px;
 }
 .feed-item-error {
     font-size: 0.8em;
-    color: #c62828;
+    color: var(--error-color);
     margin-top: 2px;
 }
 .feed-item-actions {
@@ -1512,32 +1628,33 @@ body {
 }
 .feed-action-btn {
     background: none;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border);
     border-radius: 4px;
     cursor: pointer;
     padding: 4px 8px;
     font-size: 1em;
+    color: var(--text);
 }
 .feed-action-btn:hover {
-    background: #f5f5f5;
+    background: var(--hover-bg);
 }
 .feed-delete-btn:hover {
-    background: #fce4ec;
-    border-color: #ef9a9a;
+    background: var(--feed-disabled-bg);
+    border-color: var(--error-color);
 }
 .feed-error {
-    color: #c62828;
+    color: var(--error-color);
     font-size: 0.85em;
     margin: 4px 0;
 }
 .feed-loading, .feed-empty {
     text-align: center;
-    color: #888;
+    color: var(--text-faint);
     padding: 16px 0;
 }
 .feed-add-form {
     margin-top: 8px;
-    border-top: 1px solid #e0e0e0;
+    border-top: 1px solid var(--border-light);
     padding-top: 12px;
 }
 
@@ -1550,6 +1667,8 @@ body {
     max-width: 360px;
     box-shadow: 0 8px 32px rgba(0,0,0,0.2);
     animation: confirm-fade-in 0.15s ease-out;
+    background: var(--surface);
+    color: var(--text);
 }
 
 @keyframes confirm-fade-in {
@@ -1569,12 +1688,12 @@ body {
     font-size: 1.1rem;
     font-weight: 600;
     margin-bottom: 12px;
-    color: #333;
+    color: var(--text);
 }
 
 .confirm-dialog-message {
     font-size: 0.95rem;
-    color: #555;
+    color: var(--text-muted);
     line-height: 1.5;
     margin-bottom: 20px;
     white-space: pre-line;
@@ -1588,8 +1707,9 @@ body {
 
 .confirm-btn {
     padding: 8px 16px;
-    border: 1px solid #ddd;
-    background: #fff;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
     border-radius: 4px;
     cursor: pointer;
     font-size: 0.9rem;
@@ -1627,8 +1747,8 @@ body {
 
 /* Calendar sidebar */
 .calendar-sidebar {
-    background: #fff;
-    border: 1px solid #ddd;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 4px;
     padding: 8px;
 }
@@ -1636,10 +1756,10 @@ body {
 .calendar-sidebar-header {
     font-weight: 600;
     font-size: 0.85rem;
-    color: #555;
+    color: var(--text-muted);
     margin-bottom: 8px;
     padding-bottom: 4px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--border-light);
 }
 
 .calendar-sidebar-toggle-all {
@@ -1648,11 +1768,11 @@ body {
     gap: 6px;
     padding: 4px 0;
     margin-bottom: 4px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--border-light);
     padding-bottom: 8px;
     cursor: pointer;
     font-size: 0.8rem;
-    color: #888;
+    color: var(--text-faint);
     font-style: italic;
 }
 
@@ -1672,7 +1792,7 @@ body {
     padding: 4px 0;
     cursor: pointer;
     font-size: 0.85rem;
-    color: #333;
+    color: var(--text);
 }
 
 .calendar-sidebar-item:hover {
@@ -1704,7 +1824,7 @@ body {
     border: none;
     cursor: pointer;
     font-size: 0.75rem;
-    color: #999;
+    color: var(--text-disabled);
     padding: 0 2px;
     flex-shrink: 0;
 }
@@ -1730,8 +1850,10 @@ body {
     min-width: 0;
     font-size: 0.8rem;
     padding: 2px 4px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--border);
     border-radius: 3px;
+    background: var(--surface);
+    color: var(--text);
 }
 
 .calendar-edit-actions {
@@ -1746,7 +1868,7 @@ body {
     cursor: pointer;
     font-size: 0.85rem;
     padding: 0 2px;
-    color: #555;
+    color: var(--text-muted);
     flex-shrink: 0;
 }
 
@@ -1771,7 +1893,7 @@ body {
 }
 
 .calendar-color-swatch.selected {
-    border-color: #333;
+    border-color: var(--text);
 }
 
 .calendar-color-swatch:hover {
@@ -1790,8 +1912,8 @@ body {
 
 /* Mini month calendar */
 .mini-month {
-    background: #fff;
-    border: 1px solid #ddd;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 4px;
     overflow: hidden;
 }
@@ -1800,8 +1922,8 @@ body {
     padding: 4px 8px;
     font-weight: 600;
     font-size: 0.8rem;
-    background: #fafafa;
-    border-bottom: 1px solid #eee;
+    background: var(--surface-alt);
+    border-bottom: 1px solid var(--border-light);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -1821,12 +1943,12 @@ body {
     cursor: pointer;
     font-size: 0.6rem;
     padding: 2px 4px;
-    color: #555;
+    color: var(--text-muted);
     border-radius: 3px;
 }
 
 .mini-month-nav:hover {
-    background: #e8f0fe;
+    background: var(--accent-hover-bg);
     color: #1a73e8;
 }
 
@@ -1839,7 +1961,7 @@ body {
     grid-template-columns: repeat(7, 1fr);
     text-align: center;
     font-size: 0.55rem;
-    color: #999;
+    color: var(--text-disabled);
     font-weight: 600;
 }
 
@@ -1863,11 +1985,11 @@ body {
 }
 
 .mini-month-day:hover {
-    background: #f0f0f0;
+    background: var(--hover-bg);
 }
 
 .mini-month-day-other {
-    color: #ccc;
+    color: var(--text-placeholder);
 }
 
 .mini-month-day-today {

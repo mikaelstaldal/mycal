@@ -20,6 +20,7 @@ import { checkAndNotify, requestPermission } from './lib/notifications.js';
 import { showChoice } from './lib/confirm.js';
 
 function App() {
+    const [darkMode, setDarkMode] = useState(() => localStorage.getItem('darkMode') === 'true');
     const [currentDate, setCurrentDate] = useState(new Date());
     const [events, setEvents] = useState([]);
     const [showForm, setShowForm] = useState(false);
@@ -47,6 +48,11 @@ function App() {
     const [selectedCalendarIds, setSelectedCalendarIds] = useState(null); // null = all
     const [scheduleDaysLoaded, setScheduleDaysLoaded] = useState(30);
     const [loadingMoreSchedule, setLoadingMoreSchedule] = useState(false);
+
+    useEffect(() => {
+        document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
+        localStorage.setItem('darkMode', darkMode);
+    }, [darkMode]);
 
     const loadCalendars = useCallback(async () => {
         try {
@@ -410,6 +416,9 @@ function App() {
                 <div class="top-bar-actions">
                     <input type="search" class="search-input" placeholder="Search events..."
                            value=${searchQuery} onInput=${handleSearchInput} />
+                    <button class="dark-mode-btn" onClick=${() => setDarkMode(d => !d)} title=${darkMode ? 'Switch to light mode' : 'Switch to dark mode'}>
+                        ${darkMode ? '\u2600\uFE0E' : '\u263E\uFE0E'}
+                    </button>
                     <button class="settings-btn" onClick=${() => { loadEvents(); loadCalendars(); }} title="Refresh">
                         \u21BB
                     </button>
