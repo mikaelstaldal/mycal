@@ -1,3 +1,0 @@
-#/!bin/bash
-
-exec node node_modules/playwright/cli.js test "$@"
