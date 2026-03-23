@@ -164,6 +164,31 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
         }
     });
 
+    function handleStartTimeChange(newStartTime) {
+        if (!useDuration && endTime && startTime) {
+            if (allDay) {
+                const oldStartMs = new Date(startTime + 'T12:00:00').getTime();
+                const oldEndMs = new Date(endTime + 'T12:00:00').getTime();
+                const durationDays = Math.round((oldEndMs - oldStartMs) / (24 * 60 * 60 * 1000));
+                if (durationDays >= 0) {
+                    const newStartMs = new Date(newStartTime + 'T12:00:00').getTime();
+                    const newEnd = new Date(newStartMs + durationDays * 24 * 60 * 60 * 1000);
+                    const pad = n => String(n).padStart(2, '0');
+                    setEndTime(`${newEnd.getFullYear()}-${pad(newEnd.getMonth()+1)}-${pad(newEnd.getDate())}`);
+                }
+            } else {
+                const oldStartMs = new Date(startTime).getTime();
+                const oldEndMs = new Date(endTime).getTime();
+                const durationMs = oldEndMs - oldStartMs;
+                if (durationMs > 0) {
+                    const newStartMs = new Date(newStartTime).getTime();
+                    setEndTime(toLocalDatetimeValue(new Date(newStartMs + durationMs).toISOString()));
+                }
+            }
+        }
+        setStartTime(newStartTime);
+    }
+
     function handleAllDayToggle(checked) {
         setAllDay(checked);
         if (checked && startTime) {
@@ -414,9 +439,9 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                     ${editing
                         ? allDay
                             ? html`<input type="date" value=${startTime}
-                                          onInput=${e => setStartTime(e.target.value)} />`
+                                          onInput=${e => handleStartTimeChange(e.target.value)} />`
                             : html`<input type="datetime-local" value=${startTime}
-                                          onInput=${e => setStartTime(e.target.value)} />`
+                                          onInput=${e => handleStartTimeChange(e.target.value)} />`
                         : html`<input type="text" disabled value=${displayStart()} />`
                     }
                 </label>
