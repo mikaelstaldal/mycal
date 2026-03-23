@@ -2,7 +2,7 @@ import { html } from 'htm/preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { isToday, formatHour, formatTime, isPastEvent } from '../lib/date-utils.js';
 import { startDrag } from '../lib/drag.js';
-import { eventColor } from '../lib/event-utils.js';
+import { eventColor, computeOverlapLayout } from '../lib/event-utils.js';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
@@ -37,7 +37,7 @@ export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDa
         return eventsForDay().filter(e => e.all_day);
     }
 
-    function eventStyle(event) {
+    function eventStyle(event, col, total) {
         const start = new Date(event.start_time);
         const end = new Date(event.end_time);
         const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -53,9 +53,14 @@ export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDa
         const top = (startMinutes / 60) * 48;
         const height = Math.max((duration / 60) * 48, 18);
 
+        const colWidth = 100 / total;
+        const left = col * colWidth;
+
         return {
             top: `${top}px`,
             height: `${height}px`,
+            left: `calc(${left}% + 1px)`,
+            width: `calc(${colWidth}% - 2px)`,
             backgroundColor: eventColor(event, config)
         };
     }
@@ -135,7 +140,11 @@ export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDa
                 <div class="day-view-events-overlay">
                     <div class="day-view-events-gutter-spacer"></div>
                     <div class="day-view-day-events">
-                        ${timedEvents().map(e => {
+                        ${(() => {
+                            const tevents = timedEvents();
+                            const layout = computeOverlapLayout(tevents);
+                            return tevents.map((e, ei) => {
+                            const { col, total } = layout[ei];
                             const durationMin = (new Date(e.end_time) - new Date(e.start_time)) / 60000;
                             const isShort = durationMin <= 30;
                             const isHighlighted = highlightEventId === e.id + '|' + e.start_time;
@@ -145,7 +154,7 @@ export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDa
                                 <div class=${classes}
                                      key=${e.id}
                                      title=${e.title}
-                                     style=${eventStyle(e)}
+                                     style=${eventStyle(e, col, total)}
                                      onClick=${(ev) => { ev.stopPropagation(); onEventClick(e); }}
                                      onMouseDown=${canDrag ? (ev) => {
                                          if (ev.button !== 0) return;
@@ -184,7 +193,8 @@ export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDa
                                         }} />`}
                                 </div>
                             `;
-                        })}
+                        });
+                        })()}
                     </div>
                 </div>
             </div>

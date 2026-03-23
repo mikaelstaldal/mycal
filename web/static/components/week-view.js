@@ -2,7 +2,7 @@ import { html } from 'htm/preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { getWeekDays, isToday, formatHour, formatTime, getISOWeekNumber, isPastEvent } from '../lib/date-utils.js';
 import { startDrag } from '../lib/drag.js';
-import { eventColor } from '../lib/event-utils.js';
+import { eventColor, computeOverlapLayout } from '../lib/event-utils.js';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
@@ -39,7 +39,7 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, onAllD
         return eventsForDay(date).filter(e => e.all_day);
     }
 
-    function eventStyle(event, date) {
+    function eventStyle(event, date, col, total) {
         const start = new Date(event.start_time);
         const end = new Date(event.end_time);
         const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -55,9 +55,14 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, onAllD
         const top = (startMinutes / 60) * 48;
         const height = Math.max((duration / 60) * 48, 18);
 
+        const colWidth = 100 / total;
+        const left = col * colWidth;
+
         return {
             top: `${top}px`,
             height: `${height}px`,
+            left: `calc(${left}% + 1px)`,
+            width: `calc(${colWidth}% - 2px)`,
             backgroundColor: eventColor(event, config)
         };
     }
@@ -192,9 +197,11 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, onAllD
                     <div class="week-events-gutter-spacer"></div>
                     ${days.map((date, colIndex) => {
                         const dayEvents = timedEventsForDay(date);
+                        const layout = computeOverlapLayout(dayEvents);
                         return html`
                             <div class="week-day-events">
-                                ${dayEvents.map(e => {
+                                ${dayEvents.map((e, ei) => {
+                                    const { col, total } = layout[ei];
                                     const durationMin = (new Date(e.end_time) - new Date(e.start_time)) / 60000;
                                     const isShort = durationMin <= 30;
                                     const isHighlighted = highlightEventId === e.id + '|' + e.start_time;
@@ -204,7 +211,7 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, onAllD
                                         <div class=${classes}
                                              key=${e.id}
                                              title=${e.title}
-                                             style=${eventStyle(e, date)}
+                                             style=${eventStyle(e, date, col, total)}
                                              onClick=${(ev) => { ev.stopPropagation(); onEventClick(e); }}
                                              onMouseDown=${canDrag ? (ev) => {
                                                  if (ev.button !== 0) return;
