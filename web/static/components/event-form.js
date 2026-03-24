@@ -408,11 +408,15 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
 
                 ${error && html`<div class="error">${error}</div>`}
 
-                <label>
-                    Title
-                    <input type="text" ref=${titleRef} value=${title} disabled=${!editing}
-                           onInput=${e => setTitle(e.target.value)} />
-                </label>
+                ${editing ? html`
+                    <label>
+                        Title
+                        <input type="text" ref=${titleRef} value=${title}
+                               onInput=${e => setTitle(e.target.value)} />
+                    </label>
+                ` : html`
+                    <h3 class="event-title-display">${title}</h3>
+                `}
 
                 ${editing ? html`
                     <label>
@@ -434,17 +438,19 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                     </label>
                 `}
 
-                <label>
-                    Start
-                    ${editing
-                        ? allDay
+                ${editing ? html`
+                    <label>
+                        Start
+                        ${allDay
                             ? html`<input type="date" value=${startTime}
                                           onInput=${e => handleStartTimeChange(e.target.value)} />`
                             : html`<input type="datetime-local" value=${startTime}
                                           onInput=${e => handleStartTimeChange(e.target.value)} />`
-                        : html`<input type="text" disabled value=${displayStart()} />`
-                    }
-                </label>
+                        }
+                    </label>
+                ` : html`
+                    <div class="detail-row"><span class="detail-label">Start:</span> ${displayStart()}</div>
+                `}
 
                 ${editing && html`
                     <label class="checkbox-label">
@@ -469,17 +475,19 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                         </div>
                     </label>
                 ` : html`
-                    <label>
-                        End
-                        ${editing
-                            ? allDay
+                    ${editing ? html`
+                        <label>
+                            End
+                            ${allDay
                                 ? html`<input type="date" value=${endTime}
                                               onInput=${e => setEndTime(e.target.value)} />`
                                 : html`<input type="datetime-local" value=${endTime}
                                               onInput=${e => setEndTime(e.target.value)} />`
-                            : html`<input type="text" disabled value=${displayEnd()} />`
-                        }
-                    </label>
+                            }
+                        </label>
+                    ` : html`
+                        <div class="detail-row"><span class="detail-label">End:</span> ${displayEnd()}</div>
+                    `}
                 `}
 
                 ${editing ? html`
@@ -519,10 +527,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                     />
                 ` : html`
                     ${location && html`
-                        <label>
-                            Location
-                            <input type="text" disabled value=${location} />
-                        </label>
+                        <div class="detail-row"><span class="detail-label">Location:</span> ${location}</div>
                     `}
                     ${(latitude !== '' && longitude !== '') ? html`
                         <${MapPicker}
@@ -587,23 +592,23 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                     </div>
                 ` : html`
                     ${categories && html`
-                        <label>
-                            Categories
+                        <div class="detail-row detail-row-block">
+                            <span class="detail-label">Categories:</span>
                             <div class="categories-display">
                                 ${displayCategories().map(cat => html`
                                     <span class="category-tag" key=${cat}>${cat}</span>
                                 `)}
                             </div>
-                        </label>
+                        </div>
                     `}
                     ${eventURL && html`
-                        <label>
-                            URL
+                        <div class="detail-row">
+                            <span class="detail-label">URL:</span>
                             <a href=${eventURL} target="_blank" rel="noopener noreferrer"
-                               style="display: block; color: #4285f4; word-break: break-all;">
+                               style="color: #4285f4; word-break: break-all; margin-left: 4px;">
                                 ${eventURL} \u2197
                             </a>
-                        </label>
+                        </div>
                     `}
                 `}
 
@@ -734,29 +739,17 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                         `}
                     `}
                 ` : !isInstanceEdit && recurrenceFreq && !editing ? html`
-                    <label>
-                        Repeat
-                        <input type="text" disabled value=${displayRecurrence()} />
-                    </label>
+                    <div class="detail-row"><span class="detail-label">Repeat:</span> ${displayRecurrence()}</div>
                     ${displayExdates().length > 0 && html`
-                        <label>
-                            Excluded dates
-                            <input type="text" disabled value=${displayExdates().map(d => new Date(d).toLocaleDateString()).join(', ')} />
-                        </label>
+                        <div class="detail-row"><span class="detail-label">Excluded:</span> ${displayExdates().map(d => new Date(d).toLocaleDateString()).join(', ')}</div>
                     `}
                     ${displayRdates().length > 0 && html`
-                        <label>
-                            Additional dates
-                            <input type="text" disabled value=${displayRdates().map(d => new Date(d).toLocaleDateString()).join(', ')} />
-                        </label>
+                        <div class="detail-row"><span class="detail-label">Additional:</span> ${displayRdates().map(d => new Date(d).toLocaleDateString()).join(', ')}</div>
                     `}
                 ` : null}
 
                 ${!allDay && reminderMinutes > 0 && !editing ? html`
-                    <label>
-                        Reminder
-                        <input type="text" disabled value=${displayReminder()} />
-                    </label>
+                    <div class="detail-row"><span class="detail-label">Reminder:</span> ${displayReminder()}</div>
                 ` : null}
 
             </form>

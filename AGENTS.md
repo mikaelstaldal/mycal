@@ -36,7 +36,7 @@ cd e2e && playwright-test
 
 ## Verification
 
-Use the `playwright` MCP to verify that the web frontend looks reasonable.
+Use the `playwright-cli` skill to verify that the web frontend looks reasonable.
 
 ## Architecture
 

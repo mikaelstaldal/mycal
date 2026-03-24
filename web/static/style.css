@@ -1309,6 +1309,35 @@ body {
     }
 }
 
+/* Read-only event detail view */
+.event-title-display {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0 0 10px;
+    color: var(--text);
+}
+
+.detail-row {
+    display: flex;
+    align-items: baseline;
+    font-size: 0.95rem;
+    margin-bottom: 6px;
+    color: var(--text);
+}
+
+.detail-row-block {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.detail-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    min-width: 72px;
+    flex-shrink: 0;
+}
+
 /* Description display */
 .description-display {
     margin-top: 4px;
