@@ -28,8 +28,9 @@ export function ImportSingleForm({ onImported, onClose }) {
         }
         setLoading(true);
         try {
-            await importSingleEvent(input, calendarName.trim());
-            onImported('Event imported successfully.');
+            const event = await importSingleEvent(input, calendarName.trim());
+            const date = event.start_time ? new Date(event.start_time).toLocaleDateString() : '';
+            onImported(`Event imported successfully.${date ? ' Start: ' + date : ''}`);
         } catch (err) {
             onImported(err.message, true);
         } finally {
