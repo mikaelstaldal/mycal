@@ -826,7 +826,10 @@ END:VCALENDAR`
 	}
 
 	// Export and verify RECURRENCE-ID in output
-	exportResp, _ := http.Get(ts.URL + "/api/v1/events.ics")
+	exportResp, err := http.Get(ts.URL + "/api/v1/events.ics")
+	if err != nil {
+		t.Fatalf("Unable to get %v", err)
+	}
 	defer exportResp.Body.Close()
 	body, _ := io.ReadAll(exportResp.Body)
 	icsStr := string(body)
@@ -856,7 +859,10 @@ END:VCALENDAR`
 	}
 
 	// Export and verify DURATION in output
-	exportResp, _ := http.Get(ts.URL + "/api/v1/events.ics")
+	exportResp, err := http.Get(ts.URL + "/api/v1/events.ics")
+	if err != nil {
+		t.Fatalf("Unable to get %v", err)
+	}
 	defer exportResp.Body.Close()
 	body, _ := io.ReadAll(exportResp.Body)
 	icsStr := string(body)
@@ -883,7 +889,10 @@ END:VCALENDAR`
 	}
 
 	// Export and verify CATEGORIES in output
-	exportResp, _ := http.Get(ts.URL + "/api/v1/events.ics")
+	exportResp, err := http.Get(ts.URL + "/api/v1/events.ics")
+	if err != nil {
+		t.Fatalf("Unable to get %v", err)
+	}
 	defer exportResp.Body.Close()
 	body, _ := io.ReadAll(exportResp.Body)
 	icsStr := string(body)
@@ -910,7 +919,10 @@ END:VCALENDAR`
 	}
 
 	// Export and verify URL in output
-	exportResp, _ := http.Get(ts.URL + "/api/v1/events.ics")
+	exportResp, err := http.Get(ts.URL + "/api/v1/events.ics")
+	if err != nil {
+		t.Fatalf("Unable to get %v", err)
+	}
 	defer exportResp.Body.Close()
 	body, _ := io.ReadAll(exportResp.Body)
 	icsStr := string(body)
