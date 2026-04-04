@@ -227,7 +227,7 @@ func apiCreateEventToModel(req *api.CreateEventRequest) *model.CreateEventReques
 		m.Categories = req.Categories.Value
 	}
 	if req.URL.Set {
-		m.URL = req.URL.Value
+		m.URL = req.URL.Value.String()
 	}
 	if req.ReminderMinutes.Set {
 		m.ReminderMinutes = req.ReminderMinutes.Value
@@ -301,7 +301,7 @@ func apiUpdateEventToModel(req *api.UpdateEventRequest) *model.UpdateEventReques
 		m.Categories = &req.Categories.Value
 	}
 	if req.URL.Set {
-		v := req.URL.Value
+		v := req.URL.Value.String()
 		m.URL = &v
 	}
 	if req.ReminderMinutes.Set {

@@ -74,7 +74,7 @@ type CreateEventRequest struct {
 	RDates               string   `json:"rdates"`
 	Duration             string   `json:"duration"`
 	Categories           string   `json:"categories"`
-	URL                  string   `json:"url"`
+	URL                  string   `json:"url,omitempty"`
 	ReminderMinutes      int      `json:"reminder_minutes"`
 	Location             string   `json:"location"`
 	Latitude             *float64 `json:"latitude"`

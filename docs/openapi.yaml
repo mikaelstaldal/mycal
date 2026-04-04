@@ -772,6 +772,7 @@ components:
           maxLength: 500
         url:
           type: string
+          format: uri
           maxLength: 2000
         reminder_minutes:
           type: integer
@@ -838,6 +839,7 @@ components:
           maxLength: 500
         url:
           type: string
+          format: uri
           maxLength: 2000
         reminder_minutes:
           type: integer
