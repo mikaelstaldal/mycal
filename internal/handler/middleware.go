@@ -1,27 +1,13 @@
 package handler
 
 import (
-	"encoding/json"
-	"log"
 	"net/http"
+
+	"github.com/mikaelstaldal/go-server-common/recovery"
 )
 
 func withMiddleware(h http.Handler) http.Handler {
-	return recoveryMiddleware(h)
-}
-
-func recoveryMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer func() {
-			if err := recover(); err != nil {
-				log.Printf("panic: %v", err)
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusInternalServerError)
-				_ = json.NewEncoder(w).Encode(map[string]string{"error": "internal server error"})
-			}
-		}()
-		next.ServeHTTP(w, r)
-	})
+	return recovery.Middleware(h)
 }
 
 // SecurityHeadersMiddleware adds security headers to all responses.

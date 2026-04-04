@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/mikaelstaldal/mycal/internal/auth"
+	"github.com/mikaelstaldal/go-server-common/auth"
 	"github.com/mikaelstaldal/mycal/internal/handler"
 	"github.com/mikaelstaldal/mycal/internal/ical"
 	"github.com/mikaelstaldal/mycal/internal/repository"
