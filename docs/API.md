@@ -1,5 +1,7 @@
 # API
 
+[See OpenAPI specification](../openapi.yaml). 
+
 All endpoints are under `/api/v1`. Datetimes use RFC 3339 format (or `YYYY-MM-DD` for all-day events). Errors return `{"error": "message"}`.
 
 | Method | Path                             | Description                                                                 |

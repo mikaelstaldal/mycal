@@ -14,12 +14,12 @@ The coding agent should always compile the application into `/tmp/claude` and ru
 
 ## Code generation
 
-The HTTP server stubs in `internal/api/` are generated from `docs/openapi.yaml` using [ogen](https://ogen.dev/).
+The HTTP server stubs in `internal/api/` are generated from `openapi.yaml` using [ogen](https://ogen.dev/).
 
 **Rules:**
-- Always run `go generate ./...` (or `./build.sh`) before building after changing `docs/openapi.yaml`.
+- Always run `go generate ./...` (or `./build.sh`) before building after changing `openapi.yaml`.
 - Never manually edit any file in `internal/api/` — all changes are overwritten by `go generate`.
-- To add or change API behaviour, edit `docs/openapi.yaml` and regenerate, then update the implementation in `internal/handler/impl.go`.
+- To add or change API behaviour, edit `openapi.yaml` and regenerate, then update the implementation in `internal/handler/impl.go`.
 
 ## Tests
 
@@ -76,7 +76,7 @@ Always run `go mod tidy` after modifying the `go.mod` file.
 
 ## API
 
-The API docs are in `docs/API.md` and `docs/openapi.yaml`, update both whenever the API is changed. The API is used by mobile clients, 
+The API docs are in `docs/API.md` and `openapi.yaml`, update both whenever the API is changed. The API is used by mobile clients, 
 so make sure to keep it backwards compatible.
 
 ## Database
