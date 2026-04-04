@@ -6,17 +6,17 @@ import (
 )
 
 type Feed struct {
-	ID                     int64  `json:"-"`
-	StringID               string `json:"id"`
-	URL                    string `json:"url"`
-	CalendarID             int64  `json:"calendar_id"`
-	CalendarName           string `json:"calendar_name"`
-	RefreshIntervalMinutes int    `json:"refresh_interval_minutes"`
-	LastRefreshedAt        string `json:"last_refreshed_at"`
-	LastError              string `json:"last_error"`
-	Enabled                bool   `json:"enabled"`
-	CreatedAt              string `json:"created_at"`
-	UpdatedAt              string `json:"updated_at"`
+	ID                     int64
+	StringID               string
+	URL                    string
+	CalendarID             int64
+	CalendarName           string
+	RefreshIntervalMinutes int
+	LastRefreshedAt        string
+	LastError              string
+	Enabled                bool
+	CreatedAt              string
+	UpdatedAt              string
 }
 
 func (f *Feed) SetStringID() {
@@ -39,10 +39,10 @@ const (
 )
 
 type CreateFeedRequest struct {
-	URL                    string `json:"url"`
-	CalendarName           string `json:"calendar_name"`
-	CalendarColor          string `json:"calendar_color"`
-	RefreshIntervalMinutes int    `json:"refresh_interval_minutes"`
+	URL                    string
+	CalendarName           string
+	CalendarColor          string
+	RefreshIntervalMinutes int
 }
 
 func (r *CreateFeedRequest) Validate() error {
@@ -71,10 +71,10 @@ func (r *CreateFeedRequest) Validate() error {
 }
 
 type UpdateFeedRequest struct {
-	URL                    *string `json:"url"`
-	CalendarName           *string `json:"calendar_name"`
-	RefreshIntervalMinutes *int    `json:"refresh_interval_minutes"`
-	Enabled                *bool   `json:"enabled"`
+	URL                    *string
+	CalendarName           *string
+	RefreshIntervalMinutes *int
+	Enabled                *bool
 }
 
 func (r *UpdateFeedRequest) Validate() error {
