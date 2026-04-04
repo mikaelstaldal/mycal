@@ -20,7 +20,7 @@ In addition to the built-in web interface, there is also
 ## Getting Started
 
 ```bash
-go build -tags netgo -v . && ./mycal
+./build.sh && ./mycal
 ```
 
 Open http://localhost:8080 in your browser.

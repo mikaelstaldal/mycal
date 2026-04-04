@@ -137,11 +137,9 @@ func main() {
 		}
 	}()
 
-	calendarFeed := handler.NewCalendarFeedHandler(svc, calSvc)
-
 	mux := http.NewServeMux()
 	mux.Handle("/api/", apiRouter)
-	mux.Handle("GET /calendar.ics", calendarFeed)
+	mux.Handle("GET /calendar.ics", apiRouter)
 
 	staticFS, err := fs.Sub(web.Static, "static")
 	if err != nil {

@@ -11,3 +11,5 @@ e2e/playwright-report/
 TODO.md
 DOING.md
 DONE.md
+*_gen.go
+*.gen.go

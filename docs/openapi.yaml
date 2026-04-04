@@ -3,11 +3,9 @@ info:
   title: MyCal API
   description: Calendar API with event management and iCalendar support.
   version: 1.0.0
-
 servers:
   - url: http://localhost:8080
     description: Local development server
-
 paths:
   /api/v1/preferences:
     get:
@@ -22,12 +20,11 @@ paths:
                 $ref: "#/components/schemas/Preferences"
         "500":
           $ref: "#/components/responses/InternalError"
-
     patch:
       summary: Update preferences
       description: >
-        Partial update — only included keys are changed. Omitted keys are left unchanged. Unknown keys return 400.
-        Returns the full preferences state after update.
+        Partial update — only included keys are changed. Omitted keys are left unchanged. Unknown keys return 400. Returns the full preferences state after update.
+
       requestBody:
         required: true
         content:
@@ -49,7 +46,6 @@ paths:
                 $ref: "#/components/schemas/Error"
         "500":
           $ref: "#/components/responses/InternalError"
-
   /api/v1/calendars:
     get:
       summary: List all calendars
@@ -65,12 +61,12 @@ paths:
                   $ref: "#/components/schemas/Calendar"
         "500":
           $ref: "#/components/responses/InternalError"
-
   /api/v1/calendars/{id}:
     patch:
       summary: Update a calendar
       description: >
         Partial update — only included fields are changed. Updates the calendar's name and/or color.
+
       parameters:
         - name: id
           in: path
@@ -101,12 +97,12 @@ paths:
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
-
   /api/v1/events:
     get:
       summary: List or search events
       description: >
         List events in a time range (requires `from` and `to`), or search events by text (requires `q`).
+
       parameters:
         - name: from
           in: query
@@ -160,7 +156,6 @@ paths:
                 $ref: "#/components/schemas/Error"
         "500":
           $ref: "#/components/responses/InternalError"
-
     post:
       summary: Create an event
       requestBody:
@@ -184,7 +179,6 @@ paths:
                 $ref: "#/components/schemas/Error"
         "500":
           $ref: "#/components/responses/InternalError"
-
   /api/v1/events/{id}:
     get:
       summary: Get a single event
@@ -207,12 +201,11 @@ paths:
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
-
     patch:
       summary: Update an event
       description: >
-        Partial update — only included fields are changed.
-        Use a composite ID (e.g. `42_2026-03-09T09:00:00Z`) to create or update a single recurrence instance override.
+        Partial update — only included fields are changed. Use a composite ID (e.g. `42_2026-03-09T09:00:00Z`) to create or update a single recurrence instance override.
+
       parameters:
         - $ref: "#/components/parameters/EventId"
       requestBody:
@@ -238,12 +231,11 @@ paths:
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
-
     delete:
       summary: Delete an event
       description: >
-        Deletes an event and all its overrides.
-        Use a composite ID (e.g. `42_2026-03-09T09:00:00Z`) to exclude a single recurrence instance instead.
+        Deletes an event and all its overrides. Use a composite ID (e.g. `42_2026-03-09T09:00:00Z`) to exclude a single recurrence instance instead.
+
       parameters:
         - $ref: "#/components/parameters/EventId"
       responses:
@@ -265,12 +257,12 @@ paths:
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
-
   /api/v1/import:
     post:
       summary: Import events from iCalendar data
       description: >
         Accepts iCalendar data either as raw `text/calendar` body or as a JSON body with a URL to fetch.
+
       parameters:
         - name: calendar
           in: query
@@ -321,13 +313,12 @@ paths:
                 $ref: "#/components/schemas/Error"
         "500":
           $ref: "#/components/responses/InternalError"
-
   /api/v1/import-single:
     post:
       summary: Import a single event from iCalendar data
       description: >
-        Accepts iCalendar data either as raw `text/calendar` body or as a JSON body with a URL to fetch.
-        The iCalendar data must contain exactly one event.
+        Accepts iCalendar data either as raw `text/calendar` body or as a JSON body with a URL to fetch. The iCalendar data must contain exactly one event.
+
       parameters:
         - name: calendar
           in: query
@@ -374,7 +365,6 @@ paths:
                 $ref: "#/components/schemas/Error"
         "500":
           $ref: "#/components/responses/InternalError"
-
   /api/v1/feeds:
     get:
       summary: List feed subscriptions
@@ -389,7 +379,6 @@ paths:
                   $ref: "#/components/schemas/Feed"
         "500":
           $ref: "#/components/responses/InternalError"
-
     post:
       summary: Create a feed subscription
       requestBody:
@@ -413,7 +402,6 @@ paths:
                 $ref: "#/components/schemas/Error"
         "500":
           $ref: "#/components/responses/InternalError"
-
   /api/v1/feeds/{id}:
     get:
       summary: Get a feed subscription
@@ -434,7 +422,6 @@ paths:
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
-
     put:
       summary: Update a feed subscription
       parameters:
@@ -466,7 +453,6 @@ paths:
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
-
     delete:
       summary: Delete a feed subscription
       parameters:
@@ -482,7 +468,6 @@ paths:
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
-
   /api/v1/feeds/{id}/refresh:
     post:
       summary: Manually refresh a feed
@@ -503,7 +488,6 @@ paths:
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
-
   /api/v1/events.ics:
     get:
       summary: iCalendar feed
@@ -536,11 +520,29 @@ paths:
                 type: string
         "500":
           $ref: "#/components/responses/InternalError"
-
   /calendar.ics:
     get:
       summary: iCalendar feed (convenience URL)
       description: Same as `/api/v1/events.ics`.
+      parameters:
+        - name: calendar_id
+          in: query
+          description: Filter by calendar ID. Can be repeated.
+          schema:
+            type: array
+            items:
+              type: integer
+          style: form
+          explode: true
+        - name: calendar
+          in: query
+          description: Filter by calendar name (backward compatible). Can be repeated.
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
       responses:
         "200":
           description: iCalendar data
@@ -550,7 +552,6 @@ paths:
                 type: string
         "500":
           $ref: "#/components/responses/InternalError"
-
 components:
   parameters:
     EventId:
@@ -558,12 +559,10 @@ components:
       in: path
       required: true
       description: >
-        Event ID. Simple events use a numeric string (e.g. "42").
-        Recurring instances use a composite format: "parentID_instanceStartTime"
-        (e.g. "42_2026-03-09T09:00:00Z"). Must be URL-encoded in the path.
+        Event ID. Simple events use a numeric string (e.g. "42"). Recurring instances use a composite format: "parentID_instanceStartTime" (e.g. "42_2026-03-09T09:00:00Z"). Must be URL-encoded in the path.
+
       schema:
         type: string
-
   responses:
     NotFound:
       description: Event not found
@@ -577,14 +576,14 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
-
   schemas:
     Preferences:
       type: object
       description: >
-        User preferences. Currently no server-side preferences are defined;
-        the default event color is managed per-calendar via the calendars table.
+        User preferences. Currently no server-side preferences are defined; the default event color is managed per-calendar via the calendars table.
 
+      additionalProperties:
+        type: string
     Calendar:
       type: object
       properties:
@@ -601,7 +600,6 @@ components:
         - id
         - name
         - color
-
     UpdateCalendarRequest:
       type: object
       description: All fields are optional. Only included fields are changed.
@@ -612,7 +610,6 @@ components:
         color:
           type: string
           description: CSS color for events in this calendar
-
     Feed:
       type: object
       properties:
@@ -658,7 +655,6 @@ components:
       required:
         - id
         - url
-
     CreateFeedRequest:
       type: object
       required:
@@ -679,7 +675,6 @@ components:
           minimum: 5
           maximum: 10080
           default: 60
-
     UpdateFeedRequest:
       type: object
       description: All fields are optional. Only included fields are changed.
@@ -697,7 +692,6 @@ components:
           maximum: 10080
         enabled:
           type: boolean
-
     Error:
       type: object
       properties:
@@ -705,7 +699,6 @@ components:
           type: string
       required:
         - error
-
     Event:
       type: object
       properties:
@@ -717,8 +710,8 @@ components:
           type: string
           readOnly: true
           description: >
-            Parent event ID for recurrence instances. Present only on expanded
-            or overridden recurring instances; absent for regular events.
+            Parent event ID for recurrence instances. Present only on expanded or overridden recurring instances; absent for regular events.
+
         title:
           type: string
           maxLength: 500
@@ -827,7 +820,6 @@ components:
         - title
         - start_time
         - end_time
-
     CreateEventRequest:
       type: object
       required:
@@ -860,7 +852,6 @@ components:
           maximum: 1000
         recurrence_until:
           type: string
-          format: date-time
         recurrence_interval:
           type: integer
         recurrence_by_day:
@@ -881,7 +872,6 @@ components:
           maxLength: 500
         url:
           type: string
-          format: uri
           maxLength: 2000
         reminder_minutes:
           type: integer
@@ -902,7 +892,6 @@ components:
           minimum: -180
           maximum: 180
           nullable: true
-
     UpdateEventRequest:
       type: object
       description: All fields are optional. Only included fields are changed.
@@ -930,7 +919,6 @@ components:
           maximum: 1000
         recurrence_until:
           type: string
-          format: date-time
         recurrence_interval:
           type: integer
         recurrence_by_day:
@@ -950,7 +938,6 @@ components:
           maxLength: 500
         url:
           type: string
-          format: uri
           maxLength: 2000
         reminder_minutes:
           type: integer

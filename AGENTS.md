@@ -5,12 +5,21 @@ This file provides guidance to AI coding agents when working with code in this r
 ## Build & Run
 
 ```bash
-go build -tags netgo -o /tmp/claude/mycal .       # build single binary
-/tmp/claude/mycal                     # serves on :8080
+./build.sh -o /tmp/claude/mycal                   # generate API code + build binary (preferred)
+/tmp/claude/mycal                                 # serves on :8080
 /tmp/claude/mycal -port 3000 -data /path/to/data  # custom address and data path
 ```
 
 The coding agent should always compile the application into `/tmp/claude` and run it from there.
+
+## Code generation
+
+The HTTP server stubs in `internal/api/` are generated from `docs/openapi.yaml` using [ogen](https://ogen.dev/).
+
+**Rules:**
+- Always run `go generate ./...` (or `./build.sh`) before building after changing `docs/openapi.yaml`.
+- Never manually edit any file in `internal/api/` — all changes are overwritten by `go generate`.
+- To add or change API behaviour, edit `docs/openapi.yaml` and regenerate, then update the implementation in `internal/handler/impl.go`.
 
 ## Tests
 

@@ -456,28 +456,28 @@ func (r *CreateEventRequest) validateRecurrence() error {
 }
 
 type UpdateEventRequest struct {
-	Title                *string  `json:"title"`
-	Description          *string  `json:"description"`
-	StartTime            *string  `json:"start_time"`
-	EndTime              *string  `json:"end_time"`
-	AllDay               *bool    `json:"all_day"`
-	Color                *string  `json:"color"`
-	RecurrenceFreq       *string  `json:"recurrence_freq"`
-	RecurrenceCount      *int     `json:"recurrence_count"`
-	RecurrenceUntil      *string  `json:"recurrence_until"`
-	RecurrenceInterval   *int     `json:"recurrence_interval"`
-	RecurrenceByDay      *string  `json:"recurrence_by_day"`
-	RecurrenceByMonthDay *string  `json:"recurrence_by_monthday"`
-	RecurrenceByMonth    *string  `json:"recurrence_by_month"`
-	ExDates              *string  `json:"exdates"`
-	RDates               *string  `json:"rdates"`
-	Duration             *string  `json:"duration"`
-	Categories           *string  `json:"categories"`
-	URL                  *string  `json:"url"`
-	ReminderMinutes      *int     `json:"reminder_minutes"`
-	Location             *string  `json:"location"`
-	Latitude             *float64 `json:"latitude"`
-	Longitude            *float64 `json:"longitude"`
+	Title                *string  `json:"title,omitempty"`
+	Description          *string  `json:"description,omitempty"`
+	StartTime            *string  `json:"start_time,omitempty"`
+	EndTime              *string  `json:"end_time,omitempty"`
+	AllDay               *bool    `json:"all_day,omitempty"`
+	Color                *string  `json:"color,omitempty"`
+	RecurrenceFreq       *string  `json:"recurrence_freq,omitempty"`
+	RecurrenceCount      *int     `json:"recurrence_count,omitempty"`
+	RecurrenceUntil      *string  `json:"recurrence_until,omitempty"`
+	RecurrenceInterval   *int     `json:"recurrence_interval,omitempty"`
+	RecurrenceByDay      *string  `json:"recurrence_by_day,omitempty"`
+	RecurrenceByMonthDay *string  `json:"recurrence_by_monthday,omitempty"`
+	RecurrenceByMonth    *string  `json:"recurrence_by_month,omitempty"`
+	ExDates              *string  `json:"exdates,omitempty"`
+	RDates               *string  `json:"rdates,omitempty"`
+	Duration             *string  `json:"duration,omitempty"`
+	Categories           *string  `json:"categories,omitempty"`
+	URL                  *string  `json:"url,omitempty"`
+	ReminderMinutes      *int     `json:"reminder_minutes,omitempty"`
+	Location             *string  `json:"location,omitempty"`
+	Latitude             *float64 `json:"latitude,omitempty"`
+	Longitude            *float64 `json:"longitude,omitempty"`
 }
 
 func (r *UpdateEventRequest) Validate() error {
