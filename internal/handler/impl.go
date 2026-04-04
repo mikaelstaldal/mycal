@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -28,14 +29,34 @@ type handlerImpl struct {
 	calSvc  *service.CalendarService
 }
 
-// ---- Type conversion helpers ----
-
-func toOptStr(s string) api.OptString {
-	if s != "" {
-		return api.NewOptString(s)
-	}
-	return api.OptString{}
+// httpError is a sentinel error carrying an explicit HTTP status code.
+type httpError struct {
+	status int
+	msg    string
 }
+
+func (e *httpError) Error() string { return e.msg }
+
+func badRequest(msg string) error  { return &httpError{http.StatusBadRequest, msg} }
+func unsupported(msg string) error { return &httpError{http.StatusUnsupportedMediaType, msg} }
+
+// NewError implements api.Handler — maps Go errors to HTTP error responses.
+func (h *handlerImpl) NewError(_ context.Context, err error) *api.ErrorStatusCode {
+	var he *httpError
+	if errors.As(err, &he) {
+		return &api.ErrorStatusCode{StatusCode: he.status, Response: api.Error{Error: he.msg}}
+	}
+	if errors.Is(err, service.ErrNotFound) {
+		return &api.ErrorStatusCode{StatusCode: http.StatusNotFound, Response: api.Error{Error: err.Error()}}
+	}
+	if errors.Is(err, service.ErrValidation) {
+		return &api.ErrorStatusCode{StatusCode: http.StatusBadRequest, Response: api.Error{Error: err.Error()}}
+	}
+	log.Printf("internal error: %v", err)
+	return &api.ErrorStatusCode{StatusCode: http.StatusInternalServerError, Response: api.Error{Error: "internal server error"}}
+}
+
+// ---- Type conversion helpers ----
 
 func toOptDateTime(s string) api.OptDateTime {
 	if s != "" {
@@ -55,8 +76,8 @@ func toOptURI(s string) api.OptURI {
 	return api.OptURI{}
 }
 
-func modelEventToAPI(e *model.Event) api.Event {
-	ae := api.Event{
+func modelEventToAPI(e *model.Event) *api.Event {
+	ae := &api.Event{
 		ID:        e.StringID,
 		Title:     e.Title,
 		StartTime: e.StartTime,
@@ -130,9 +151,9 @@ func modelEventToAPI(e *model.Event) api.Event {
 	return ae
 }
 
-func modelFeedToAPI(f *model.Feed) api.Feed {
+func modelFeedToAPI(f *model.Feed) *api.Feed {
 	feedURL, _ := url.Parse(f.URL)
-	af := api.Feed{
+	af := &api.Feed{
 		ID:  f.StringID,
 		URL: *feedURL,
 	}
@@ -294,7 +315,6 @@ func apiUpdateEventToModel(req *api.UpdateEventRequest) *model.UpdateEventReques
 			v := req.Latitude.Value
 			m.Latitude = &v
 		}
-		// null → nil pointer (same as "unchanged" in old behavior)
 	}
 	if req.Longitude.Set {
 		if !req.Longitude.Null {
@@ -360,77 +380,66 @@ func parseCalendarIDsFromParams(calendarIDs []int, calendarNames []string, calSv
 }
 
 // getImportReaderFromURL fetches iCalendar data from the given URL.
-// Returns reader, cleanup func, and error message (empty on success).
-func getImportReaderFromURL(rawURL string) (io.ReadCloser, string) {
+func getImportReaderFromURL(rawURL string) (io.ReadCloser, error) {
 	if err := service.ValidateExternalURL(rawURL); err != nil {
-		return nil, err.Error()
+		return nil, badRequest(err.Error())
 	}
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Get(rawURL)
 	if err != nil {
-		return nil, "failed to fetch URL"
+		return nil, badRequest("failed to fetch URL")
 	}
 	if resp.StatusCode != http.StatusOK {
 		resp.Body.Close()
-		return nil, "URL returned non-200 status"
+		return nil, badRequest("URL returned non-200 status")
 	}
-	return resp.Body, ""
+	return resp.Body, nil
 }
 
-func icsResponse(svc *service.EventService, calSvc *service.CalendarService, calendarIDs []int, calendarNames []string) (io.Reader, string) {
+func icsResponse(svc *service.EventService, calSvc *service.CalendarService, calendarIDs []int, calendarNames []string) (io.Reader, error) {
 	ids := parseCalendarIDsFromParams(calendarIDs, calendarNames, calSvc)
 	events, err := svc.ListAll(ids)
 	if err != nil {
-		return nil, "failed to list events"
+		return nil, fmt.Errorf("failed to list events: %w", err)
 	}
 	var buf bytes.Buffer
 	if err := ical.Encode(&buf, events); err != nil {
-		log.Printf("error encoding ical: %v", err)
-		return nil, "failed to encode iCal"
+		return nil, fmt.Errorf("failed to encode iCal: %w", err)
 	}
-	return &buf, ""
+	return &buf, nil
 }
 
 // ---- Handler implementations ----
 
-func (h *handlerImpl) APIV1PreferencesGet(ctx context.Context) (api.APIV1PreferencesGetRes, error) {
+func (h *handlerImpl) APIV1PreferencesGet(ctx context.Context) (api.Preferences, error) {
 	prefs, err := h.prefSvc.GetAll()
 	if err != nil {
-		return &api.Error{Error: "failed to get preferences"}, nil
+		return nil, err
 	}
-	p := api.Preferences(prefs)
-	return &p, nil
+	return api.Preferences(prefs), nil
 }
 
-func (h *handlerImpl) APIV1PreferencesPatch(ctx context.Context, req api.Preferences) (api.APIV1PreferencesPatchRes, error) {
+func (h *handlerImpl) APIV1PreferencesPatch(ctx context.Context, req api.Preferences) (api.Preferences, error) {
 	result, err := h.prefSvc.Update(map[string]string(req))
 	if err != nil {
-		if errors.Is(err, service.ErrValidation) {
-			return &api.APIV1PreferencesPatchBadRequest{Error: err.Error()}, nil
-		}
-		return &api.APIV1PreferencesPatchInternalServerError{Error: "failed to update preferences"}, nil
+		return nil, err
 	}
-	p := api.Preferences(result)
-	return &p, nil
+	return api.Preferences(result), nil
 }
 
-func (h *handlerImpl) APIV1CalendarsGet(ctx context.Context) (api.APIV1CalendarsGetRes, error) {
+func (h *handlerImpl) APIV1CalendarsGet(ctx context.Context) ([]api.Calendar, error) {
 	calendars, err := h.calSvc.List()
 	if err != nil {
-		return &api.Error{Error: "failed to list calendars"}, nil
+		return nil, err
 	}
-	result := make(api.APIV1CalendarsGetOKApplicationJSON, len(calendars))
+	result := make([]api.Calendar, len(calendars))
 	for i, cal := range calendars {
-		result[i] = api.Calendar{
-			ID:    cal.ID,
-			Name:  cal.Name,
-			Color: cal.Color,
-		}
+		result[i] = api.Calendar{ID: cal.ID, Name: cal.Name, Color: cal.Color}
 	}
-	return &result, nil
+	return result, nil
 }
 
-func (h *handlerImpl) APIV1CalendarsIDPatch(ctx context.Context, req *api.UpdateCalendarRequest, params api.APIV1CalendarsIDPatchParams) (api.APIV1CalendarsIDPatchRes, error) {
+func (h *handlerImpl) APIV1CalendarsIDPatch(ctx context.Context, req *api.UpdateCalendarRequest, params api.APIV1CalendarsIDPatchParams) (*api.Calendar, error) {
 	name := ""
 	if req.Name.Set {
 		name = req.Name.Value
@@ -441,35 +450,24 @@ func (h *handlerImpl) APIV1CalendarsIDPatch(ctx context.Context, req *api.Update
 	}
 	cal, err := h.calSvc.Update(params.ID, name, color)
 	if err != nil {
-		if errors.Is(err, service.ErrValidation) {
-			return &api.APIV1CalendarsIDPatchBadRequest{Error: err.Error()}, nil
-		}
-		if errors.Is(err, service.ErrNotFound) {
-			return &api.APIV1CalendarsIDPatchNotFound{Error: "calendar not found"}, nil
-		}
-		return &api.APIV1CalendarsIDPatchInternalServerError{Error: "failed to update calendar"}, nil
+		return nil, err
 	}
-	return &api.Calendar{
-		ID:    cal.ID,
-		Name:  cal.Name,
-		Color: cal.Color,
-	}, nil
+	return &api.Calendar{ID: cal.ID, Name: cal.Name, Color: cal.Color}, nil
 }
 
-func (h *handlerImpl) APIV1EventsGet(ctx context.Context, params api.APIV1EventsGetParams) (api.APIV1EventsGetRes, error) {
+func (h *handlerImpl) APIV1EventsGet(ctx context.Context, params api.APIV1EventsGetParams) ([]api.Event, error) {
 	q := ""
 	if params.Q.Set {
 		q = params.Q.Value
 	}
 	if len(q) > maxSearchQueryLength {
-		return &api.APIV1EventsGetBadRequest{Error: "search query too long"}, nil
+		return nil, badRequest("search query too long")
 	}
 
 	calendarIDs := parseCalendarIDsFromParams(params.CalendarID, params.Calendar, h.calSvc)
 
 	if q != "" {
-		from := ""
-		to := ""
+		from, to := "", ""
 		if params.From.Set {
 			from = params.From.Value.UTC().Format(time.RFC3339)
 		}
@@ -478,50 +476,45 @@ func (h *handlerImpl) APIV1EventsGet(ctx context.Context, params api.APIV1Events
 		}
 		events, err := h.svc.Search(q, from, to, calendarIDs)
 		if err != nil {
-			return &api.APIV1EventsGetInternalServerError{Error: "failed to search events"}, nil
+			return nil, err
 		}
-		return eventsToRes(events), nil
+		return eventsToAPI(events), nil
 	}
 
 	if !params.From.Set || !params.To.Set {
-		return &api.APIV1EventsGetBadRequest{Error: "from and to query parameters are required"}, nil
+		return nil, badRequest("from and to query parameters are required")
 	}
 	from := params.From.Value.UTC().Format(time.RFC3339)
 	to := params.To.Value.UTC().Format(time.RFC3339)
 	events, err := h.svc.List(from, to, calendarIDs)
 	if err != nil {
-		return &api.APIV1EventsGetInternalServerError{Error: "failed to list events"}, nil
+		return nil, err
 	}
-	return eventsToRes(events), nil
+	return eventsToAPI(events), nil
 }
 
-func eventsToRes(events []model.Event) *api.APIV1EventsGetOKApplicationJSON {
-	result := make(api.APIV1EventsGetOKApplicationJSON, len(events))
+func eventsToAPI(events []model.Event) []api.Event {
+	result := make([]api.Event, len(events))
 	for i := range events {
 		events[i].SetStringID()
-		result[i] = modelEventToAPI(&events[i])
+		result[i] = *modelEventToAPI(&events[i])
 	}
-	return &result
+	return result
 }
 
-func (h *handlerImpl) APIV1EventsPost(ctx context.Context, req *api.CreateEventRequest) (api.APIV1EventsPostRes, error) {
-	modelReq := apiCreateEventToModel(req)
-	event, err := h.svc.Create(modelReq)
+func (h *handlerImpl) APIV1EventsPost(ctx context.Context, req *api.CreateEventRequest) (*api.Event, error) {
+	event, err := h.svc.Create(apiCreateEventToModel(req))
 	if err != nil {
-		if errors.Is(err, service.ErrValidation) {
-			return &api.APIV1EventsPostBadRequest{Error: err.Error()}, nil
-		}
-		return &api.APIV1EventsPostInternalServerError{Error: "failed to create event"}, nil
+		return nil, err
 	}
 	event.SetStringID()
-	ae := modelEventToAPI(event)
-	return &ae, nil
+	return modelEventToAPI(event), nil
 }
 
-func (h *handlerImpl) APIV1EventsIDGet(ctx context.Context, params api.APIV1EventsIDGetParams) (api.APIV1EventsIDGetRes, error) {
+func (h *handlerImpl) APIV1EventsIDGet(ctx context.Context, params api.APIV1EventsIDGetParams) (*api.Event, error) {
 	dbID, instanceStart, err := model.ParseEventID(params.ID)
 	if err != nil {
-		return &api.APIV1EventsIDGetBadRequest{Error: "invalid id"}, nil
+		return nil, badRequest("invalid id")
 	}
 	var event *model.Event
 	if instanceStart != "" {
@@ -530,20 +523,16 @@ func (h *handlerImpl) APIV1EventsIDGet(ctx context.Context, params api.APIV1Even
 		event, err = h.svc.GetByID(dbID)
 	}
 	if err != nil {
-		if errors.Is(err, service.ErrNotFound) {
-			return &api.APIV1EventsIDGetNotFound{Error: "event not found"}, nil
-		}
-		return &api.APIV1EventsIDGetInternalServerError{Error: "failed to get event"}, nil
+		return nil, err
 	}
 	event.SetStringID()
-	ae := modelEventToAPI(event)
-	return &ae, nil
+	return modelEventToAPI(event), nil
 }
 
-func (h *handlerImpl) APIV1EventsIDPatch(ctx context.Context, req *api.UpdateEventRequest, params api.APIV1EventsIDPatchParams) (api.APIV1EventsIDPatchRes, error) {
+func (h *handlerImpl) APIV1EventsIDPatch(ctx context.Context, req *api.UpdateEventRequest, params api.APIV1EventsIDPatchParams) (*api.Event, error) {
 	dbID, instanceStart, err := model.ParseEventID(params.ID)
 	if err != nil {
-		return &api.APIV1EventsIDPatchBadRequest{Error: "invalid id"}, nil
+		return nil, badRequest("invalid id")
 	}
 	modelReq := apiUpdateEventToModel(req)
 	var event *model.Event
@@ -553,57 +542,40 @@ func (h *handlerImpl) APIV1EventsIDPatch(ctx context.Context, req *api.UpdateEve
 		event, err = h.svc.Update(dbID, modelReq)
 	}
 	if err != nil {
-		if errors.Is(err, service.ErrNotFound) {
-			return &api.APIV1EventsIDPatchNotFound{Error: "event not found"}, nil
-		}
-		if errors.Is(err, service.ErrValidation) {
-			return &api.APIV1EventsIDPatchBadRequest{Error: err.Error()}, nil
-		}
-		return &api.APIV1EventsIDPatchInternalServerError{Error: "failed to update event"}, nil
+		return nil, err
 	}
 	event.SetStringID()
-	ae := modelEventToAPI(event)
-	return &ae, nil
+	return modelEventToAPI(event), nil
 }
 
 func (h *handlerImpl) APIV1EventsIDDelete(ctx context.Context, params api.APIV1EventsIDDeleteParams) (api.APIV1EventsIDDeleteRes, error) {
 	dbID, instanceStart, err := model.ParseEventID(params.ID)
 	if err != nil {
-		return &api.APIV1EventsIDDeleteBadRequest{Error: "invalid id"}, nil
+		return nil, badRequest("invalid id")
 	}
 	if instanceStart != "" {
 		event, err := h.svc.AddExDate(dbID, instanceStart)
 		if err != nil {
-			if errors.Is(err, service.ErrNotFound) {
-				return &api.APIV1EventsIDDeleteNotFound{Error: "event not found"}, nil
-			}
-			if errors.Is(err, service.ErrValidation) {
-				return &api.APIV1EventsIDDeleteBadRequest{Error: err.Error()}, nil
-			}
-			return &api.APIV1EventsIDDeleteInternalServerError{Error: "failed to add exception date"}, nil
+			return nil, err
 		}
 		event.SetStringID()
-		ae := modelEventToAPI(event)
-		return &ae, nil
+		return modelEventToAPI(event), nil
 	}
 	if err := h.svc.Delete(dbID); err != nil {
-		if errors.Is(err, service.ErrNotFound) {
-			return &api.APIV1EventsIDDeleteNotFound{Error: "event not found"}, nil
-		}
-		return &api.APIV1EventsIDDeleteInternalServerError{Error: "failed to delete event"}, nil
+		return nil, err
 	}
 	return &api.APIV1EventsIDDeleteNoContent{}, nil
 }
 
-func (h *handlerImpl) APIV1EventsIcsGet(ctx context.Context, params api.APIV1EventsIcsGetParams) (api.APIV1EventsIcsGetRes, error) {
-	reader, errMsg := icsResponse(h.svc, h.calSvc, params.CalendarID, params.Calendar)
-	if errMsg != "" {
-		return &api.Error{Error: errMsg}, nil
+func (h *handlerImpl) APIV1EventsIcsGet(ctx context.Context, params api.APIV1EventsIcsGetParams) (api.APIV1EventsIcsGetOK, error) {
+	reader, err := icsResponse(h.svc, h.calSvc, params.CalendarID, params.Calendar)
+	if err != nil {
+		return api.APIV1EventsIcsGetOK{}, err
 	}
-	return &api.APIV1EventsIcsGetOK{Data: reader}, nil
+	return api.APIV1EventsIcsGetOK{Data: reader}, nil
 }
 
-func (h *handlerImpl) APIV1ImportPost(ctx context.Context, req api.APIV1ImportPostReq, params api.APIV1ImportPostParams) (api.APIV1ImportPostRes, error) {
+func (h *handlerImpl) APIV1ImportPost(ctx context.Context, req api.APIV1ImportPostReq, params api.APIV1ImportPostParams) (*api.APIV1ImportPostOK, error) {
 	var reader io.Reader
 	var cleanup func()
 
@@ -612,14 +584,14 @@ func (h *handlerImpl) APIV1ImportPost(ctx context.Context, req api.APIV1ImportPo
 		reader = io.LimitReader(r.Data, maxImportSize)
 		cleanup = func() {}
 	case *api.APIV1ImportPostReqApplicationJSON:
-		body, errMsg := getImportReaderFromURL(r.URL.String())
-		if errMsg != "" {
-			return &api.APIV1ImportPostBadRequest{Error: errMsg}, nil
+		body, err := getImportReaderFromURL(r.URL.String())
+		if err != nil {
+			return nil, err
 		}
 		reader = io.LimitReader(body, maxImportSize)
 		cleanup = func() { body.Close() }
 	default:
-		return &api.APIV1ImportPostUnsupportedMediaType{Error: "Content-Type must be text/calendar or application/json"}, nil
+		return nil, unsupported("Content-Type must be text/calendar or application/json")
 	}
 	defer cleanup()
 
@@ -630,16 +602,16 @@ func (h *handlerImpl) APIV1ImportPost(ctx context.Context, req api.APIV1ImportPo
 
 	events, err := ical.Decode(reader)
 	if err != nil {
-		return &api.APIV1ImportPostBadRequest{Error: "failed to parse iCalendar data"}, nil
+		return nil, badRequest("failed to parse iCalendar data")
 	}
 	imported, err := h.svc.Import(events, calendarName)
 	if err != nil {
-		return &api.APIV1ImportPostInternalServerError{Error: "failed to import events"}, nil
+		return nil, err
 	}
 	return &api.APIV1ImportPostOK{Imported: api.NewOptInt(imported)}, nil
 }
 
-func (h *handlerImpl) APIV1ImportSinglePost(ctx context.Context, req api.APIV1ImportSinglePostReq, params api.APIV1ImportSinglePostParams) (api.APIV1ImportSinglePostRes, error) {
+func (h *handlerImpl) APIV1ImportSinglePost(ctx context.Context, req api.APIV1ImportSinglePostReq, params api.APIV1ImportSinglePostParams) (*api.Event, error) {
 	var reader io.Reader
 	var cleanup func()
 
@@ -648,14 +620,14 @@ func (h *handlerImpl) APIV1ImportSinglePost(ctx context.Context, req api.APIV1Im
 		reader = io.LimitReader(r.Data, maxImportSize)
 		cleanup = func() {}
 	case *api.APIV1ImportSinglePostReqApplicationJSON:
-		body, errMsg := getImportReaderFromURL(r.URL.String())
-		if errMsg != "" {
-			return &api.APIV1ImportSinglePostBadRequest{Error: errMsg}, nil
+		body, err := getImportReaderFromURL(r.URL.String())
+		if err != nil {
+			return nil, err
 		}
 		reader = io.LimitReader(body, maxImportSize)
 		cleanup = func() { body.Close() }
 	default:
-		return &api.APIV1ImportSinglePostUnsupportedMediaType{Error: "Content-Type must be text/calendar or application/json"}, nil
+		return nil, unsupported("Content-Type must be text/calendar or application/json")
 	}
 	defer cleanup()
 
@@ -666,120 +638,89 @@ func (h *handlerImpl) APIV1ImportSinglePost(ctx context.Context, req api.APIV1Im
 
 	events, err := ical.Decode(reader)
 	if err != nil {
-		return &api.APIV1ImportSinglePostBadRequest{Error: "failed to parse iCalendar data"}, nil
+		return nil, badRequest("failed to parse iCalendar data")
 	}
 	event, err := h.svc.ImportSingle(events, calendarName)
 	if err != nil {
-		if errors.Is(err, service.ErrValidation) {
-			return &api.APIV1ImportSinglePostBadRequest{Error: err.Error()}, nil
-		}
-		return &api.APIV1ImportSinglePostInternalServerError{Error: "failed to import event"}, nil
+		return nil, err
 	}
 	event.SetStringID()
-	ae := modelEventToAPI(event)
-	return &ae, nil
+	return modelEventToAPI(event), nil
 }
 
-func (h *handlerImpl) APIV1FeedsGet(ctx context.Context) (api.APIV1FeedsGetRes, error) {
+func (h *handlerImpl) APIV1FeedsGet(ctx context.Context) ([]api.Feed, error) {
 	feeds, err := h.feedSvc.List()
 	if err != nil {
-		return &api.Error{Error: "failed to list feeds"}, nil
+		return nil, err
 	}
-	result := make(api.APIV1FeedsGetOKApplicationJSON, len(feeds))
+	result := make([]api.Feed, len(feeds))
 	for i := range feeds {
 		feeds[i].SetStringID()
-		result[i] = modelFeedToAPI(&feeds[i])
+		result[i] = *modelFeedToAPI(&feeds[i])
 	}
-	return &result, nil
+	return result, nil
 }
 
-func (h *handlerImpl) APIV1FeedsPost(ctx context.Context, req *api.CreateFeedRequest) (api.APIV1FeedsPostRes, error) {
-	modelReq := apiCreateFeedToModel(req)
-	feed, err := h.feedSvc.Create(modelReq)
+func (h *handlerImpl) APIV1FeedsPost(ctx context.Context, req *api.CreateFeedRequest) (*api.Feed, error) {
+	feed, err := h.feedSvc.Create(apiCreateFeedToModel(req))
 	if err != nil {
-		if errors.Is(err, service.ErrValidation) {
-			return &api.APIV1FeedsPostBadRequest{Error: err.Error()}, nil
-		}
-		return &api.APIV1FeedsPostInternalServerError{Error: "failed to create feed"}, nil
+		return nil, err
 	}
 	feed.SetStringID()
-	af := modelFeedToAPI(feed)
-	return &af, nil
+	return modelFeedToAPI(feed), nil
 }
 
-func (h *handlerImpl) APIV1FeedsIDGet(ctx context.Context, params api.APIV1FeedsIDGetParams) (api.APIV1FeedsIDGetRes, error) {
+func (h *handlerImpl) APIV1FeedsIDGet(ctx context.Context, params api.APIV1FeedsIDGetParams) (*api.Feed, error) {
 	id, err := model.ParseFeedID(params.ID)
 	if err != nil {
-		return &api.APIV1FeedsIDGetNotFound{Error: "feed not found"}, nil
+		return nil, service.ErrNotFound
 	}
 	feed, err := h.feedSvc.GetByID(id)
 	if err != nil {
-		if errors.Is(err, service.ErrNotFound) {
-			return &api.APIV1FeedsIDGetNotFound{Error: "feed not found"}, nil
-		}
-		return &api.APIV1FeedsIDGetInternalServerError{Error: "failed to get feed"}, nil
+		return nil, err
 	}
 	feed.SetStringID()
-	af := modelFeedToAPI(feed)
-	return &af, nil
+	return modelFeedToAPI(feed), nil
 }
 
-func (h *handlerImpl) APIV1FeedsIDPut(ctx context.Context, req *api.UpdateFeedRequest, params api.APIV1FeedsIDPutParams) (api.APIV1FeedsIDPutRes, error) {
+func (h *handlerImpl) APIV1FeedsIDPut(ctx context.Context, req *api.UpdateFeedRequest, params api.APIV1FeedsIDPutParams) (*api.Feed, error) {
 	id, err := model.ParseFeedID(params.ID)
 	if err != nil {
-		return &api.APIV1FeedsIDPutNotFound{Error: "feed not found"}, nil
+		return nil, service.ErrNotFound
 	}
-	modelReq := apiUpdateFeedToModel(req)
-	feed, err := h.feedSvc.Update(id, modelReq)
+	feed, err := h.feedSvc.Update(id, apiUpdateFeedToModel(req))
 	if err != nil {
-		if errors.Is(err, service.ErrNotFound) {
-			return &api.APIV1FeedsIDPutNotFound{Error: "feed not found"}, nil
-		}
-		if errors.Is(err, service.ErrValidation) {
-			return &api.APIV1FeedsIDPutBadRequest{Error: err.Error()}, nil
-		}
-		return &api.APIV1FeedsIDPutInternalServerError{Error: "failed to update feed"}, nil
+		return nil, err
 	}
 	feed.SetStringID()
-	af := modelFeedToAPI(feed)
-	return &af, nil
+	return modelFeedToAPI(feed), nil
 }
 
-func (h *handlerImpl) APIV1FeedsIDDelete(ctx context.Context, params api.APIV1FeedsIDDeleteParams) (api.APIV1FeedsIDDeleteRes, error) {
+func (h *handlerImpl) APIV1FeedsIDDelete(ctx context.Context, params api.APIV1FeedsIDDeleteParams) error {
 	id, err := model.ParseFeedID(params.ID)
 	if err != nil {
-		return &api.APIV1FeedsIDDeleteNotFound{Error: "feed not found"}, nil
+		return service.ErrNotFound
 	}
-	if err := h.feedSvc.Delete(id); err != nil {
-		if errors.Is(err, service.ErrNotFound) {
-			return &api.APIV1FeedsIDDeleteNotFound{Error: "feed not found"}, nil
-		}
-		return &api.APIV1FeedsIDDeleteInternalServerError{Error: "failed to delete feed"}, nil
-	}
-	return &api.APIV1FeedsIDDeleteNoContent{}, nil
+	return h.feedSvc.Delete(id)
 }
 
-func (h *handlerImpl) APIV1FeedsIDRefreshPost(ctx context.Context, params api.APIV1FeedsIDRefreshPostParams) (api.APIV1FeedsIDRefreshPostRes, error) {
+func (h *handlerImpl) APIV1FeedsIDRefreshPost(ctx context.Context, params api.APIV1FeedsIDRefreshPostParams) (*api.Feed, error) {
 	id, err := model.ParseFeedID(params.ID)
 	if err != nil {
-		return &api.APIV1FeedsIDRefreshPostNotFound{Error: "feed not found"}, nil
+		return nil, service.ErrNotFound
 	}
 	feed, err := h.feedSvc.RefreshFeed(id)
 	if err != nil {
-		if errors.Is(err, service.ErrNotFound) {
-			return &api.APIV1FeedsIDRefreshPostNotFound{Error: "feed not found"}, nil
-		}
-		return &api.APIV1FeedsIDRefreshPostInternalServerError{Error: "failed to refresh feed"}, nil
+		return nil, err
 	}
 	feed.SetStringID()
-	af := modelFeedToAPI(feed)
-	return &af, nil
+	return modelFeedToAPI(feed), nil
 }
 
-func (h *handlerImpl) CalendarIcsGet(ctx context.Context, params api.CalendarIcsGetParams) (api.CalendarIcsGetRes, error) {
-	reader, errMsg := icsResponse(h.svc, h.calSvc, params.CalendarID, params.Calendar)
-	if errMsg != "" {
-		return &api.Error{Error: errMsg}, nil
+func (h *handlerImpl) CalendarIcsGet(ctx context.Context, params api.CalendarIcsGetParams) (api.CalendarIcsGetOK, error) {
+	reader, err := icsResponse(h.svc, h.calSvc, params.CalendarID, params.Calendar)
+	if err != nil {
+		return api.CalendarIcsGetOK{}, err
 	}
-	return &api.CalendarIcsGetOK{Data: reader}, nil
+	return api.CalendarIcsGetOK{Data: reader}, nil
 }
