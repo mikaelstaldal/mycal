@@ -6,7 +6,7 @@ require (
 	github.com/go-faster/errors v0.7.1
 	github.com/go-faster/jx v1.2.0
 	github.com/microcosm-cc/bluemonday v1.0.27
-	github.com/mikaelstaldal/go-server-common v1.0.0
+	github.com/mikaelstaldal/go-server-common v1.1.0
 	github.com/ogen-go/ogen v1.20.2
 	modernc.org/sqlite v1.48.1
 )

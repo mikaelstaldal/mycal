@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/mikaelstaldal/go-server-common/auth"
+	"github.com/mikaelstaldal/go-server-common/csrf"
 	"github.com/mikaelstaldal/mycal/internal/handler"
 	"github.com/mikaelstaldal/mycal/internal/ical"
 	"github.com/mikaelstaldal/mycal/internal/repository"
@@ -147,7 +148,7 @@ func main() {
 	}
 	mux.Handle("/", http.FileServer(http.FS(staticFS)))
 
-	var root http.Handler = handler.SecurityHeadersMiddleware(mux)
+	var root http.Handler = handler.SecurityHeadersMiddleware(csrf.Middleware(mux))
 	if authMiddleware != nil {
 		root = authMiddleware(root)
 	}
