@@ -5,14 +5,12 @@ This file provides guidance to AI coding agents when working with code in this r
 ## Build & Run
 
 ```bash
-./build.sh -o /tmp/claude/mycal                   # compile TypeScript, generate API code, build binary (preferred)
-/tmp/claude/mycal                                 # serves on :8080
-/tmp/claude/mycal -port 3000 -data /path/to/data  # custom address and data path
+./build.sh                              # compile TypeScript, generate API code, build binary
+./mycal                                 # serves on :8080
+./mycal -port 3000 -data /path/to/data  # custom address and data path
 ```
 
 `tsc` must be on `$PATH`
-
-The coding agent should always compile the application into `/tmp/claude` and run it from there.
 
 ## Code generation
 
@@ -37,7 +35,7 @@ Playwright end-to-end tests live in `e2e/`. The server must be running on port 8
 
 ```bash
 # Start server for E2E tests (use a separate DB to avoid interference)
-/tmp/claude/mycal -port 8089 -data /tmp/claude/ &
+./mycal -port 8089 -data /tmp/claude/ &
 
 # Run tests
 cd e2e && playwright-test
