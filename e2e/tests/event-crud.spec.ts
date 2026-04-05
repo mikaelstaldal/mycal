@@ -47,7 +47,7 @@ test.describe('Event CRUD', () => {
     // Dialog opens with event details
     const dialog = page.locator('dialog.event-dialog');
     await expect(dialog).toBeVisible();
-    await expect(dialog.getByRole('textbox', { name: 'Title' })).toHaveValue('Existing Event');
+    await expect(dialog.locator('h3.event-title-display')).toHaveText('Existing Event');
   });
 
   test('edit event title', async ({ page, request }) => {

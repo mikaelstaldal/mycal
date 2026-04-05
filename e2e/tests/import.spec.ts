@@ -32,8 +32,18 @@ test.describe('Import', () => {
 
     // Navigate to March 2026 to see the imported event
     const heading = page.locator('nav h1');
+    const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
     while (!(await heading.textContent())?.includes('March 2026')) {
-      await page.getByRole('button', { name: '▶' }).click();
+      const text = await heading.textContent() || '';
+      const parts = text.trim().split(' ');
+      const monthIdx = monthNames.indexOf(parts[0]);
+      const yearNum = parseInt(parts[1]);
+      const isAfterTarget = yearNum > 2026 || (yearNum === 2026 && monthIdx > 2);
+      if (isAfterTarget) {
+        await page.locator('nav.nav').getByRole('button', { name: '◀' }).click();
+      } else {
+        await page.locator('nav.nav').getByRole('button', { name: '▶' }).click();
+      }
       await page.waitForTimeout(100);
     }
 

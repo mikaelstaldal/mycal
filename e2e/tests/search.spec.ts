@@ -61,7 +61,7 @@ test.describe('Search', () => {
 
     const dialog = page.locator('dialog.event-dialog');
     await expect(dialog).toBeVisible();
-    await expect(dialog.getByRole('textbox', { name: 'Title' })).toHaveValue('Clickable Event');
+    await expect(dialog.locator('h3.event-title-display')).toHaveText('Clickable Event');
   });
 
   test('clear search returns to calendar view', async ({ page, request }) => {
