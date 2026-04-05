@@ -1,4 +1,4 @@
-import type { CalendarEvent, CalendarMeta, Feed, Preferences } from '../types/models.js';
+import type { CalendarEvent, CalendarMeta, Feed, Preferences, CreateEventRequest, UpdateEventRequest, CreateFeedRequest, UpdateCalendarRequest } from '../types/models.js';
 
 // Derive base path from document base URI so the app works behind a reverse proxy on a sub-path.
 const APP_BASE = new URL('.', document.baseURI).pathname.replace(/\/$/, '');
@@ -22,7 +22,7 @@ export async function getEvent(id: string): Promise<CalendarEvent> {
     return res.json();
 }
 
-export async function createEvent(data: Partial<CalendarEvent>): Promise<CalendarEvent> {
+export async function createEvent(data: CreateEventRequest): Promise<CalendarEvent> {
     const res = await fetch(BASE, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -32,7 +32,7 @@ export async function createEvent(data: Partial<CalendarEvent>): Promise<Calenda
     return res.json();
 }
 
-export async function updateEvent(id: string, data: Partial<CalendarEvent>): Promise<CalendarEvent> {
+export async function updateEvent(id: string, data: UpdateEventRequest): Promise<CalendarEvent> {
     const res = await fetch(`${BASE}/${encodeURIComponent(id)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -92,7 +92,7 @@ export async function listFeeds(): Promise<Feed[]> {
     return res.json();
 }
 
-export async function createFeed(data: Partial<Feed>): Promise<Feed> {
+export async function createFeed(data: CreateFeedRequest): Promise<Feed> {
     const res = await fetch(FEEDS_BASE, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -135,7 +135,7 @@ export async function listCalendars(): Promise<CalendarMeta[]> {
     return res.json();
 }
 
-export async function updateCalendar(id: number, data: Partial<CalendarMeta>): Promise<CalendarMeta> {
+export async function updateCalendar(id: number, data: UpdateCalendarRequest): Promise<CalendarMeta> {
     const res = await fetch(`${CALENDARS_BASE}/${encodeURIComponent(id)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },

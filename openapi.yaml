@@ -330,7 +330,8 @@ paths:
           in: path
           required: true
           schema:
-            type: string
+            type: integer
+            format: int64
       responses:
         "200":
           description: The feed
@@ -347,7 +348,8 @@ paths:
           in: path
           required: true
           schema:
-            type: string
+            type: integer
+            format: int64
       requestBody:
         required: true
         content:
@@ -370,7 +372,8 @@ paths:
           in: path
           required: true
           schema:
-            type: string
+            type: integer
+            format: int64
       responses:
         "204":
           description: Feed deleted
@@ -384,7 +387,8 @@ paths:
           in: path
           required: true
           schema:
-            type: string
+            type: integer
+            format: int64
       responses:
         "200":
           description: Feed after refresh (includes updated last_refreshed_at and last_error)
@@ -514,7 +518,8 @@ components:
       type: object
       properties:
         id:
-          type: string
+          type: integer
+          format: int64
           readOnly: true
         url:
           type: string

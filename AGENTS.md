@@ -10,13 +10,19 @@ This file provides guidance to AI coding agents when working with code in this r
 ./mycal -port 3000 -data /path/to/data  # custom address and data path
 ```
 
-`tsc` must be on `$PATH`
+`ogen`, `tsc` and `openapi-typescript` must be on `$PATH`
 
 ## Code generation
 
-The HTTP server stubs in `internal/api/` are generated from `openapi.yaml` using [ogen](https://ogen.dev/).
+Two code generation steps run automatically in `build.sh`:
 
-**Rules:**
+**TypeScript types from OpenAPI** (`openapi-typescript`):
+- `web/ts/types/api.d.ts` is generated from `openapi.yaml` by `openapi-typescript` — never manually edit it.
+- `web/ts/types/models.d.ts` re-exports the generated types under the names used by the frontend.
+- After changing `openapi.yaml`, run `openapi-typescript openapi.yaml -o web/ts/types/api.d.ts` (or `./build.sh`) before running `tsc`.
+
+**Go HTTP server stubs** (`ogen`):
+- `internal/api/` is generated from `openapi.yaml` using [ogen](https://ogen.dev/).
 - Always run `go generate ./...` (or `./build.sh`) before building after changing `openapi.yaml`.
 - Never manually edit any file in `internal/api/` — all changes are overwritten by `go generate`.
 - To add or change API behaviour, edit `openapi.yaml` and regenerate, then update the implementation in `internal/handler/impl.go`.

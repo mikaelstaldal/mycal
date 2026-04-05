@@ -16,3 +16,4 @@ DONE.md
 web/static/app.js
 web/static/lib/*.js
 web/static/components/*.js
+web/ts/types/api.d.ts

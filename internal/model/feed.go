@@ -1,13 +1,9 @@
 package model
 
-import (
-	"fmt"
-	"strconv"
-)
+import "fmt"
 
 type Feed struct {
 	ID                     int64
-	StringID               string
 	URL                    string
 	CalendarID             int64
 	CalendarName           string
@@ -17,18 +13,6 @@ type Feed struct {
 	Enabled                bool
 	CreatedAt              string
 	UpdatedAt              string
-}
-
-func (f *Feed) SetStringID() {
-	f.StringID = strconv.FormatInt(f.ID, 10)
-}
-
-func FormatFeedID(id int64) string {
-	return strconv.FormatInt(id, 10)
-}
-
-func ParseFeedID(s string) (int64, error) {
-	return strconv.ParseInt(s, 10, 64)
 }
 
 const (

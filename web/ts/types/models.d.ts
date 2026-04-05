@@ -1,52 +1,18 @@
-export interface CalendarEvent {
-  id: string;
-  title: string;
-  description: string;
-  start_time: string;
-  end_time: string;
-  all_day: boolean;
-  color: string;
-  calendar_id: number;
-  location?: string;
-  latitude?: number | null;
-  longitude?: number | null;
-  reminder_minutes?: number | null;
-  recurrence_freq?: string;
-  recurrence_count?: number;
-  recurrence_until?: string;
-  recurrence_interval?: number;
-  recurrence_by_day?: string;
-  recurrence_by_monthday?: string;
-  recurrence_by_month?: string;
-  exdates?: string;
-  rdates?: string;
-  duration?: string;
-  categories?: string;
-  url?: string;
-  parent_id?: string;
-  recurrence_parent_id?: string;
-  _editInstance?: boolean;
-}
+import type { components } from './api.js';
 
-export interface CalendarMeta {
-  id: number;
-  name: string;
-  color: string;
-}
+// API schema types — generated from openapi.yaml via openapi-typescript
+export type CalendarEvent = components['schemas']['Event'] & { _editInstance?: boolean };
+export type CalendarMeta = components['schemas']['Calendar'];
+export type Feed = components['schemas']['Feed'];
+export type Preferences = components['schemas']['Preferences'];
 
-export interface Feed {
-  id: number;
-  url: string;
-  name: string;
-  color: string;
-  last_refreshed?: string;
-  calendar_name?: string;
-  refresh_interval_minutes?: number;
-  last_refreshed_at?: string;
-  enabled?: boolean;
-  last_error?: string;
-}
+// Request types
+export type CreateEventRequest = components['schemas']['CreateEventRequest'];
+export type UpdateEventRequest = components['schemas']['UpdateEventRequest'];
+export type CreateFeedRequest = components['schemas']['CreateFeedRequest'];
+export type UpdateCalendarRequest = components['schemas']['UpdateCalendarRequest'];
 
+// AppConfig is app-level configuration, not part of the API
 export interface AppConfig {
   defaultView: 'year' | 'month' | 'week' | 'day' | 'schedule';
   dayStartHour: number;
@@ -55,10 +21,4 @@ export interface AppConfig {
   mapProvider: 'none' | 'openstreetmap' | 'google';
   googleMapsApiKey: string;
   calendarColors?: Record<number, string>;
-}
-
-export interface Preferences {
-  weekStartDay?: number;
-  reminders?: boolean;
-  [key: string]: any;
 }

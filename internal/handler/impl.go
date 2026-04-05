@@ -154,7 +154,7 @@ func modelEventToAPI(e *model.Event) *api.Event {
 func modelFeedToAPI(f *model.Feed) *api.Feed {
 	feedURL, _ := url.Parse(f.URL)
 	af := &api.Feed{
-		ID:  f.StringID,
+		ID:  f.ID,
 		URL: *feedURL,
 	}
 	if f.CalendarID != 0 {
@@ -655,7 +655,6 @@ func (h *handlerImpl) APIV1FeedsGet(ctx context.Context) ([]api.Feed, error) {
 	}
 	result := make([]api.Feed, len(feeds))
 	for i := range feeds {
-		feeds[i].SetStringID()
 		result[i] = *modelFeedToAPI(&feeds[i])
 	}
 	return result, nil
@@ -666,54 +665,34 @@ func (h *handlerImpl) APIV1FeedsPost(ctx context.Context, req *api.CreateFeedReq
 	if err != nil {
 		return nil, err
 	}
-	feed.SetStringID()
 	return modelFeedToAPI(feed), nil
 }
 
 func (h *handlerImpl) APIV1FeedsIDGet(ctx context.Context, params api.APIV1FeedsIDGetParams) (*api.Feed, error) {
-	id, err := model.ParseFeedID(params.ID)
-	if err != nil {
-		return nil, service.ErrNotFound
-	}
-	feed, err := h.feedSvc.GetByID(id)
+	feed, err := h.feedSvc.GetByID(params.ID)
 	if err != nil {
 		return nil, err
 	}
-	feed.SetStringID()
 	return modelFeedToAPI(feed), nil
 }
 
 func (h *handlerImpl) APIV1FeedsIDPut(ctx context.Context, req *api.UpdateFeedRequest, params api.APIV1FeedsIDPutParams) (*api.Feed, error) {
-	id, err := model.ParseFeedID(params.ID)
-	if err != nil {
-		return nil, service.ErrNotFound
-	}
-	feed, err := h.feedSvc.Update(id, apiUpdateFeedToModel(req))
+	feed, err := h.feedSvc.Update(params.ID, apiUpdateFeedToModel(req))
 	if err != nil {
 		return nil, err
 	}
-	feed.SetStringID()
 	return modelFeedToAPI(feed), nil
 }
 
 func (h *handlerImpl) APIV1FeedsIDDelete(ctx context.Context, params api.APIV1FeedsIDDeleteParams) error {
-	id, err := model.ParseFeedID(params.ID)
-	if err != nil {
-		return service.ErrNotFound
-	}
-	return h.feedSvc.Delete(id)
+	return h.feedSvc.Delete(params.ID)
 }
 
 func (h *handlerImpl) APIV1FeedsIDRefreshPost(ctx context.Context, params api.APIV1FeedsIDRefreshPostParams) (*api.Feed, error) {
-	id, err := model.ParseFeedID(params.ID)
-	if err != nil {
-		return nil, service.ErrNotFound
-	}
-	feed, err := h.feedSvc.RefreshFeed(id)
+	feed, err := h.feedSvc.RefreshFeed(params.ID)
 	if err != nil {
 		return nil, err
 	}
-	feed.SetStringID()
 	return modelFeedToAPI(feed), nil
 }
 
