@@ -1,5 +1,5 @@
+import { h } from 'preact';
 import type { VNode } from 'preact';
-import { html } from 'htm/preact';
 import { formatMonthYear, formatWeekRange, formatDayHeading } from '../lib/date-utils.js';
 
 interface NavProps {
@@ -23,19 +23,19 @@ export function Nav({ currentDate, onPrev, onNext, onToday, viewMode, onViewChan
         ? String(currentDate.getFullYear())
         : formatMonthYear(currentDate);
 
-    return html`
+    return (
         <nav class="nav">
-            <button onClick=${onToday}>Today</button>
-            <button onClick=${onPrev}>\u25C0</button>
-            <button onClick=${onNext}>\u25B6</button>
+            <button onClick={onToday}>Today</button>
+            <button onClick={onPrev}>&#x25C0;</button>
+            <button onClick={onNext}>&#x25B6;</button>
             <div class="view-toggle">
-                <button class=${viewMode === 'year' ? 'active' : ''} onClick=${() => onViewChange('year')}>Year</button>
-                <button class=${viewMode === 'month' ? 'active' : ''} onClick=${() => onViewChange('month')}>Month</button>
-                <button class=${viewMode === 'week' ? 'active' : ''} onClick=${() => onViewChange('week')}>Week</button>
-                <button class=${viewMode === 'day' ? 'active' : ''} onClick=${() => onViewChange('day')}>Day</button>
-                <button class=${viewMode === 'schedule' ? 'active' : ''} onClick=${() => onViewChange('schedule')}>Schedule</button>
+                <button class={viewMode === 'year' ? 'active' : ''} onClick={() => onViewChange('year')}>Year</button>
+                <button class={viewMode === 'month' ? 'active' : ''} onClick={() => onViewChange('month')}>Month</button>
+                <button class={viewMode === 'week' ? 'active' : ''} onClick={() => onViewChange('week')}>Week</button>
+                <button class={viewMode === 'day' ? 'active' : ''} onClick={() => onViewChange('day')}>Day</button>
+                <button class={viewMode === 'schedule' ? 'active' : ''} onClick={() => onViewChange('schedule')}>Schedule</button>
             </div>
-            <h1>${heading}</h1>
+            <h1>{heading}</h1>
         </nav>
-    ` as VNode;
+    );
 }

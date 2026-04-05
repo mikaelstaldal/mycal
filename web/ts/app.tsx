@@ -1,4 +1,4 @@
-import { html, render } from 'htm/preact';
+import { h, render } from 'preact';
 import { useState, useEffect, useCallback, useRef } from 'preact/hooks';
 import { Nav } from './components/nav.js';
 import { Calendar } from './components/calendar.js';
@@ -46,7 +46,7 @@ function App() {
     const [isDragging, setIsDragging] = useState(false);
     const dragCounter = useRef(0);
     const [calendars, setCalendars] = useState<CalendarMeta[]>([]);
-    const [selectedCalendarIds, setSelectedCalendarIds] = useState<number[] | null>(null); // null = all
+    const [selectedCalendarIds, setSelectedCalendarIds] = useState<number[] | null>(null);
     const [scheduleDaysLoaded, setScheduleDaysLoaded] = useState(30);
     const [loadingMoreSchedule, setLoadingMoreSchedule] = useState(false);
 
@@ -59,7 +59,6 @@ function App() {
         try {
             const cals = await listCalendars();
             setCalendars(cals);
-            // Set default event color from default calendar (id=0)
             const defaultCal = cals.find(c => c.id === 0);
             const calColors: Record<number, string> = {};
             for (const c of cals) { calColors[c.id] = c.color; }
@@ -108,12 +107,10 @@ function App() {
 
     useEffect(() => { loadEvents(); }, [loadEvents]);
 
-    // Reset schedule days loaded when switching away from schedule view
     useEffect(() => {
         if (viewMode === 'schedule') setScheduleDaysLoaded(30);
     }, [viewMode]);
 
-    // Auto-clear highlight after 2 seconds
     useEffect(() => {
         if (!highlightEventId) return;
         const timer = setTimeout(() => setHighlightEventId(null), 2000);
@@ -147,7 +144,6 @@ function App() {
     function handleToggleCalendar(calId: number) {
         setSelectedCalendarIds(prev => {
             if (prev === null) {
-                // Currently showing all - switch to all except this one
                 const allIds = calendars.map(c => c.id);
                 return allIds.filter(id => id !== calId);
             }
@@ -156,7 +152,6 @@ function App() {
                 return next.length === 0 ? [] : next;
             }
             const next = [...prev, calId];
-            // If all are selected, switch back to null (all)
             if (next.length === calendars.length) return null;
             return next;
         });
@@ -224,14 +219,12 @@ function App() {
 
     async function handleEventClick(event: CalendarEvent) {
         if (event.recurrence_parent_id) {
-            // This is an override instance - edit it directly
             setSelectedEvent(event);
             setDefaultDate(null);
             setShowForm(true);
             return;
         }
         if (event.recurrence_freq && event.parent_id) {
-            // Recurring instance (not the first one) - ask user what to edit
             const parentId = event.parent_id;
             const choice = await showChoice('What would you like to edit?', {
                 title: 'Edit Recurring Event',
@@ -242,11 +235,9 @@ function App() {
             });
             if (choice === null) return;
             if (choice === 'instance') {
-                // Edit single instance - composite ID encodes the instance
                 (event as any)._editInstance = true;
                 setSelectedEvent(event);
             } else {
-                // Edit all - fetch parent
                 try {
                     const parent = await getEvent(parentId);
                     setSelectedEvent(parent);
@@ -323,7 +314,6 @@ function App() {
         setViewMode(preSearchViewMode.current || viewMode);
         setHighlightEventId(event.id + '|' + event.start_time);
         clearSearch();
-        // Open the event dialog with details
         setSelectedEvent(event);
         setDefaultDate(null);
         setShowForm(true);
@@ -400,119 +390,119 @@ function App() {
                e.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
     }
 
-    return html`
-        <div class="app${isDragging ? ' drag-over' : ''}"
-             onDragOver=${handleDragOver} onDragEnter=${handleDragEnter}
-             onDragLeave=${handleDragLeave} onDrop=${handleDrop}>
+    return (
+        <div class={`app${isDragging ? ' drag-over' : ''}`}
+             onDragOver={handleDragOver} onDragEnter={handleDragEnter}
+             onDragLeave={handleDragLeave} onDrop={handleDrop}>
             <div class="top-bar">
-                <${Nav} currentDate=${currentDate}
-                        onPrev=${handlePrev} onNext=${handleNext} onToday=${handleToday}
-                        viewMode=${viewMode} onViewChange=${handleViewChange}
-                        weekStartDay=${config.weekStartDay} />
+                <Nav currentDate={currentDate}
+                     onPrev={handlePrev} onNext={handleNext} onToday={handleToday}
+                     viewMode={viewMode} onViewChange={handleViewChange}
+                     weekStartDay={config.weekStartDay} />
                 <div class="top-bar-actions">
                     <input type="search" class="search-input" placeholder="Search events..."
-                           value=${searchQuery} onInput=${handleSearchInput} />
-                    <button class="dark-mode-btn" onClick=${() => setDarkMode(d => !d)} title=${darkMode ? 'Switch to light mode' : 'Switch to dark mode'}>
-                        ${darkMode ? '\u2600\uFE0E' : '\u263E\uFE0E'}
+                           value={searchQuery} onInput={handleSearchInput} />
+                    <button class="dark-mode-btn" onClick={() => setDarkMode(d => !d)} title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}>
+                        {darkMode ? '☀︎' : '☾︎'}
                     </button>
-                    <button class="settings-btn" onClick=${() => { loadEvents(); loadCalendars(); }} title="Refresh">
-                        \u21BB
+                    <button class="settings-btn" onClick={() => { loadEvents(); loadCalendars(); }} title="Refresh">
+                        ↻
                     </button>
-                    <button class="settings-btn" onClick=${() => setShowImportSingle(true)} title="Import Event">
-                        \u2B07\uFE0E
+                    <button class="settings-btn" onClick={() => setShowImportSingle(true)} title="Import Event">
+                        ⬇︎
                     </button>
-                    <button class="settings-btn" onClick=${() => setShowImportBulk(true)} title="Bulk Import">
-                        \u21CA\uFE0E
+                    <button class="settings-btn" onClick={() => setShowImportBulk(true)} title="Bulk Import">
+                        ⇊︎
                     </button>
-                    <button class="settings-btn" onClick=${() => setShowFeeds(true)} title="Feed Subscriptions">
-                        \u{1F517}\uFE0E
+                    <button class="settings-btn" onClick={() => setShowFeeds(true)} title="Feed Subscriptions">
+                        🔗︎
                     </button>
-                    <${Settings} config=${config} onConfigChange=${setConfig} />
+                    <Settings config={config} onConfigChange={setConfig} />
                 </div>
             </div>
             <div class="app-layout">
                 <div class="left-sidebar">
-                    <${MiniMonth} currentDate=${currentDate}
-                                  onDayClick=${handleYearDayClick}
-                                  onMonthClick=${handleYearMonthClick}
-                                  config=${config} />
-                    ${calendars.length > 1 ? html`
-                        <${CalendarSidebar} calendars=${calendars}
-                                            selectedCalendarIds=${selectedCalendarIds}
-                                            onToggleCalendar=${handleToggleCalendar}
-                                            onToggleAll=${handleToggleAll}
-                                            onEditCalendar=${handleEditCalendar} />
-                    ` : null}
+                    <MiniMonth currentDate={currentDate}
+                               onDayClick={handleYearDayClick}
+                               onMonthClick={handleYearMonthClick}
+                               config={config} />
+                    {calendars.length > 1 ? (
+                        <CalendarSidebar calendars={calendars}
+                                         selectedCalendarIds={selectedCalendarIds}
+                                         onToggleCalendar={handleToggleCalendar}
+                                         onToggleAll={handleToggleAll}
+                                         onEditCalendar={handleEditCalendar} />
+                    ) : null}
                 </div>
                 <div class="app-main">
-                    ${searchResults !== null ? html`
+                    {searchResults !== null ? (
                         <div class="search-results">
                             <div class="search-results-header">
-                                <span>Search results for "${searchQuery}"</span>
-                                <button class="search-clear-btn" onClick=${clearSearch} title="Clear search">\u2715</button>
+                                <span>Search results for "{searchQuery}"</span>
+                                <button class="search-clear-btn" onClick={clearSearch} title="Clear search">&#x2715;</button>
                             </div>
-                            ${searchResults.length === 0 ? html`
+                            {searchResults.length === 0 ? (
                                 <div class="search-empty">No events found</div>
-                            ` : searchResults.map(event => html`
-                                <div class="search-result-item${new Date(event.end_time) < new Date() ? ' search-result-past' : ''}" key=${event.id}
-                                     onClick=${() => handleSearchResultClick(event)}>
-                                    <div class="search-result-title">${event.title}</div>
-                                    <div class="search-result-date">${formatSearchDate(event.start_time)}</div>
-                                    <div class="search-result-time">${formatSearchTime(event.start_time, event.end_time)}</div>
-                                    ${event.description && html`<div class="search-result-desc" dangerouslySetInnerHTML=${{ __html: event.description }} />`}
+                            ) : searchResults.map(event => (
+                                <div class={`search-result-item${new Date(event.end_time) < new Date() ? ' search-result-past' : ''}`} key={event.id}
+                                     onClick={() => handleSearchResultClick(event)}>
+                                    <div class="search-result-title">{event.title}</div>
+                                    <div class="search-result-date">{formatSearchDate(event.start_time)}</div>
+                                    <div class="search-result-time">{formatSearchTime(event.start_time, event.end_time)}</div>
+                                    {event.description && <div class="search-result-desc" dangerouslySetInnerHTML={{ __html: event.description }} />}
                                 </div>
-                            `)}
+                            ))}
                         </div>
-                    ` : viewMode === 'year' ? html`
-                        <${YearView} currentDate=${currentDate} events=${events}
-                                     onMonthClick=${handleYearMonthClick} onWeekClick=${handleYearWeekClick}
-                                     onDayClick=${handleYearDayClick} config=${config}
-                                     highlightEventId=${highlightEventId} />
-                    ` : viewMode === 'schedule' ? html`
-                        <${ScheduleView} currentDate=${currentDate} events=${events}
-                                         onEventClick=${handleEventClick} onDayClick=${handleDayClick} config=${config}
-                                         onLoadMore=${loadMoreScheduleEvents} daysLoaded=${scheduleDaysLoaded}
-                                         highlightEventId=${highlightEventId} />
-                    ` : viewMode === 'day' ? html`
-                        <${DayView} currentDate=${currentDate} events=${events}
-                                    onDayClick=${handleDayClick} onEventClick=${handleEventClick}
-                                    onAllDayClick=${handleAllDayClick} onEventDrag=${handleEventDrag} config=${config}
-                                    highlightEventId=${highlightEventId} />
-                    ` : viewMode === 'week' ? html`
-                        <${WeekView} currentDate=${currentDate} events=${events}
-                                     onDayClick=${handleDayClick} onEventClick=${handleEventClick}
-                                     onAllDayClick=${handleAllDayClick} onEventDrag=${handleEventDrag} config=${config}
-                                     highlightEventId=${highlightEventId} />
-                    ` : html`
-                        <${Calendar} currentDate=${currentDate} events=${events}
-                                     onDayClick=${handleDayClick} onEventClick=${handleEventClick}
-                                     onWeekClick=${handleYearWeekClick}
-                                     config=${config}
-                                     highlightEventId=${highlightEventId} />
-                    `}
+                    ) : viewMode === 'year' ? (
+                        <YearView currentDate={currentDate} events={events}
+                                  onMonthClick={handleYearMonthClick} onWeekClick={handleYearWeekClick}
+                                  onDayClick={handleYearDayClick} config={config}
+                                  highlightEventId={highlightEventId} />
+                    ) : viewMode === 'schedule' ? (
+                        <ScheduleView currentDate={currentDate} events={events}
+                                      onEventClick={handleEventClick} onDayClick={handleDayClick} config={config}
+                                      onLoadMore={loadMoreScheduleEvents} daysLoaded={scheduleDaysLoaded}
+                                      highlightEventId={highlightEventId} />
+                    ) : viewMode === 'day' ? (
+                        <DayView currentDate={currentDate} events={events}
+                                 onDayClick={handleDayClick} onEventClick={handleEventClick}
+                                 onAllDayClick={handleAllDayClick} onEventDrag={handleEventDrag} config={config}
+                                 highlightEventId={highlightEventId} />
+                    ) : viewMode === 'week' ? (
+                        <WeekView currentDate={currentDate} events={events}
+                                  onDayClick={handleDayClick} onEventClick={handleEventClick}
+                                  onAllDayClick={handleAllDayClick} onEventDrag={handleEventDrag} config={config}
+                                  highlightEventId={highlightEventId} />
+                    ) : (
+                        <Calendar currentDate={currentDate} events={events}
+                                  onDayClick={handleDayClick} onEventClick={handleEventClick}
+                                  onWeekClick={handleYearWeekClick}
+                                  config={config}
+                                  highlightEventId={highlightEventId} />
+                    )}
                 </div>
             </div>
-            ${showForm && html`
-                <${EventForm} event=${selectedEvent} defaultDate=${defaultDate}
-                              defaultAllDay=${defaultAllDay}
-                              onSave=${handleSave} onDelete=${handleDelete} onClose=${handleClose}
-                              config=${config} />
-            `}
-            ${showImportSingle && html`
-                <${ImportSingleForm} onImported=${(message: string, isError?: boolean) => { setShowImportSingle(false); if (!isError) loadEvents(); setToastError(!!isError); setToast(message); }}
-                                     onClose=${() => setShowImportSingle(false)} />
-            `}
-            ${showImportBulk && html`
-                <${ImportBulkForm} onImported=${(message: string, isError?: boolean) => { setShowImportBulk(false); if (!isError) loadEvents(); setToastError(!!isError); setToast(message); }}
-                                   onClose=${() => setShowImportBulk(false)} />
-            `}
-            ${showFeeds && html`
-                <${FeedsDialog} onClose=${() => setShowFeeds(false)}
-                                onRefreshed=${() => { loadEvents(); loadCalendars(); }} />
-            `}
-            ${toast && html`<${Toast} message=${toast} isError=${toastError} onDone=${() => setToast(null)} />`}
+            {showForm && (
+                <EventForm event={selectedEvent} defaultDate={defaultDate}
+                           defaultAllDay={defaultAllDay}
+                           onSave={handleSave} onDelete={handleDelete} onClose={handleClose}
+                           config={config} />
+            )}
+            {showImportSingle && (
+                <ImportSingleForm onImported={(message: string, isError?: boolean) => { setShowImportSingle(false); if (!isError) loadEvents(); setToastError(!!isError); setToast(message); }}
+                                  onClose={() => setShowImportSingle(false)} />
+            )}
+            {showImportBulk && (
+                <ImportBulkForm onImported={(message: string, isError?: boolean) => { setShowImportBulk(false); if (!isError) loadEvents(); setToastError(!!isError); setToast(message); }}
+                                onClose={() => setShowImportBulk(false)} />
+            )}
+            {showFeeds && (
+                <FeedsDialog onClose={() => setShowFeeds(false)}
+                             onRefreshed={() => { loadEvents(); loadCalendars(); }} />
+            )}
+            {toast && <Toast message={toast} isError={toastError} onDone={() => setToast(null)} />}
         </div>
-    `;
+    );
 }
 
-render(html`<${App} />` as any, document.getElementById('app'));
+render(<App /> as any, document.getElementById('app'));

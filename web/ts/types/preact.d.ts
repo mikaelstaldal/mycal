@@ -34,6 +34,8 @@ declare module 'preact' {
 
   export function createRef<T = any>(): RefObject<T>;
 
+  export const Fragment: ComponentType<{ children?: ComponentChildren }>;
+
   export class Component<P = {}, S = {}> {
     props: P;
     state: S;

@@ -1,10 +1,9 @@
+import { h } from 'preact';
 import type { VNode } from 'preact';
-import { html } from 'htm/preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 
 declare const google: any;
 
-// Google Maps loader
 let mapsLoadPromise: Promise<void> | null = null;
 let mapsLoaded = false;
 
@@ -22,7 +21,6 @@ function loadGoogleMaps(apiKey: string): Promise<void> {
     return mapsLoadPromise;
 }
 
-// Leaflet loader
 let leafletLoadPromise: Promise<void> | null = null;
 let leafletLoaded = false;
 
@@ -30,13 +28,11 @@ function loadLeaflet(): Promise<void> {
     if (leafletLoaded) return Promise.resolve();
     if (leafletLoadPromise) return leafletLoadPromise;
     leafletLoadPromise = new Promise((resolve, reject) => {
-        // Load CSS
         const link = document.createElement('link');
         link.rel = 'stylesheet';
         link.href = 'vendor/leaflet.css';
         document.head.appendChild(link);
 
-        // Load JS
         const script = document.createElement('script');
         script.src = 'vendor/leaflet.js';
         script.async = true;
@@ -47,7 +43,7 @@ function loadLeaflet(): Promise<void> {
     return leafletLoadPromise;
 }
 
-const DEFAULT_CENTER = { lat: 59.3293, lng: 18.0686 }; // Stockholm
+const DEFAULT_CENTER = { lat: 59.3293, lng: 18.0686 };
 
 interface MapPickerProps {
     mapProvider: string;
@@ -70,7 +66,6 @@ export function MapPicker({ mapProvider, apiKey, latitude, longitude, editing, o
 
     const hasCoords = latitude !== '' && longitude !== '' && latitude != null && longitude != null;
 
-    // OpenStreetMap via Leaflet
     useEffect(() => {
         if (mapProvider !== 'openstreetmap') return;
         let cancelled = false;
@@ -98,10 +93,8 @@ export function MapPicker({ mapProvider, apiKey, latitude, longitude, editing, o
             });
             mapInstanceRef.current = map;
 
-            // Leaflet needs a size recalc after the dialog finishes layout
             requestAnimationFrame(() => map.invalidateSize());
 
-            // Prevent Leaflet's buttons from submitting the parent form
             mapRef.current.querySelectorAll<HTMLButtonElement>('button').forEach(b => b.type = 'button');
 
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -143,7 +136,6 @@ export function MapPicker({ mapProvider, apiKey, latitude, longitude, editing, o
         };
     }, [mapProvider, editing]);
 
-    // Google Maps
     useEffect(() => {
         if (mapProvider !== 'google') return;
         let cancelled = false;
@@ -200,7 +192,6 @@ export function MapPicker({ mapProvider, apiKey, latitude, longitude, editing, o
         return () => { cancelled = true; };
     }, [mapProvider, apiKey, editing]);
 
-    // Update marker when coordinates change externally (Leaflet)
     useEffect(() => {
         if (mapProvider !== 'openstreetmap' || !mapInstanceRef.current || !leafletLoaded) return;
         if (hasCoords) {
@@ -216,7 +207,6 @@ export function MapPicker({ mapProvider, apiKey, latitude, longitude, editing, o
         }
     }, [latitude, longitude]);
 
-    // Update marker when coordinates change externally (Google)
     useEffect(() => {
         if (mapProvider !== 'google' || !mapInstanceRef.current || !mapsLoaded) return;
         if (hasCoords) {
@@ -237,10 +227,10 @@ export function MapPicker({ mapProvider, apiKey, latitude, longitude, editing, o
 
     if (error) return null;
 
-    return html`
+    return (
         <div class="map-picker" style="margin: 8px 0; position: relative; overflow: hidden; border-radius: 6px;">
-            ${loading && html`<div style="padding: 12px; color: #666;">Loading map...</div>`}
-            <div ref=${mapRef} style="width: 100%; height: ${editing ? '250px' : '200px'}; ${loading ? 'display:none' : ''}" />
+            {loading && <div style="padding: 12px; color: #666;">Loading map...</div>}
+            <div ref={mapRef} style={`width: 100%; height: ${editing ? '250px' : '200px'}; ${loading ? 'display:none' : ''}`} />
         </div>
-    ` as VNode;
+    );
 }

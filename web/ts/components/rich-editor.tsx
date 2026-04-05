@@ -1,5 +1,5 @@
+import { h } from 'preact';
 import type { VNode } from 'preact';
-import { html } from 'htm/preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 
 let quillLoadPromise: Promise<void> | null = null;
@@ -9,13 +9,11 @@ function loadQuill(): Promise<void> {
     if (quillLoaded) return Promise.resolve();
     if (quillLoadPromise) return quillLoadPromise;
     quillLoadPromise = new Promise((resolve, reject) => {
-        // Load CSS
         const link = document.createElement('link');
         link.rel = 'stylesheet';
         link.href = 'vendor/quill.snow.css';
         document.head.appendChild(link);
 
-        // Load JS
         const script = document.createElement('script');
         script.src = 'vendor/quill.js';
         script.async = true;
@@ -62,20 +60,15 @@ export function RichEditor({ value, onChange }: RichEditorProps): VNode | null {
             });
             quillRef.current = quill;
 
-            // Set initial content
             if (value) {
                 quill.root.innerHTML = value;
             }
 
-            // Prevent toolbar buttons from submitting the parent form
             containerRef.current.closest('.ql-container')
                 ?.previousElementSibling
                 ?.querySelectorAll<HTMLButtonElement>('button')
                 .forEach(b => b.type = 'button');
 
-            // Paste URL over selected text to create a link.
-            // Use capture phase + stopImmediatePropagation to intercept before
-            // Quill's own clipboard handler replaces the selected text.
             quill.root.addEventListener('paste', (e: ClipboardEvent) => {
                 const sel = quill.getSelection();
                 if (!sel || sel.length === 0) return;
@@ -88,7 +81,6 @@ export function RichEditor({ value, onChange }: RichEditorProps): VNode | null {
 
             quill.on('text-change', () => {
                 const content = quill.root.innerHTML;
-                // Normalize Quill's empty state to empty string
                 const normalized = content === '<p><br></p>' ? '' : content;
                 lastValueRef.current = normalized;
                 if (onChange) onChange(normalized);
@@ -101,7 +93,6 @@ export function RichEditor({ value, onChange }: RichEditorProps): VNode | null {
         };
     }, []);
 
-    // Sync external value changes into Quill (e.g. switching between events)
     useEffect(() => {
         if (!quillRef.current) return;
         if (value !== lastValueRef.current) {
@@ -110,10 +101,10 @@ export function RichEditor({ value, onChange }: RichEditorProps): VNode | null {
         }
     }, [value]);
 
-    return html`
+    return (
         <div class="rich-editor-wrapper">
-            ${loading && html`<div style="padding: 8px; color: #666; font-size: 0.85rem;">Loading editor...</div>`}
-            <div ref=${containerRef} style="${loading ? 'display:none' : ''}" />
+            {loading && <div style="padding: 8px; color: #666; font-size: 0.85rem;">Loading editor...</div>}
+            <div ref={containerRef} style={loading ? 'display:none' : ''} />
         </div>
-    ` as VNode;
+    );
 }

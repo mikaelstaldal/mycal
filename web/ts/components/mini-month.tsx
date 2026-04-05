@@ -1,5 +1,5 @@
+import { h } from 'preact';
 import type { VNode } from 'preact';
-import { html } from 'htm/preact';
 import { useState } from 'preact/hooks';
 import { getCalendarDays, getWeekdays, isToday } from '../lib/date-utils.js';
 import type { AppConfig } from '../types/models.js';
@@ -30,33 +30,33 @@ export function MiniMonth({ currentDate, onDayClick, onMonthClick, config }: Min
         weeks = weeks.slice(0, -1);
     }
 
-    return html`
+    return (
         <div class="mini-month">
             <div class="mini-month-header">
-                <button class="mini-month-nav" onClick=${() => setOffset(o => o - 1)} title="Previous month">\u25C0</button>
-                <span class="mini-month-title" onClick=${() => onMonthClick && onMonthClick(month)}>
-                    ${monthName}
+                <button class="mini-month-nav" onClick={() => setOffset(o => o - 1)} title="Previous month">&#x25C0;</button>
+                <span class="mini-month-title" onClick={() => onMonthClick && onMonthClick(month)}>
+                    {monthName}
                 </span>
-                <button class="mini-month-nav" onClick=${() => setOffset(o => o + 1)} title="Next month">\u25B6</button>
+                <button class="mini-month-nav" onClick={() => setOffset(o => o + 1)} title="Next month">&#x25B6;</button>
             </div>
             <div class="mini-month-grid">
                 <div class="mini-month-weekday-row">
-                    ${weekdays.map(d => html`<div class="mini-month-weekday">${d.charAt(0)}</div>`)}
+                    {weekdays.map(d => <div class="mini-month-weekday">{d.charAt(0)}</div>)}
                 </div>
-                ${weeks.map(week => html`
+                {weeks.map(week => (
                     <div class="mini-month-week-row">
-                        ${week.map(({ date, currentMonth }) => {
+                        {week.map(({ date, currentMonth }) => {
                             const classes = ['mini-month-day',
                                 !currentMonth && 'mini-month-day-other',
                                 currentMonth && isToday(date) && 'mini-month-day-today',
                             ].filter(Boolean).join(' ');
-                            return html`<div class=${classes}
-                                onClick=${currentMonth && onDayClick ? () => onDayClick(date) : undefined}
-                                style=${currentMonth ? 'cursor: pointer' : ''}>${date.getDate()}</div>`;
+                            return <div class={classes}
+                                onClick={currentMonth && onDayClick ? () => onDayClick(date) : undefined}
+                                style={currentMonth ? 'cursor: pointer' : ''}>{date.getDate()}</div>;
                         })}
                     </div>
-                `)}
+                ))}
             </div>
         </div>
-    ` as VNode;
+    );
 }

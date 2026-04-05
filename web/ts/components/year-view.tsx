@@ -1,5 +1,5 @@
+import { h } from 'preact';
 import type { VNode } from 'preact';
-import { html } from 'htm/preact';
 import { getCalendarDays, getWeekdays, isToday, getISOWeekNumber } from '../lib/date-utils.js';
 import type { CalendarEvent, AppConfig } from '../types/models.js';
 
@@ -44,28 +44,27 @@ export function YearView({ currentDate, events, onMonthClick, onWeekClick, onDay
         for (let i = 0; i < days.length; i += 7) {
             weeks.push(days.slice(i, i + 7));
         }
-        // Drop the last row if it's entirely other-month padding
         const lastWeek = weeks[weeks.length - 1];
         if (lastWeek.every(d => !d.currentMonth)) {
             weeks = weeks.slice(0, -1);
         }
 
-        return html`
+        return (
             <div class="year-month">
-                <div class="year-month-header" onClick=${() => onMonthClick(month)}>
-                    ${monthName}
+                <div class="year-month-header" onClick={() => onMonthClick(month)}>
+                    {monthName}
                 </div>
                 <div class="year-month-grid">
                     <div class="year-weekday-row">
                         <div></div>
-                        ${weekdays.map(d => html`<div class="year-weekday">${d.charAt(0)}</div>`)}
+                        {weekdays.map(d => <div class="year-weekday">{d.charAt(0)}</div>)}
                     </div>
-                    ${weeks.map(week => html`
+                    {weeks.map(week => (
                         <div class="year-week-row">
-                            <div class="year-week-number" onClick=${(ev: MouseEvent) => { ev.stopPropagation(); onWeekClick(week[0].date); }}>
-                                week ${getISOWeekNumber(week[0].date)}
+                            <div class="year-week-number" onClick={(ev: MouseEvent) => { ev.stopPropagation(); onWeekClick(week[0].date); }}>
+                                week {getISOWeekNumber(week[0].date)}
                             </div>
-                            ${week.map(({ date, currentMonth }) => {
+                            {week.map(({ date, currentMonth }) => {
                                 const dayEvents = currentMonth ? eventsForDay(date) : [];
                                 const hasEvents = dayEvents.length > 0;
                                 const isHighlighted = highlightEventId && dayEvents.some(e => (e.id + '|' + e.start_time) === highlightEventId);
@@ -75,20 +74,20 @@ export function YearView({ currentDate, events, onMonthClick, onWeekClick, onDay
                                     hasEvents && 'year-day-has-events',
                                     isHighlighted && 'highlight-event'
                                 ].filter(Boolean).join(' ');
-                                return html`<div class=${classes}
-                                    style=${currentMonth ? 'cursor: pointer' : ''}
-                                    onClick=${currentMonth ? (ev: MouseEvent) => { ev.stopPropagation(); onDayClick(date); } : undefined}>${date.getDate()}</div>`;
+                                return <div class={classes}
+                                    style={currentMonth ? 'cursor: pointer' : ''}
+                                    onClick={currentMonth ? (ev: MouseEvent) => { ev.stopPropagation(); onDayClick(date); } : undefined}>{date.getDate()}</div>;
                             })}
                         </div>
-                    `)}
+                    ))}
                 </div>
             </div>
-        ` as VNode;
+        );
     }
 
-    return html`
+    return (
         <div class="year-view">
-            ${Array.from({ length: 12 }, (_, i) => renderMonth(i))}
+            {Array.from({ length: 12 }, (_, i) => renderMonth(i))}
         </div>
-    ` as VNode;
+    );
 }

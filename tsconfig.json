@@ -11,11 +11,13 @@
     "declaration": false,
     "sourceMap": false,
     "noEmitOnError": true,
+    "jsx": "react",
+    "jsxFactory": "h",
+    "jsxFragmentFactory": "Fragment",
     "paths": {
       "preact": ["./web/ts/types/preact.d.ts"],
-      "preact/hooks": ["./web/ts/types/preact-hooks.d.ts"],
-      "htm/preact": ["./web/ts/types/htm-preact.d.ts"]
+      "preact/hooks": ["./web/ts/types/preact-hooks.d.ts"]
     }
   },
-  "include": ["web/ts/**/*.ts"]
+  "include": ["web/ts/**/*.ts", "web/ts/**/*.tsx"]
 }

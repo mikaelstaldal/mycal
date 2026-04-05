@@ -1,5 +1,5 @@
+import { h } from 'preact';
 import type { VNode } from 'preact';
-import { html } from 'htm/preact';
 import { useEffect } from 'preact/hooks';
 
 interface ToastProps {
@@ -14,7 +14,7 @@ export function Toast({ message, isError, onDone }: ToastProps): VNode | null {
         return () => clearTimeout(id);
     }, []);
 
-    return html`
-        <div class=${`toast${isError ? ' toast-error' : ''}`} onClick=${onDone}>${message}</div>
-    ` as VNode;
+    return (
+        <div class={`toast${isError ? ' toast-error' : ''}`} onClick={onDone}>{message}</div>
+    );
 }

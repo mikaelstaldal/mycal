@@ -1,5 +1,5 @@
+import { h, Fragment } from 'preact';
 import type { VNode } from 'preact';
-import { html } from 'htm/preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { isToday, formatHour, formatTime, isPastEvent } from '../lib/date-utils.js';
 import { startDrag } from '../lib/drag.js';
@@ -91,68 +91,70 @@ export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDa
 
     const todayClass = isToday(date) ? ' today' : '';
 
-    return html`
+    return (
         <div class="day-view">
             <div class="day-view-header">
-                <div class=${'day-view-day-header' + todayClass} onClick=${() => onAllDayClick(date)}>
-                    <span class="day-view-day-name">${dayNames[date.getDay()]}</span>
-                    <span class="day-view-day-number">${date.getDate()}</span>
+                <div class={'day-view-day-header' + todayClass} onClick={() => onAllDayClick(date)}>
+                    <span class="day-view-day-name">{dayNames[date.getDay()]}</span>
+                    <span class="day-view-day-number">{date.getDate()}</span>
                 </div>
             </div>
             <div class="day-view-allday-row">
                 <div class="allday-label">all-day</div>
-                <div class="day-view-allday-cell" onClick=${() => onAllDayClick(date)}>
-                    ${adEvents.map(e => html`
-                        <div class=${`allday-event${isPastEvent(e) ? ' past-event' : ''}${highlightEventId === e.id + '|' + e.start_time ? ' highlight-event' : ''}`}
-                             key=${e.id}
-                             title=${e.title}
-                             style=${`background-color: ${eventColor(e, config)}`}
-                             onClick=${(ev: MouseEvent) => { ev.stopPropagation(); onEventClick(e); }}>
-                            ${e.title}
+                <div class="day-view-allday-cell" onClick={() => onAllDayClick(date)}>
+                    {adEvents.map(e => (
+                        <div class={`allday-event${isPastEvent(e) ? ' past-event' : ''}${highlightEventId === e.id + '|' + e.start_time ? ' highlight-event' : ''}`}
+                             key={e.id}
+                             title={e.title}
+                             style={`background-color: ${eventColor(e, config)}`}
+                             onClick={(ev: MouseEvent) => { ev.stopPropagation(); onEventClick(e); }}>
+                            {e.title}
                         </div>
-                    `)}
+                    ))}
                 </div>
             </div>
-            <div class="day-view-body" ref=${dayBodyRef}>
+            <div class="day-view-body" ref={dayBodyRef}>
                 <div class="day-view-grid">
-                    ${HOURS.map(hour => html`
-                        <div class="time-gutter">${formatHour(hour)}</div>
-                        <div class="hour-cell"
-                             onMouseMove=${(ev: MouseEvent) => {
-                                 _dayHoverCells.forEach(c => c.classList.remove(...HOVER_CLASSES));
-                                 const cell = ev.currentTarget as HTMLElement;
-                                 if (ev.offsetY < 24) {
-                                     cell.classList.add('hour-cell--hover-full');
-                                     _dayHoverCells = [cell];
-                                 } else {
-                                     cell.classList.add('hour-cell--hover-bottom-half');
-                                     const allCells = cell.closest('.day-view-grid')!.querySelectorAll('.hour-cell');
-                                     const idx = Array.from(allCells).indexOf(cell);
-                                     const nextCell = allCells[idx + 1];
-                                     if (nextCell) {
-                                         nextCell.classList.add('hour-cell--hover-top-half');
-                                         _dayHoverCells = [cell, nextCell];
-                                     } else {
+                    {HOURS.map(hour => (
+                        <Fragment>
+                            <div class="time-gutter">{formatHour(hour)}</div>
+                            <div class="hour-cell"
+                                 onMouseMove={(ev: MouseEvent) => {
+                                     _dayHoverCells.forEach(c => c.classList.remove(...HOVER_CLASSES));
+                                     const cell = ev.currentTarget as HTMLElement;
+                                     if (ev.offsetY < 24) {
+                                         cell.classList.add('hour-cell--hover-full');
                                          _dayHoverCells = [cell];
+                                     } else {
+                                         cell.classList.add('hour-cell--hover-bottom-half');
+                                         const allCells = cell.closest('.day-view-grid')!.querySelectorAll('.hour-cell');
+                                         const idx = Array.from(allCells).indexOf(cell);
+                                         const nextCell = allCells[idx + 1];
+                                         if (nextCell) {
+                                             nextCell.classList.add('hour-cell--hover-top-half');
+                                             _dayHoverCells = [cell, nextCell];
+                                         } else {
+                                             _dayHoverCells = [cell];
+                                         }
                                      }
-                                 }
-                             }}
-                             onMouseLeave=${() => {
-                                 _dayHoverCells.forEach(c => c.classList.remove(...HOVER_CLASSES));
-                                 _dayHoverCells = [];
-                             }}
-                             onClick=${(ev: MouseEvent) => {
-                                 const minutes = ev.offsetY >= 24 ? 30 : 0;
-                                 const d = new Date(date.getFullYear(), date.getMonth(), date.getDate(), hour, minutes);
-                                 onDayClick(d);
-                             }}>
-                        </div>
-                    `)}
+                                 }}
+                                 onMouseLeave={() => {
+                                     _dayHoverCells.forEach(c => c.classList.remove(...HOVER_CLASSES));
+                                     _dayHoverCells = [];
+                                 }}
+                                 onClick={(ev: MouseEvent) => {
+                                     const minutes = ev.offsetY >= 24 ? 30 : 0;
+                                     const d = new Date(date.getFullYear(), date.getMonth(), date.getDate(), hour, minutes);
+                                     onDayClick(d);
+                                 }}>
+                            </div>
+                        </Fragment>
+                    ))}
                 </div>
                 <div class="day-view-events-overlay">
                     <div class="day-view-events-gutter-spacer"></div>
                     <div class="day-view-day-events">
-                        ${(() => {
+                        {(() => {
                             const tevents = timedEvents();
                             const layout = computeOverlapLayout(tevents);
                             return tevents.map((e, ei) => {
@@ -162,54 +164,58 @@ export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDa
                             const isHighlighted = highlightEventId === e.id + '|' + e.start_time;
                             const classes = ['week-event', isShort && 'short-event', isPastEvent(e) && 'past-event', isHighlighted && 'highlight-event'].filter(Boolean).join(' ');
                             const canDrag = !e.parent_id;
-                            return html`
-                                <div class=${classes}
-                                     key=${e.id}
-                                     title=${e.title}
-                                     style=${eventStyle(e, col, total)}
-                                     onClick=${(ev: MouseEvent) => { ev.stopPropagation(); onEventClick(e); }}
-                                     onMouseDown=${canDrag ? (ev: MouseEvent) => {
+                            return (
+                                <div class={classes}
+                                     key={e.id}
+                                     title={e.title}
+                                     style={eventStyle(e, col, total)}
+                                     onClick={(ev: MouseEvent) => { ev.stopPropagation(); onEventClick(e); }}
+                                     onMouseDown={canDrag ? (ev: MouseEvent) => {
                                          if (ev.button !== 0) return;
                                          startDrag(e, ev.currentTarget as HTMLElement, ev, {
                                              mode: 'move',
                                              onDragEnd: (s: string, end: string) => onEventDrag(e.id, s, end)
                                          });
                                      } : undefined}
-                                     onTouchStart=${canDrag ? (ev: TouchEvent) => {
+                                     onTouchStart={canDrag ? (ev: TouchEvent) => {
                                          startDrag(e, ev.currentTarget as HTMLElement, ev, {
                                              mode: 'move',
                                              onDragEnd: (s: string, end: string) => onEventDrag(e.id, s, end)
                                          });
                                      } : undefined}>
-                                    ${isShort ? html`
-                                        <span class="week-event-time">${formatTime(e.start_time)}</span>
-                                        <span class="week-event-title">${e.title}</span>
-                                    ` : html`
-                                        <span class="week-event-title">${e.title}</span>
-                                        <span class="week-event-time">${formatTime(e.start_time)}</span>
-                                    `}
-                                    ${canDrag && html`<div class="resize-handle"
-                                        onMouseDown=${(ev: MouseEvent) => {
+                                    {isShort ? (
+                                        <Fragment>
+                                            <span class="week-event-time">{formatTime(e.start_time)}</span>
+                                            <span class="week-event-title">{e.title}</span>
+                                        </Fragment>
+                                    ) : (
+                                        <Fragment>
+                                            <span class="week-event-title">{e.title}</span>
+                                            <span class="week-event-time">{formatTime(e.start_time)}</span>
+                                        </Fragment>
+                                    )}
+                                    {canDrag && <div class="resize-handle"
+                                        onMouseDown={(ev: MouseEvent) => {
                                             ev.stopPropagation();
                                             startDrag(e, (ev.currentTarget as HTMLElement).parentElement!, ev, {
                                                 mode: 'resize',
                                                 onDragEnd: (s: string, end: string) => onEventDrag(e.id, s, end)
                                             });
                                         }}
-                                        onTouchStart=${(ev: TouchEvent) => {
+                                        onTouchStart={(ev: TouchEvent) => {
                                             ev.stopPropagation();
                                             startDrag(e, (ev.currentTarget as HTMLElement).parentElement!, ev, {
                                                 mode: 'resize',
                                                 onDragEnd: (s: string, end: string) => onEventDrag(e.id, s, end)
                                             });
-                                        }} />`}
+                                        }} />}
                                 </div>
-                            `;
+                            );
                         });
                         })()}
                     </div>
                 </div>
             </div>
         </div>
-    ` as VNode;
+    );
 }

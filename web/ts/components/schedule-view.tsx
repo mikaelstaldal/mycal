@@ -1,5 +1,5 @@
+import { h } from 'preact';
 import type { VNode } from 'preact';
-import { html } from 'htm/preact';
 import { useRef, useEffect } from 'preact/hooks';
 import { formatTime, isPastEvent } from '../lib/date-utils.js';
 import { eventColor } from '../lib/event-utils.js';
@@ -24,7 +24,6 @@ export function ScheduleView({ currentDate, events, onEventClick, onDayClick, co
     const from = new Date(today.getFullYear(), today.getMonth(), today.getDate());
     const to = new Date(today.getFullYear(), today.getMonth(), today.getDate() + (daysLoaded || 90));
 
-    // Infinite scroll: observe sentinel element
     useEffect(() => {
         if (!onLoadMore || !sentinelRef.current) return;
         const observer = new IntersectionObserver((entries) => {
@@ -36,7 +35,6 @@ export function ScheduleView({ currentDate, events, onEventClick, onDayClick, co
         return () => observer.disconnect();
     }, [onLoadMore]);
 
-    // Group events by date
     const dayMap = new Map<string, CalendarEvent[]>();
 
     events.forEach(event => {
@@ -97,38 +95,38 @@ export function ScheduleView({ currentDate, events, onEventClick, onDayClick, co
         });
     }
 
-    return html`
-        <div class="schedule-view" ref=${containerRef}>
-            ${sortedDays.length === 0 && html`
+    return (
+        <div class="schedule-view" ref={containerRef}>
+            {sortedDays.length === 0 && (
                 <div class="schedule-empty">No upcoming events</div>
-            `}
-            ${sortedDays.map((dateKey) => {
+            )}
+            {sortedDays.map((dateKey) => {
                 const dayDate = new Date(dateKey + 'T12:00:00');
                 const dayEvents = dedup(sortEvents(dayMap.get(dateKey)!));
-                return html`
-                    <div class="schedule-date-group" key=${dateKey}>
+                return (
+                    <div class="schedule-date-group" key={dateKey}>
                         <div class="schedule-date-header"
-                             onClick=${() => onDayClick(dayDate)}>
-                            ${formatDateHeader(dateKey)}
+                             onClick={() => onDayClick(dayDate)}>
+                            {formatDateHeader(dateKey)}
                         </div>
-                        ${dayEvents.map(event => html`
-                            <div class="schedule-event${isPastEvent(event) ? ' past-event' : ''}${highlightEventId === event.id + '|' + event.start_time ? ' highlight-event' : ''}"
-                                 key=${event.id + ':' + event.start_time}
-                                 style=${'background:' + (eventColor(event, config))}
-                                 onClick=${(e: MouseEvent) => { e.stopPropagation(); onEventClick(event); }}>
-                                <div class="schedule-event-title">${event.title}</div>
-                                ${formatEventTime(event) && html`
-                                    <div class="schedule-event-time">${formatEventTime(event)}</div>
-                                `}
-                                ${event.location && html`
-                                    <div class="schedule-event-location">${event.location}</div>
-                                `}
+                        {dayEvents.map(event => (
+                            <div class={`schedule-event${isPastEvent(event) ? ' past-event' : ''}${highlightEventId === event.id + '|' + event.start_time ? ' highlight-event' : ''}`}
+                                 key={event.id + ':' + event.start_time}
+                                 style={'background:' + (eventColor(event, config))}
+                                 onClick={(e: MouseEvent) => { e.stopPropagation(); onEventClick(event); }}>
+                                <div class="schedule-event-title">{event.title}</div>
+                                {formatEventTime(event) && (
+                                    <div class="schedule-event-time">{formatEventTime(event)}</div>
+                                )}
+                                {event.location && (
+                                    <div class="schedule-event-location">{event.location}</div>
+                                )}
                             </div>
-                        `)}
+                        ))}
                     </div>
-                `;
+                );
             })}
-            <div ref=${sentinelRef} class="schedule-sentinel"></div>
+            <div ref={sentinelRef} class="schedule-sentinel"></div>
         </div>
-    ` as VNode;
+    );
 }

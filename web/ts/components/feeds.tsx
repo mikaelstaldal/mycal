@@ -1,5 +1,5 @@
+import { h } from 'preact';
 import type { VNode } from 'preact';
-import { html } from 'htm/preact';
 import { useState, useRef, useEffect } from 'preact/hooks';
 import { listFeeds, createFeed, deleteFeed, refreshFeed } from '../lib/api.js';
 import { COLORS } from '../lib/colors.js';
@@ -82,56 +82,60 @@ export function FeedsDialog({ onClose, onRefreshed }: FeedsDialogProps): VNode |
         return d.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' } as any);
     }
 
-    return html`
-        <dialog ref=${dialogRef} class="event-dialog feeds-dialog" onClose=${onClose}>
+    return (
+        <dialog ref={dialogRef} class="event-dialog feeds-dialog" onClose={onClose}>
             <div class="dialog-header">
                 <h2>Feed Subscriptions</h2>
-                <button class="close-btn" onClick=${onClose}>\u00d7</button>
+                <button class="close-btn" onClick={onClose}>&#xd7;</button>
             </div>
-            ${error && html`<div class="feed-error">${error}</div>`}
-            ${loading ? html`<div class="feed-loading">Loading...</div>` : html`
-                ${feeds.length === 0 && !showAdd ? html`
-                    <div class="feed-empty">No feed subscriptions yet.</div>
-                ` : html`
-                    <div class="feed-list">
-                        ${(feeds as any[]).map(feed => html`
-                            <div class="feed-item" key=${feed.id}>
-                                <div class="feed-item-info">
-                                    <div class="feed-item-url" title=${feed.url}>${feed.url}</div>
-                                    <div class="feed-item-meta">
-                                        ${feed.calendar_name && html`<span class="feed-calendar">${feed.calendar_name}</span>`}
-                                        <span>Every ${feed.refresh_interval_minutes} min</span>
-                                        <span>\u00b7 Last: ${formatDate(feed.last_refreshed_at)}</span>
-                                        ${!feed.enabled && html`<span class="feed-disabled">Disabled</span>`}
+            {error && <div class="feed-error">{error}</div>}
+            {loading ? (
+                <div class="feed-loading">Loading...</div>
+            ) : (
+                <div>
+                    {feeds.length === 0 && !showAdd ? (
+                        <div class="feed-empty">No feed subscriptions yet.</div>
+                    ) : (
+                        <div class="feed-list">
+                            {(feeds as any[]).map(feed => (
+                                <div class="feed-item" key={feed.id}>
+                                    <div class="feed-item-info">
+                                        <div class="feed-item-url" title={feed.url}>{feed.url}</div>
+                                        <div class="feed-item-meta">
+                                            {feed.calendar_name && <span class="feed-calendar">{feed.calendar_name}</span>}
+                                            <span>Every {feed.refresh_interval_minutes} min</span>
+                                            <span>&#xb7; Last: {formatDate(feed.last_refreshed_at)}</span>
+                                            {!feed.enabled && <span class="feed-disabled">Disabled</span>}
+                                        </div>
+                                        {feed.last_error && <div class="feed-item-error">{feed.last_error}</div>}
                                     </div>
-                                    ${feed.last_error && html`<div class="feed-item-error">${feed.last_error}</div>`}
+                                    <div class="feed-item-actions">
+                                        <button class="feed-action-btn" onClick={() => handleRefresh(feed.id)}
+                                                disabled={refreshingId === feed.id}
+                                                title="Refresh now">
+                                            {refreshingId === feed.id ? '⏳' : '↻'}
+                                        </button>
+                                        <button class="feed-action-btn feed-delete-btn" onClick={() => handleDelete(feed.id)}
+                                                title="Delete">
+                                            &#x2715;
+                                        </button>
+                                    </div>
                                 </div>
-                                <div class="feed-item-actions">
-                                    <button class="feed-action-btn" onClick=${() => handleRefresh(feed.id)}
-                                            disabled=${refreshingId === feed.id}
-                                            title="Refresh now">
-                                        ${refreshingId === feed.id ? '\u23F3' : '\u21BB'}
-                                    </button>
-                                    <button class="feed-action-btn feed-delete-btn" onClick=${() => handleDelete(feed.id)}
-                                            title="Delete">
-                                        \u2715
-                                    </button>
-                                </div>
-                            </div>
-                        `)}
-                    </div>
-                `}
-            `}
-            ${showAdd ? html`
-                <${AddFeedForm} onAdd=${handleAdd} onCancel=${() => setShowAdd(false)} />
-            ` : html`
-                <div class="dialog-actions">
-                    <button onClick=${onClose}>Close</button>
-                    <button onClick=${() => setShowAdd(true)}>Add Feed</button>
+                            ))}
+                        </div>
+                    )}
                 </div>
-            `}
+            )}
+            {showAdd ? (
+                <AddFeedForm onAdd={handleAdd} onCancel={() => setShowAdd(false)} />
+            ) : (
+                <div class="dialog-actions">
+                    <button onClick={onClose}>Close</button>
+                    <button onClick={() => setShowAdd(true)}>Add Feed</button>
+                </div>
+            )}
         </dialog>
-    ` as VNode;
+    );
 }
 
 interface AddFeedFormProps {
@@ -166,43 +170,43 @@ function AddFeedForm({ onAdd, onCancel }: AddFeedFormProps): VNode | null {
         }
     }
 
-    return html`
+    return (
         <div class="feed-add-form">
             <label>
                 Feed URL
-                <input type="url" value=${url} onInput=${(e: Event) => setUrl((e.target as HTMLInputElement).value)}
+                <input type="url" value={url} onInput={(e: Event) => setUrl((e.target as HTMLInputElement).value)}
                        placeholder="https://calendar.google.com/..." />
             </label>
             <label>
                 Calendar name (optional)
-                <input type="text" value=${calendarName} onInput=${(e: Event) => setCalendarName((e.target as HTMLInputElement).value)}
+                <input type="text" value={calendarName} onInput={(e: Event) => setCalendarName((e.target as HTMLInputElement).value)}
                        placeholder="e.g. work, personal" maxlength="100" />
             </label>
-            ${calendarName.trim() && html`
+            {calendarName.trim() && (
                 <div class="color-picker">
                     <span>Calendar color</span>
                     <div class="color-options">
-                        ${COLORS.map(c => html`
-                            <div class="color-swatch ${calendarColor === c.name ? 'selected' : ''}"
-                                 style="background-color: ${c.name}"
-                                 title=${c.name}
-                                 onClick=${() => setCalendarColor(c.name)} />
-                        `)}
+                        {COLORS.map(c => (
+                            <div class={`color-swatch ${calendarColor === c.name ? 'selected' : ''}`}
+                                 style={`background-color: ${c.name}`}
+                                 title={c.name}
+                                 onClick={() => setCalendarColor(c.name)} />
+                        ))}
                     </div>
                 </div>
-            `}
+            )}
             <label>
                 Refresh interval (minutes)
-                <input type="number" value=${interval} onInput=${(e: Event) => setInterval((e.target as HTMLInputElement).value as any)}
+                <input type="number" value={interval} onInput={(e: Event) => setInterval((e.target as HTMLInputElement).value as any)}
                        min="5" max="10080" />
             </label>
-            ${error && html`<div class="feed-error">${error}</div>`}
+            {error && <div class="feed-error">{error}</div>}
             <div class="dialog-actions">
-                <button onClick=${onCancel}>Cancel</button>
-                <button onClick=${handleSubmit} disabled=${loading}>
-                    ${loading ? 'Adding...' : 'Add Feed'}
+                <button onClick={onCancel}>Cancel</button>
+                <button onClick={handleSubmit} disabled={loading}>
+                    {loading ? 'Adding...' : 'Add Feed'}
                 </button>
             </div>
         </div>
-    ` as VNode;
+    );
 }

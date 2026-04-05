@@ -1,5 +1,5 @@
+import { h } from 'preact';
 import type { VNode } from 'preact';
-import { html } from 'htm/preact';
 import { useState, useRef, useEffect } from 'preact/hooks';
 import { importEvents, importSingleEvent } from '../lib/api.js';
 
@@ -44,45 +44,45 @@ export function ImportSingleForm({ onImported, onClose }: ImportSingleFormProps)
         }
     }
 
-    return html`
-        <dialog ref=${dialogRef} class="event-dialog import-dialog" onClose=${onClose}>
+    return (
+        <dialog ref={dialogRef} class="event-dialog import-dialog" onClose={onClose}>
             <div class="dialog-header">
                 <h2>Import Event</h2>
-                <button class="close-btn" onClick=${onClose}>\u00d7</button>
+                <button class="close-btn" onClick={onClose}>&#xd7;</button>
             </div>
             <div class="import-tabs">
-                <button class=${`import-tab ${sourceMode === 'file' ? 'active' : ''}`}
-                        onClick=${() => setSourceMode('file')}>File</button>
-                <button class=${`import-tab ${sourceMode === 'url' ? 'active' : ''}`}
-                        onClick=${() => setSourceMode('url')}>URL</button>
+                <button class={`import-tab ${sourceMode === 'file' ? 'active' : ''}`}
+                        onClick={() => setSourceMode('file')}>File</button>
+                <button class={`import-tab ${sourceMode === 'url' ? 'active' : ''}`}
+                        onClick={() => setSourceMode('url')}>URL</button>
             </div>
-            ${sourceMode === 'file' && html`
+            {sourceMode === 'file' && (
                 <label>
                     iCalendar file (.ics)
-                    <input ref=${fileRef} type="file" accept=".ics,.ical" />
+                    <input ref={fileRef} type="file" accept=".ics,.ical" />
                 </label>
-            `}
-            ${sourceMode === 'url' && html`
+            )}
+            {sourceMode === 'url' && (
                 <label>
                     iCalendar URL
-                    <input type="url" value=${url} onInput=${(e: Event) => setUrl((e.target as HTMLInputElement).value)}
+                    <input type="url" value={url} onInput={(e: Event) => setUrl((e.target as HTMLInputElement).value)}
                            placeholder="https://calendar.google.com/..." />
                 </label>
-            `}
+            )}
             <label>
                 Calendar name (optional)
-                <input type="text" value=${calendarName} onInput=${(e: Event) => setCalendarName((e.target as HTMLInputElement).value)}
+                <input type="text" value={calendarName} onInput={(e: Event) => setCalendarName((e.target as HTMLInputElement).value)}
                        placeholder="e.g. work, personal" maxlength="100" />
             </label>
             <div class="import-hint">The file or URL must contain exactly one event.</div>
             <div class="dialog-actions">
-                <button onClick=${onClose}>Cancel</button>
-                <button type="submit" onClick=${handleImport} disabled=${loading}>
-                    ${loading ? html`<span class="spinner"></span> Importing...` : 'Import Event'}
+                <button onClick={onClose}>Cancel</button>
+                <button type="submit" onClick={handleImport} disabled={loading}>
+                    {loading ? <span class="spinner"></span> : null}{loading ? ' Importing...' : 'Import Event'}
                 </button>
             </div>
         </dialog>
-    ` as VNode;
+    );
 }
 
 interface ImportBulkFormProps {
@@ -125,42 +125,42 @@ export function ImportBulkForm({ onImported, onClose }: ImportBulkFormProps): VN
         }
     }
 
-    return html`
-        <dialog ref=${dialogRef} class="event-dialog import-dialog" onClose=${onClose}>
+    return (
+        <dialog ref={dialogRef} class="event-dialog import-dialog" onClose={onClose}>
             <div class="dialog-header">
                 <h2>Bulk Import</h2>
-                <button class="close-btn" onClick=${onClose}>\u00d7</button>
+                <button class="close-btn" onClick={onClose}>&#xd7;</button>
             </div>
             <div class="import-tabs">
-                <button class=${`import-tab ${sourceMode === 'file' ? 'active' : ''}`}
-                        onClick=${() => setSourceMode('file')}>File</button>
-                <button class=${`import-tab ${sourceMode === 'url' ? 'active' : ''}`}
-                        onClick=${() => setSourceMode('url')}>URL</button>
+                <button class={`import-tab ${sourceMode === 'file' ? 'active' : ''}`}
+                        onClick={() => setSourceMode('file')}>File</button>
+                <button class={`import-tab ${sourceMode === 'url' ? 'active' : ''}`}
+                        onClick={() => setSourceMode('url')}>URL</button>
             </div>
-            ${sourceMode === 'file' && html`
+            {sourceMode === 'file' && (
                 <label>
                     iCalendar file (.ics)
-                    <input ref=${fileRef} type="file" accept=".ics,.ical" />
+                    <input ref={fileRef} type="file" accept=".ics,.ical" />
                 </label>
-            `}
-            ${sourceMode === 'url' && html`
+            )}
+            {sourceMode === 'url' && (
                 <label>
                     iCalendar URL
-                    <input type="url" value=${url} onInput=${(e: Event) => setUrl((e.target as HTMLInputElement).value)}
+                    <input type="url" value={url} onInput={(e: Event) => setUrl((e.target as HTMLInputElement).value)}
                            placeholder="https://calendar.google.com/..." />
                 </label>
-            `}
+            )}
             <label>
                 Calendar name (optional)
-                <input type="text" value=${calendarName} onInput=${(e: Event) => setCalendarName((e.target as HTMLInputElement).value)}
+                <input type="text" value={calendarName} onInput={(e: Event) => setCalendarName((e.target as HTMLInputElement).value)}
                        placeholder="e.g. work, personal" maxlength="100" />
             </label>
             <div class="dialog-actions">
-                <button onClick=${onClose}>Cancel</button>
-                <button type="submit" onClick=${handleImport} disabled=${loading}>
-                    ${loading ? html`<span class="spinner"></span> Importing...` : 'Import All'}
+                <button onClick={onClose}>Cancel</button>
+                <button type="submit" onClick={handleImport} disabled={loading}>
+                    {loading ? <span class="spinner"></span> : null}{loading ? ' Importing...' : 'Import All'}
                 </button>
             </div>
         </dialog>
-    ` as VNode;
+    );
 }
