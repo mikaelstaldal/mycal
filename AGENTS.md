@@ -5,10 +5,12 @@ This file provides guidance to AI coding agents when working with code in this r
 ## Build & Run
 
 ```bash
-./build.sh -o /tmp/claude/mycal                   # generate API code + build binary (preferred)
+./build.sh -o /tmp/claude/mycal                   # compile TypeScript, generate API code, build binary (preferred)
 /tmp/claude/mycal                                 # serves on :8080
 /tmp/claude/mycal -port 3000 -data /path/to/data  # custom address and data path
 ```
+
+`tsc` must be on `$PATH`
 
 The coding agent should always compile the application into `/tmp/claude` and run it from there.
 
@@ -49,7 +51,7 @@ Use the `playwright-cli` skill to verify that the web frontend looks reasonable.
 
 ## Architecture
 
-Go backend with embedded Preact+HTM frontend (no JS build step). Single binary serves both JSON API and static files.
+Go backend with embedded Preact+HTM frontend. TypeScript source in `web/ts/`, compiled by `tsc` to `web/static/` which Go embeds. Single binary serves both JSON API and static files.
 
 **Layered backend** (`main.go` wires everything):
 - **model** → Event struct, request types (Create/Update), validation. Datetimes are RFC 3339 strings throughout.
@@ -58,10 +60,16 @@ Go backend with embedded Preact+HTM frontend (no JS build step). Single binary s
 - **handler** → HTTP handlers using Go 1.22+ `ServeMux` routing patterns (`"GET /api/v1/events/{id}"`). JSON helpers and middleware (logging, recovery, CORS).
 
 **Frontend** (`web/static/`, embedded via `web/embed.go`):
-- Preact + HTM loaded from esm.sh CDN via import map in `index.html`
-- `app.js` is the root component managing state and coordinating child components
+- Preact + HTM loaded from vendor files via import map in `index.html`
+- `web/ts/app.ts` is the root component (compiled to `web/static/app.js` by `tsc`)
 - Native `<dialog>` element for the event form (no client-side routing)
-- API calls go through `lib/api.js` fetch wrapper
+- API calls go through `lib/api.ts` fetch wrapper
+
+**TypeScript** (`web/ts/`, compiled to `web/static/`):
+- `tsconfig.json` at repo root: target ES2020, module ES2020, moduleResolution bundler
+- Ambient declarations in `web/ts/types/` for preact, preact/hooks, htm/preact, Leaflet, Quill, and shared model interfaces in `models.d.ts`
+- Relative imports use `.js` extensions (TypeScript ESM convention — tsc resolves `.ts`, emits `.js`)
+- `web/static/app.js`, `web/static/lib/*.js`, `web/static/components/*.js` are generated — do not edit directly
 
 **Key design decisions:**
 - `UpdateEventRequest` uses pointer fields for partial updates (nil = unchanged)

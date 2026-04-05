@@ -1,13 +1,25 @@
+import type { VNode } from 'preact';
 import { html } from 'htm/preact';
 import { getCalendarDays, getWeekdays, isToday, formatTime, getISOWeekNumber, isPastEvent } from '../lib/date-utils.js';
 import { eventColor } from '../lib/event-utils.js';
+import type { CalendarEvent, AppConfig } from '../types/models.js';
 
-export function Calendar({ currentDate, events, onDayClick, onEventClick, onWeekClick, config, highlightEventId }) {
+interface CalendarProps {
+    currentDate: Date;
+    events: CalendarEvent[];
+    onDayClick: (date: Date) => void;
+    onEventClick: (event: CalendarEvent) => void;
+    onWeekClick: (date: Date) => void;
+    config: AppConfig;
+    highlightEventId?: string | null;
+}
+
+export function Calendar({ currentDate, events, onDayClick, onEventClick, onWeekClick, config, highlightEventId }: CalendarProps): VNode | null {
     const weekStartDay = config.weekStartDay;
     const days = getCalendarDays(currentDate.getFullYear(), currentDate.getMonth(), weekStartDay);
     const weekdays = getWeekdays(weekStartDay);
 
-    function eventsForDay(date) {
+    function eventsForDay(date: Date): CalendarEvent[] {
         const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
         const dayEnd = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
         return events.filter(e => {
@@ -15,7 +27,7 @@ export function Calendar({ currentDate, events, onDayClick, onEventClick, onWeek
                 // Compare dates only (UTC) to avoid timezone shift issues
                 const startDate = e.start_time.substring(0, 10);
                 const endDate = e.end_time.substring(0, 10); // exclusive
-                const pad = n => String(n).padStart(2, '0');
+                const pad = (n: number) => String(n).padStart(2, '0');
                 const dayStr = `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`;
                 return dayStr >= startDate && dayStr < endDate;
             }
@@ -56,7 +68,7 @@ export function Calendar({ currentDate, events, onDayClick, onEventClick, onWeek
                                              key=${e.id}
                                              title=${e.title}
                                              style=${`background-color: ${eventColor(e, config)}`}
-                                             onClick=${(ev) => { ev.stopPropagation(); onEventClick(e); }}>
+                                             onClick=${(ev: MouseEvent) => { ev.stopPropagation(); onEventClick(e); }}>
                                             ${e.all_day ? '' : formatTime(e.start_time) + ' '}${e.title}
                                         </div>
                                     `)}
@@ -67,5 +79,5 @@ export function Calendar({ currentDate, events, onDayClick, onEventClick, onWeek
                 `)}
             </div>
         </div>
-    `;
+    ` as VNode;
 }

@@ -1,6 +1,8 @@
+import type { CalendarEvent } from '../types/models.js';
+
 const STORAGE_KEY = 'mycal_fired_notifications';
 
-function getFired() {
+function getFired(): Record<string, number> {
     try {
         return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
     } catch {
@@ -8,13 +10,13 @@ function getFired() {
     }
 }
 
-function setFired(fired) {
+function setFired(fired: Record<string, number>): void {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(fired));
 }
 
-function pruneOld(fired) {
+function pruneOld(fired: Record<string, number>): Record<string, number> {
     const cutoff = Date.now() - 24 * 60 * 60 * 1000;
-    const pruned = {};
+    const pruned: Record<string, number> = {};
     for (const [key, ts] of Object.entries(fired)) {
         if (ts > cutoff) {
             pruned[key] = ts;
@@ -23,7 +25,7 @@ function pruneOld(fired) {
     return pruned;
 }
 
-export function checkAndNotify(events) {
+export function checkAndNotify(events: CalendarEvent[]): void {
     if (typeof Notification === 'undefined' || Notification.permission !== 'granted') {
         return;
     }
@@ -64,7 +66,7 @@ export function checkAndNotify(events) {
     }
 }
 
-export function requestPermission() {
+export function requestPermission(): void {
     if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
         Notification.requestPermission();
     }

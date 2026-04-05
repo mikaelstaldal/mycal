@@ -1,14 +1,20 @@
+import type { VNode } from 'preact';
 import { html } from 'htm/preact';
 import { useState, useRef, useEffect } from 'preact/hooks';
 import { importEvents, importSingleEvent } from '../lib/api.js';
 
-export function ImportSingleForm({ onImported, onClose }) {
+interface ImportSingleFormProps {
+    onImported: (message: string, isError?: boolean) => void;
+    onClose: () => void;
+}
+
+export function ImportSingleForm({ onImported, onClose }: ImportSingleFormProps): VNode | null {
     const [sourceMode, setSourceMode] = useState('file');
     const [url, setUrl] = useState('');
     const [calendarName, setCalendarName] = useState('');
     const [loading, setLoading] = useState(false);
-    const dialogRef = useRef(null);
-    const fileRef = useRef(null);
+    const dialogRef = useRef<HTMLDialogElement | null>(null);
+    const fileRef = useRef<HTMLInputElement | null>(null);
 
     useEffect(() => {
         if (dialogRef.current && !dialogRef.current.open) {
@@ -17,7 +23,7 @@ export function ImportSingleForm({ onImported, onClose }) {
     }, []);
 
     async function handleImport() {
-        let input;
+        let input: string;
         if (sourceMode === 'file') {
             const file = fileRef.current?.files?.[0];
             if (!file) { onImported('Please select a file.', true); return; }
@@ -31,7 +37,7 @@ export function ImportSingleForm({ onImported, onClose }) {
             const event = await importSingleEvent(input, calendarName.trim());
             const date = event.start_time ? new Date(event.start_time).toLocaleDateString() : '';
             onImported(`Event imported successfully.${date ? ' Start: ' + date : ''}`);
-        } catch (err) {
+        } catch (err: any) {
             onImported(err.message, true);
         } finally {
             setLoading(false);
@@ -59,13 +65,13 @@ export function ImportSingleForm({ onImported, onClose }) {
             ${sourceMode === 'url' && html`
                 <label>
                     iCalendar URL
-                    <input type="url" value=${url} onInput=${e => setUrl(e.target.value)}
+                    <input type="url" value=${url} onInput=${(e: Event) => setUrl((e.target as HTMLInputElement).value)}
                            placeholder="https://calendar.google.com/..." />
                 </label>
             `}
             <label>
                 Calendar name (optional)
-                <input type="text" value=${calendarName} onInput=${e => setCalendarName(e.target.value)}
+                <input type="text" value=${calendarName} onInput=${(e: Event) => setCalendarName((e.target as HTMLInputElement).value)}
                        placeholder="e.g. work, personal" maxlength="100" />
             </label>
             <div class="import-hint">The file or URL must contain exactly one event.</div>
@@ -76,16 +82,21 @@ export function ImportSingleForm({ onImported, onClose }) {
                 </button>
             </div>
         </dialog>
-    `;
+    ` as VNode;
 }
 
-export function ImportBulkForm({ onImported, onClose }) {
+interface ImportBulkFormProps {
+    onImported: (message: string, isError?: boolean) => void;
+    onClose: () => void;
+}
+
+export function ImportBulkForm({ onImported, onClose }: ImportBulkFormProps): VNode | null {
     const [sourceMode, setSourceMode] = useState('file');
     const [url, setUrl] = useState('');
     const [calendarName, setCalendarName] = useState('');
     const [loading, setLoading] = useState(false);
-    const dialogRef = useRef(null);
-    const fileRef = useRef(null);
+    const dialogRef = useRef<HTMLDialogElement | null>(null);
+    const fileRef = useRef<HTMLInputElement | null>(null);
 
     useEffect(() => {
         if (dialogRef.current && !dialogRef.current.open) {
@@ -94,7 +105,7 @@ export function ImportBulkForm({ onImported, onClose }) {
     }, []);
 
     async function handleImport() {
-        let input;
+        let input: string;
         if (sourceMode === 'file') {
             const file = fileRef.current?.files?.[0];
             if (!file) { onImported('Please select a file.', true); return; }
@@ -107,7 +118,7 @@ export function ImportBulkForm({ onImported, onClose }) {
         try {
             const res = await importEvents(input, calendarName.trim());
             onImported(`Imported ${res.imported} event${res.imported !== 1 ? 's' : ''}.`);
-        } catch (err) {
+        } catch (err: any) {
             onImported(err.message, true);
         } finally {
             setLoading(false);
@@ -135,13 +146,13 @@ export function ImportBulkForm({ onImported, onClose }) {
             ${sourceMode === 'url' && html`
                 <label>
                     iCalendar URL
-                    <input type="url" value=${url} onInput=${e => setUrl(e.target.value)}
+                    <input type="url" value=${url} onInput=${(e: Event) => setUrl((e.target as HTMLInputElement).value)}
                            placeholder="https://calendar.google.com/..." />
                 </label>
             `}
             <label>
                 Calendar name (optional)
-                <input type="text" value=${calendarName} onInput=${e => setCalendarName(e.target.value)}
+                <input type="text" value=${calendarName} onInput=${(e: Event) => setCalendarName((e.target as HTMLInputElement).value)}
                        placeholder="e.g. work, personal" maxlength="100" />
             </label>
             <div class="dialog-actions">
@@ -151,5 +162,5 @@ export function ImportBulkForm({ onImported, onClose }) {
                 </button>
             </div>
         </dialog>
-    `;
+    ` as VNode;
 }

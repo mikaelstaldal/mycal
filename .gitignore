@@ -13,3 +13,6 @@ DOING.md
 DONE.md
 *_gen.go
 *.gen.go
+web/static/app.js
+web/static/lib/*.js
+web/static/components/*.js

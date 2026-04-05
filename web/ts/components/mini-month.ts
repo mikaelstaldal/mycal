@@ -1,8 +1,17 @@
+import type { VNode } from 'preact';
 import { html } from 'htm/preact';
 import { useState } from 'preact/hooks';
 import { getCalendarDays, getWeekdays, isToday } from '../lib/date-utils.js';
+import type { AppConfig } from '../types/models.js';
 
-export function MiniMonth({ currentDate, onDayClick, onMonthClick, config }) {
+interface MiniMonthProps {
+    currentDate: Date;
+    onDayClick?: (date: Date) => void;
+    onMonthClick?: (month: number) => void;
+    config: AppConfig;
+}
+
+export function MiniMonth({ currentDate, onDayClick, onMonthClick, config }: MiniMonthProps): VNode | null {
     const [offset, setOffset] = useState(0);
     const displayDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + offset, 1);
     const year = displayDate.getFullYear();
@@ -49,5 +58,5 @@ export function MiniMonth({ currentDate, onDayClick, onMonthClick, config }) {
                 `)}
             </div>
         </div>
-    `;
+    ` as VNode;
 }

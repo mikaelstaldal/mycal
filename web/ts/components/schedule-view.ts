@@ -1,11 +1,24 @@
+import type { VNode } from 'preact';
 import { html } from 'htm/preact';
 import { useRef, useEffect } from 'preact/hooks';
 import { formatTime, isPastEvent } from '../lib/date-utils.js';
 import { eventColor } from '../lib/event-utils.js';
+import type { CalendarEvent, AppConfig } from '../types/models.js';
 
-export function ScheduleView({ currentDate, events, onEventClick, onDayClick, config, onLoadMore, daysLoaded, highlightEventId }) {
-    const containerRef = useRef(null);
-    const sentinelRef = useRef(null);
+interface ScheduleViewProps {
+    currentDate: Date;
+    events: CalendarEvent[];
+    onEventClick: (event: CalendarEvent) => void;
+    onDayClick: (date: Date) => void;
+    config: AppConfig;
+    onLoadMore?: () => void;
+    daysLoaded?: number;
+    highlightEventId?: string | null;
+}
+
+export function ScheduleView({ currentDate, events, onEventClick, onDayClick, config, onLoadMore, daysLoaded, highlightEventId }: ScheduleViewProps): VNode | null {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const sentinelRef = useRef<HTMLDivElement>(null);
 
     const today = new Date();
     const from = new Date(today.getFullYear(), today.getMonth(), today.getDate());
@@ -24,7 +37,7 @@ export function ScheduleView({ currentDate, events, onEventClick, onDayClick, co
     }, [onLoadMore]);
 
     // Group events by date
-    const dayMap = new Map();
+    const dayMap = new Map<string, CalendarEvent[]>();
 
     events.forEach(event => {
         if (event.all_day) {
@@ -35,13 +48,13 @@ export function ScheduleView({ currentDate, events, onEventClick, onDayClick, co
             while (cur < end) {
                 const key = toDateKey(cur);
                 if (!dayMap.has(key)) dayMap.set(key, []);
-                dayMap.get(key).push(event);
+                dayMap.get(key)!.push(event);
                 cur.setDate(cur.getDate() + 1);
             }
         } else {
             const key = toDateKey(new Date(event.start_time));
             if (!dayMap.has(key)) dayMap.set(key, []);
-            dayMap.get(key).push(event);
+            dayMap.get(key)!.push(event);
         }
     });
 
@@ -51,12 +64,12 @@ export function ScheduleView({ currentDate, events, onEventClick, onDayClick, co
         .filter(k => k >= fromKey && k < toKey)
         .sort();
 
-    function toDateKey(d) {
-        const pad = n => String(n).padStart(2, '0');
+    function toDateKey(d: Date): string {
+        const pad = (n: number) => String(n).padStart(2, '0');
         return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
     }
 
-    function sortEvents(evts) {
+    function sortEvents(evts: CalendarEvent[]): CalendarEvent[] {
         return [...evts].sort((a, b) => {
             if (a.all_day && !b.all_day) return -1;
             if (!a.all_day && b.all_day) return 1;
@@ -64,18 +77,18 @@ export function ScheduleView({ currentDate, events, onEventClick, onDayClick, co
         });
     }
 
-    function formatDateHeader(dateKey) {
+    function formatDateHeader(dateKey: string): string {
         const d = new Date(dateKey + 'T12:00:00');
         return d.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
     }
 
-    function formatEventTime(event) {
+    function formatEventTime(event: CalendarEvent): string | null {
         if (event.all_day) return null;
-        return `${formatTime(event.start_time)} – ${formatTime(event.end_time)}`;
+        return `${formatTime(event.start_time)} \u2013 ${formatTime(event.end_time)}`;
     }
 
-    function dedup(evts) {
-        const seen = new Set();
+    function dedup(evts: CalendarEvent[]): CalendarEvent[] {
+        const seen = new Set<string>();
         return evts.filter(e => {
             const key = e.id + ':' + e.start_time;
             if (seen.has(key)) return false;
@@ -91,7 +104,7 @@ export function ScheduleView({ currentDate, events, onEventClick, onDayClick, co
             `}
             ${sortedDays.map((dateKey) => {
                 const dayDate = new Date(dateKey + 'T12:00:00');
-                const dayEvents = dedup(sortEvents(dayMap.get(dateKey)));
+                const dayEvents = dedup(sortEvents(dayMap.get(dateKey)!));
                 return html`
                     <div class="schedule-date-group" key=${dateKey}>
                         <div class="schedule-date-header"
@@ -102,7 +115,7 @@ export function ScheduleView({ currentDate, events, onEventClick, onDayClick, co
                             <div class="schedule-event${isPastEvent(event) ? ' past-event' : ''}${highlightEventId === event.id + '|' + event.start_time ? ' highlight-event' : ''}"
                                  key=${event.id + ':' + event.start_time}
                                  style=${'background:' + (eventColor(event, config))}
-                                 onClick=${(e) => { e.stopPropagation(); onEventClick(event); }}>
+                                 onClick=${(e: MouseEvent) => { e.stopPropagation(); onEventClick(event); }}>
                                 <div class="schedule-event-title">${event.title}</div>
                                 ${formatEventTime(event) && html`
                                     <div class="schedule-event-time">${formatEventTime(event)}</div>
@@ -117,5 +130,5 @@ export function ScheduleView({ currentDate, events, onEventClick, onDayClick, co
             })}
             <div ref=${sentinelRef} class="schedule-sentinel"></div>
         </div>
-    `;
+    ` as VNode;
 }

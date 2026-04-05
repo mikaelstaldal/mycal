@@ -1,19 +1,32 @@
+import type { VNode } from 'preact';
 import { html } from 'htm/preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { getWeekDays, isToday, formatHour, formatTime, getISOWeekNumber, isPastEvent } from '../lib/date-utils.js';
 import { startDrag } from '../lib/drag.js';
 import { eventColor, computeOverlapLayout } from '../lib/event-utils.js';
+import type { CalendarEvent, AppConfig } from '../types/models.js';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
 const HOVER_CLASSES = ['hour-cell--hover-full', 'hour-cell--hover-top-half', 'hour-cell--hover-bottom-half'];
-let _weekHoverCells = [];
+let _weekHoverCells: Element[] = [];
 
-export function WeekView({ currentDate, events, onDayClick, onEventClick, onAllDayClick, onEventDrag, config, highlightEventId }) {
+interface WeekViewProps {
+    currentDate: Date;
+    events: CalendarEvent[];
+    onDayClick: (date: Date) => void;
+    onEventClick: (event: CalendarEvent) => void;
+    onAllDayClick: (date: Date) => void;
+    onEventDrag: (eventId: string, startTime: string, endTime: string) => void;
+    config: AppConfig;
+    highlightEventId: string | null;
+}
+
+export function WeekView({ currentDate, events, onDayClick, onEventClick, onAllDayClick, onEventDrag, config, highlightEventId }: WeekViewProps): VNode | null {
     const weekStartDay = config.weekStartDay;
     const days = getWeekDays(currentDate, weekStartDay);
 
-    function eventsForDay(date) {
+    function eventsForDay(date: Date) {
         const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
         const dayEnd = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
         return events.filter(e => {
@@ -21,7 +34,7 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, onAllD
                 // Compare dates only (UTC) to avoid timezone shift issues
                 const startDate = e.start_time.substring(0, 10);
                 const endDate = e.end_time.substring(0, 10); // exclusive
-                const pad = n => String(n).padStart(2, '0');
+                const pad = (n: number) => String(n).padStart(2, '0');
                 const dayStr = `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`;
                 return dayStr >= startDate && dayStr < endDate;
             }
@@ -31,15 +44,15 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, onAllD
         });
     }
 
-    function timedEventsForDay(date) {
+    function timedEventsForDay(date: Date) {
         return eventsForDay(date).filter(e => !e.all_day);
     }
 
-    function allDayEventsForDay(date) {
+    function allDayEventsForDay(date: Date) {
         return eventsForDay(date).filter(e => e.all_day);
     }
 
-    function eventStyle(event, date, col, total) {
+    function eventStyle(event: CalendarEvent, date: Date, col: number, total: number) {
         const start = new Date(event.start_time);
         const end = new Date(event.end_time);
         const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -48,8 +61,8 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, onAllD
         const effectiveStart = start < dayStart ? dayStart : start;
         const effectiveEnd = end > dayEnd ? dayEnd : end;
 
-        const startMinutes = (effectiveStart - dayStart) / 60000;
-        const endMinutes = (effectiveEnd - dayStart) / 60000;
+        const startMinutes = (effectiveStart.getTime() - dayStart.getTime()) / 60000;
+        const endMinutes = (effectiveEnd.getTime() - dayStart.getTime()) / 60000;
         const duration = endMinutes - startMinutes;
 
         const top = (startMinutes / 60) * 48;
@@ -75,10 +88,10 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, onAllD
     const hasOverflow = maxAllDayCount > maxAllDay;
     const [allDayExpanded, setAllDayExpanded] = useState(false);
 
-    const overlayRef = useRef(null);
-    const alldayRowRef = useRef(null);
+    const overlayRef = useRef<HTMLDivElement | null>(null);
+    const alldayRowRef = useRef<HTMLDivElement | null>(null);
 
-    const weekBodyRef = useRef(null);
+    const weekBodyRef = useRef<HTMLDivElement | null>(null);
     useEffect(() => {
         if (weekBodyRef.current) {
             const hour = config.dayStartHour || 0;
@@ -122,24 +135,24 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, onAllD
                                          key=${e.id}
                                          title=${e.title}
                                          style=${`background-color: ${eventColor(e, config)}`}
-                                         onClick=${(ev) => { ev.stopPropagation(); onEventClick(e); }}
-                                         onMouseDown=${canDrag ? (ev) => {
+                                         onClick=${(ev: MouseEvent) => { ev.stopPropagation(); onEventClick(e); }}
+                                         onMouseDown=${canDrag ? (ev: MouseEvent) => {
                                              if (ev.button !== 0) return;
-                                             startDrag(e, ev.currentTarget, ev, {
+                                             startDrag(e, ev.currentTarget as HTMLElement, ev, {
                                                  mode: 'move-horizontal',
                                                  dayColumns: days,
-                                                 columnsContainer: alldayRowRef.current,
+                                                 columnsContainer: alldayRowRef.current!,
                                                  columnSelector: '.allday-cell',
-                                                 onDragEnd: (s, end) => onEventDrag(e.id, s, end)
+                                                 onDragEnd: (s: string, end: string) => onEventDrag(e.id, s, end)
                                              });
                                          } : undefined}
-                                         onTouchStart=${canDrag ? (ev) => {
-                                             startDrag(e, ev.currentTarget, ev, {
+                                         onTouchStart=${canDrag ? (ev: TouchEvent) => {
+                                             startDrag(e, ev.currentTarget as HTMLElement, ev, {
                                                  mode: 'move-horizontal',
                                                  dayColumns: days,
-                                                 columnsContainer: alldayRowRef.current,
+                                                 columnsContainer: alldayRowRef.current!,
                                                  columnSelector: '.allday-cell',
-                                                 onDragEnd: (s, end) => onEventDrag(e.id, s, end)
+                                                 onDragEnd: (s: string, end: string) => onEventDrag(e.id, s, end)
                                              });
                                          } : undefined}>
                                         ${e.title}
@@ -147,7 +160,7 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, onAllD
                                 `;
                             })}
                             ${hidden > 0 && html`
-                                <div class="allday-more" onClick=${(ev) => { ev.stopPropagation(); setAllDayExpanded(true); }}>
+                                <div class="allday-more" onClick=${(ev: MouseEvent) => { ev.stopPropagation(); setAllDayExpanded(true); }}>
                                     +${hidden} more
                                 </div>
                             `}
@@ -159,17 +172,17 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, onAllD
                 <div class="week-grid">
                     ${HOURS.map(hour => html`
                         <div class="time-gutter">${formatHour(hour)}</div>
-                        ${days.map((date, colIndex) => html`
+                        ${days.map((date) => html`
                             <div class="hour-cell"
-                                 onMouseMove=${(ev) => {
+                                 onMouseMove=${(ev: MouseEvent) => {
                                      _weekHoverCells.forEach(c => c.classList.remove(...HOVER_CLASSES));
-                                     const cell = ev.currentTarget;
+                                     const cell = ev.currentTarget as HTMLElement;
                                      if (ev.offsetY < 24) {
                                          cell.classList.add('hour-cell--hover-full');
                                          _weekHoverCells = [cell];
                                      } else {
                                          cell.classList.add('hour-cell--hover-bottom-half');
-                                         const allCells = cell.closest('.week-grid').querySelectorAll('.hour-cell');
+                                         const allCells = cell.closest('.week-grid')!.querySelectorAll('.hour-cell');
                                          const idx = Array.from(allCells).indexOf(cell);
                                          const nextCell = allCells[idx + 7];
                                          if (nextCell) {
@@ -180,11 +193,11 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, onAllD
                                          }
                                      }
                                  }}
-                                 onMouseLeave=${(ev) => {
+                                 onMouseLeave=${() => {
                                      _weekHoverCells.forEach(c => c.classList.remove(...HOVER_CLASSES));
                                      _weekHoverCells = [];
                                  }}
-                                 onClick=${(ev) => {
+                                 onClick=${(ev: MouseEvent) => {
                                      const minutes = ev.offsetY >= 24 ? 30 : 0;
                                      const d = new Date(date.getFullYear(), date.getMonth(), date.getDate(), hour, minutes);
                                      onDayClick(d);
@@ -195,14 +208,14 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, onAllD
                 </div>
                 <div class="week-events-overlay" ref=${overlayRef}>
                     <div class="week-events-gutter-spacer"></div>
-                    ${days.map((date, colIndex) => {
+                    ${days.map((date) => {
                         const dayEvents = timedEventsForDay(date);
                         const layout = computeOverlapLayout(dayEvents);
                         return html`
                             <div class="week-day-events">
                                 ${dayEvents.map((e, ei) => {
                                     const { col, total } = layout[ei];
-                                    const durationMin = (new Date(e.end_time) - new Date(e.start_time)) / 60000;
+                                    const durationMin = (new Date(e.end_time).getTime() - new Date(e.start_time).getTime()) / 60000;
                                     const isShort = durationMin <= 30;
                                     const isHighlighted = highlightEventId === e.id + '|' + e.start_time;
                                     const classes = ['week-event', isShort && 'short-event', isPastEvent(e) && 'past-event', isHighlighted && 'highlight-event'].filter(Boolean).join(' ');
@@ -212,22 +225,22 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, onAllD
                                              key=${e.id}
                                              title=${e.title}
                                              style=${eventStyle(e, date, col, total)}
-                                             onClick=${(ev) => { ev.stopPropagation(); onEventClick(e); }}
-                                             onMouseDown=${canDrag ? (ev) => {
+                                             onClick=${(ev: MouseEvent) => { ev.stopPropagation(); onEventClick(e); }}
+                                             onMouseDown=${canDrag ? (ev: MouseEvent) => {
                                                  if (ev.button !== 0) return;
-                                                 startDrag(e, ev.currentTarget, ev, {
+                                                 startDrag(e, ev.currentTarget as HTMLElement, ev, {
                                                      mode: 'move',
                                                      dayColumns: days,
-                                                     columnsContainer: overlayRef.current,
-                                                     onDragEnd: (s, end) => onEventDrag(e.id, s, end)
+                                                     columnsContainer: overlayRef.current!,
+                                                     onDragEnd: (s: string, end: string) => onEventDrag(e.id, s, end)
                                                  });
                                              } : undefined}
-                                             onTouchStart=${canDrag ? (ev) => {
-                                                 startDrag(e, ev.currentTarget, ev, {
+                                             onTouchStart=${canDrag ? (ev: TouchEvent) => {
+                                                 startDrag(e, ev.currentTarget as HTMLElement, ev, {
                                                      mode: 'move',
                                                      dayColumns: days,
-                                                     columnsContainer: overlayRef.current,
-                                                     onDragEnd: (s, end) => onEventDrag(e.id, s, end)
+                                                     columnsContainer: overlayRef.current!,
+                                                     onDragEnd: (s: string, end: string) => onEventDrag(e.id, s, end)
                                                  });
                                              } : undefined}>
                                             ${isShort ? html`
@@ -238,18 +251,18 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, onAllD
                                                 <span class="week-event-time">${formatTime(e.start_time)}</span>
                                             `}
                                             ${canDrag && html`<div class="resize-handle"
-                                                onMouseDown=${(ev) => {
+                                                onMouseDown=${(ev: MouseEvent) => {
                                                     ev.stopPropagation();
-                                                    startDrag(e, ev.currentTarget.parentElement, ev, {
+                                                    startDrag(e, (ev.currentTarget as HTMLElement).parentElement!, ev, {
                                                         mode: 'resize',
-                                                        onDragEnd: (s, end) => onEventDrag(e.id, s, end)
+                                                        onDragEnd: (s: string, end: string) => onEventDrag(e.id, s, end)
                                                     });
                                                 }}
-                                                onTouchStart=${(ev) => {
+                                                onTouchStart=${(ev: TouchEvent) => {
                                                     ev.stopPropagation();
-                                                    startDrag(e, ev.currentTarget.parentElement, ev, {
+                                                    startDrag(e, (ev.currentTarget as HTMLElement).parentElement!, ev, {
                                                         mode: 'resize',
-                                                        onDragEnd: (s, end) => onEventDrag(e.id, s, end)
+                                                        onDragEnd: (s: string, end: string) => onEventDrag(e.id, s, end)
                                                     });
                                                 }} />`}
                                         </div>
@@ -261,5 +274,5 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, onAllD
                 </div>
             </div>
         </div>
-    `;
+    ` as VNode;
 }

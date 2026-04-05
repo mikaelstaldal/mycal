@@ -14,5 +14,6 @@ while getopts "o:" opt; do
   esac
 done
 
+tsc --project tsconfig.json
 go generate ./...
 go build -tags netgo $OUTPUT_FLAG .

@@ -3,17 +3,31 @@
  * Returns a Promise that resolves based on user's choice.
  */
 
+interface ConfirmOptions {
+    title?: string;
+    okText?: string;
+    cancelText?: string;
+    danger?: boolean;
+}
+
+interface ChoiceOption {
+    label: string;
+    value: string;
+    primary?: boolean;
+}
+
+interface ChoiceOptions {
+    title?: string;
+    choices?: ChoiceOption[];
+}
+
 /**
  * Show a confirm dialog with OK/Cancel buttons.
- * @param {string} message - The message to display
- * @param {Object} [options]
- * @param {string} [options.title] - Dialog title (default: "Confirm")
- * @param {string} [options.okText] - OK button text (default: "OK")
- * @param {string} [options.cancelText] - Cancel button text (default: "Cancel")
- * @param {boolean} [options.danger] - Style OK button as danger
- * @returns {Promise<boolean>} true if confirmed, false if cancelled
+ * @param message - The message to display
+ * @param options
+ * @returns true if confirmed, false if cancelled
  */
-export function showConfirm(message, options = {}) {
+export function showConfirm(message: string, options: ConfirmOptions = {}): Promise<boolean> {
     const { title = 'Confirm', okText = 'OK', cancelText = 'Cancel', danger = false } = options;
 
     return new Promise(resolve => {
@@ -33,31 +47,29 @@ export function showConfirm(message, options = {}) {
             </div>
         `;
 
-        function cleanup(result) {
+        function cleanup(result: boolean) {
             dialog.close();
             dialog.remove();
             resolve(result);
         }
 
-        dialog.querySelector('[data-action="ok"]').onclick = () => cleanup(true);
-        dialog.querySelector('[data-action="cancel"]').onclick = () => cleanup(false);
+        (dialog.querySelector('[data-action="ok"]') as HTMLElement).onclick = () => cleanup(true);
+        (dialog.querySelector('[data-action="cancel"]') as HTMLElement).onclick = () => cleanup(false);
         dialog.addEventListener('cancel', () => cleanup(false));
 
         document.body.appendChild(dialog);
         dialog.showModal();
-        dialog.querySelector('[data-action="ok"]').focus();
+        (dialog.querySelector('[data-action="ok"]') as HTMLElement).focus();
     });
 }
 
 /**
  * Show a choice dialog with multiple buttons.
- * @param {string} message - The message to display
- * @param {Object} options
- * @param {string} [options.title] - Dialog title
- * @param {Array<{label: string, value: string, primary?: boolean}>} options.choices
- * @returns {Promise<string|null>} The chosen value, or null if cancelled
+ * @param message - The message to display
+ * @param options
+ * @returns The chosen value, or null if cancelled
  */
-export function showChoice(message, options = {}) {
+export function showChoice(message: string, options: ChoiceOptions = {}): Promise<string | null> {
     const { title = 'Choose', choices = [] } = options;
 
     return new Promise(resolve => {
@@ -79,14 +91,14 @@ export function showChoice(message, options = {}) {
             </div>
         `;
 
-        function cleanup(result) {
+        function cleanup(result: string | null) {
             dialog.close();
             dialog.remove();
             resolve(result);
         }
 
         choices.forEach(c => {
-            dialog.querySelector(`[data-value="${c.value}"]`).onclick = () => cleanup(c.value);
+            (dialog.querySelector(`[data-value="${c.value}"]`) as HTMLElement).onclick = () => cleanup(c.value);
         });
         dialog.addEventListener('cancel', () => cleanup(null));
 
@@ -95,7 +107,7 @@ export function showChoice(message, options = {}) {
     });
 }
 
-function escapeHtml(str) {
+function escapeHtml(str: string): string {
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;

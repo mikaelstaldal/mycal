@@ -1,8 +1,10 @@
+import type { CalendarEvent, AppConfig } from '../types/models.js';
+
 /**
  * Resolve the display color for an event, falling back to its calendar's color,
  * then the global default.
  */
-export function eventColor(event, config) {
+export function eventColor(event: CalendarEvent, config: AppConfig): string {
     return event.color
         || (config.calendarColors && config.calendarColors[event.calendar_id])
         || config.defaultEventColor
@@ -15,7 +17,7 @@ export function eventColor(event, config) {
  * where col is the 0-based column index and total is the number of columns
  * in that event's overlap cluster.
  */
-export function computeOverlapLayout(events) {
+export function computeOverlapLayout(events: CalendarEvent[]): { col: number; total: number }[] {
     const n = events.length;
     if (n === 0) return [];
 
@@ -23,8 +25,8 @@ export function computeOverlapLayout(events) {
     const ends = events.map(e => new Date(e.end_time).getTime());
 
     // Build overlap adjacency list
-    const overlaps = Array.from({ length: n }, (_, i) => {
-        const result = [];
+    const overlaps: number[][] = Array.from({ length: n }, (_, i) => {
+        const result: number[] = [];
         for (let j = 0; j < n; j++) {
             if (i !== j && starts[i] < ends[j] && ends[i] > starts[j]) result.push(j);
         }
@@ -47,10 +49,10 @@ export function computeOverlapLayout(events) {
     const totalCols = new Array(n).fill(1);
     for (let i = 0; i < n; i++) {
         if (!visited[i]) {
-            const cluster = [];
+            const cluster: number[] = [];
             const queue = [i];
             while (queue.length > 0) {
-                const j = queue.shift();
+                const j = queue.shift()!;
                 if (visited[j]) continue;
                 visited[j] = true;
                 cluster.push(j);

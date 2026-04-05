@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ES2020",
+    "moduleResolution": "bundler",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "rootDir": "web/ts",
+    "outDir": "web/static",
+    "strict": false,
+    "noImplicitAny": false,
+    "declaration": false,
+    "sourceMap": false,
+    "noEmitOnError": true,
+    "paths": {
+      "preact": ["./web/ts/types/preact.d.ts"],
+      "preact/hooks": ["./web/ts/types/preact-hooks.d.ts"],
+      "htm/preact": ["./web/ts/types/htm-preact.d.ts"]
+    }
+  },
+  "include": ["web/ts/**/*.ts"]
+}

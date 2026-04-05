@@ -1,4 +1,4 @@
-export const COLORS = [
+export const COLORS: { name: string; hex: string }[] = [
     { name: 'dodgerblue', hex: '#1e90ff' },
     { name: 'red', hex: '#ff0000' },
     { name: 'gold', hex: '#ffd700' },

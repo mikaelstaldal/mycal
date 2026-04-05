@@ -1,37 +1,44 @@
+import type { VNode } from 'preact';
 import { html } from 'htm/preact';
 import { useState, useRef, useEffect } from 'preact/hooks';
 import { listFeeds, createFeed, deleteFeed, refreshFeed } from '../lib/api.js';
 import { COLORS } from '../lib/colors.js';
 import { showConfirm } from '../lib/confirm.js';
+import type { Feed } from '../types/models.js';
 
-export function FeedsDialog({ onClose, onRefreshed }) {
-    const [feeds, setFeeds] = useState([]);
+interface FeedsDialogProps {
+    onClose: () => void;
+    onRefreshed?: () => void;
+}
+
+export function FeedsDialog({ onClose, onRefreshed }: FeedsDialogProps): VNode | null {
+    const [feeds, setFeeds] = useState<Feed[]>([]);
     const [showAdd, setShowAdd] = useState(false);
     const [loading, setLoading] = useState(true);
-    const [refreshingId, setRefreshingId] = useState(null);
+    const [refreshingId, setRefreshingId] = useState<number | null>(null);
     const [error, setError] = useState('');
-    const dialogRef = useRef(null);
+    const dialogRef = useRef<HTMLDialogElement | null>(null);
 
     useEffect(() => {
         if (dialogRef.current && !dialogRef.current.open) {
             dialogRef.current.showModal();
         }
-        loadFeeds();
+        loadFeedsData();
     }, []);
 
-    async function loadFeeds() {
+    async function loadFeedsData() {
         try {
             setLoading(true);
             const data = await listFeeds();
             setFeeds(data);
-        } catch (err) {
+        } catch (err: any) {
             setError(err.message);
         } finally {
             setLoading(false);
         }
     }
 
-    async function handleDelete(id) {
+    async function handleDelete(id: number) {
         const confirmed = await showConfirm('Delete this feed subscription?', {
             title: 'Delete Feed',
             okText: 'Delete',
@@ -40,39 +47,39 @@ export function FeedsDialog({ onClose, onRefreshed }) {
         if (!confirmed) return;
         try {
             await deleteFeed(id);
-            await loadFeeds();
-        } catch (err) {
+            await loadFeedsData();
+        } catch (err: any) {
             setError(err.message);
         }
     }
 
-    async function handleRefresh(id) {
+    async function handleRefresh(id: number) {
         setRefreshingId(id);
         try {
             await refreshFeed(id);
-            await loadFeeds();
+            await loadFeedsData();
             if (onRefreshed) onRefreshed();
-        } catch (err) {
+        } catch (err: any) {
             setError(err.message);
         } finally {
             setRefreshingId(null);
         }
     }
 
-    async function handleAdd(data) {
+    async function handleAdd(data: any) {
         try {
             await createFeed(data);
             setShowAdd(false);
-            await loadFeeds();
+            await loadFeedsData();
         } catch (err) {
             throw err;
         }
     }
 
-    function formatDate(dateStr) {
+    function formatDate(dateStr?: string) {
         if (!dateStr) return 'Never';
         const d = new Date(dateStr);
-        return d.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
+        return d.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' } as any);
     }
 
     return html`
@@ -87,7 +94,7 @@ export function FeedsDialog({ onClose, onRefreshed }) {
                     <div class="feed-empty">No feed subscriptions yet.</div>
                 ` : html`
                     <div class="feed-list">
-                        ${feeds.map(feed => html`
+                        ${(feeds as any[]).map(feed => html`
                             <div class="feed-item" key=${feed.id}>
                                 <div class="feed-item-info">
                                     <div class="feed-item-url" title=${feed.url}>${feed.url}</div>
@@ -124,10 +131,15 @@ export function FeedsDialog({ onClose, onRefreshed }) {
                 </div>
             `}
         </dialog>
-    `;
+    ` as VNode;
 }
 
-function AddFeedForm({ onAdd, onCancel }) {
+interface AddFeedFormProps {
+    onAdd: (data: any) => Promise<void>;
+    onCancel: () => void;
+}
+
+function AddFeedForm({ onAdd, onCancel }: AddFeedFormProps): VNode | null {
     const [url, setUrl] = useState('');
     const [calendarName, setCalendarName] = useState('');
     const [calendarColor, setCalendarColor] = useState('dodgerblue');
@@ -140,14 +152,14 @@ function AddFeedForm({ onAdd, onCancel }) {
         setLoading(true);
         setError('');
         try {
-            const data = {
+            const data: any = {
                 url: url.trim(),
                 calendar_name: calendarName.trim(),
                 refresh_interval_minutes: Number(interval),
             };
             if (calendarName.trim()) data.calendar_color = calendarColor;
             await onAdd(data);
-        } catch (err) {
+        } catch (err: any) {
             setError(err.message);
         } finally {
             setLoading(false);
@@ -158,12 +170,12 @@ function AddFeedForm({ onAdd, onCancel }) {
         <div class="feed-add-form">
             <label>
                 Feed URL
-                <input type="url" value=${url} onInput=${e => setUrl(e.target.value)}
+                <input type="url" value=${url} onInput=${(e: Event) => setUrl((e.target as HTMLInputElement).value)}
                        placeholder="https://calendar.google.com/..." />
             </label>
             <label>
                 Calendar name (optional)
-                <input type="text" value=${calendarName} onInput=${e => setCalendarName(e.target.value)}
+                <input type="text" value=${calendarName} onInput=${(e: Event) => setCalendarName((e.target as HTMLInputElement).value)}
                        placeholder="e.g. work, personal" maxlength="100" />
             </label>
             ${calendarName.trim() && html`
@@ -181,7 +193,7 @@ function AddFeedForm({ onAdd, onCancel }) {
             `}
             <label>
                 Refresh interval (minutes)
-                <input type="number" value=${interval} onInput=${e => setInterval(e.target.value)}
+                <input type="number" value=${interval} onInput=${(e: Event) => setInterval((e.target as HTMLInputElement).value as any)}
                        min="5" max="10080" />
             </label>
             ${error && html`<div class="feed-error">${error}</div>`}
@@ -192,5 +204,5 @@ function AddFeedForm({ onAdd, onCancel }) {
                 </button>
             </div>
         </div>
-    `;
+    ` as VNode;
 }

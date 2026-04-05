@@ -1,11 +1,14 @@
+import type { VNode } from 'preact';
 import { html } from 'htm/preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 
+declare const google: any;
+
 // Google Maps loader
-let mapsLoadPromise = null;
+let mapsLoadPromise: Promise<void> | null = null;
 let mapsLoaded = false;
 
-function loadGoogleMaps(apiKey) {
+function loadGoogleMaps(apiKey: string): Promise<void> {
     if (mapsLoaded) return Promise.resolve();
     if (mapsLoadPromise) return mapsLoadPromise;
     mapsLoadPromise = new Promise((resolve, reject) => {
@@ -20,10 +23,10 @@ function loadGoogleMaps(apiKey) {
 }
 
 // Leaflet loader
-let leafletLoadPromise = null;
+let leafletLoadPromise: Promise<void> | null = null;
 let leafletLoaded = false;
 
-function loadLeaflet() {
+function loadLeaflet(): Promise<void> {
     if (leafletLoaded) return Promise.resolve();
     if (leafletLoadPromise) return leafletLoadPromise;
     leafletLoadPromise = new Promise((resolve, reject) => {
@@ -46,15 +49,24 @@ function loadLeaflet() {
 
 const DEFAULT_CENTER = { lat: 59.3293, lng: 18.0686 }; // Stockholm
 
-export function MapPicker({ mapProvider, apiKey, latitude, longitude, editing, onCoordinateChange }) {
-    const mapRef = useRef(null);
-    const mapInstanceRef = useRef(null);
-    const markerRef = useRef(null);
+interface MapPickerProps {
+    mapProvider: string;
+    apiKey?: string;
+    latitude?: string | number | null;
+    longitude?: string | number | null;
+    editing: boolean;
+    onCoordinateChange?: (lat: string, lng: string) => void;
+}
+
+export function MapPicker({ mapProvider, apiKey, latitude, longitude, editing, onCoordinateChange }: MapPickerProps): VNode | null {
+    const mapRef = useRef<HTMLDivElement | null>(null);
+    const mapInstanceRef = useRef<any>(null);
+    const markerRef = useRef<any>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
 
     if (!mapProvider || mapProvider === 'none') return null;
-    if (mapProvider === 'google' && !/^AIza[A-Za-z0-9_-]{35}$/.test(apiKey)) return null;
+    if (mapProvider === 'google' && !/^AIza[A-Za-z0-9_-]{35}$/.test(apiKey || '')) return null;
 
     const hasCoords = latitude !== '' && longitude !== '' && latitude != null && longitude != null;
 
@@ -69,8 +81,8 @@ export function MapPicker({ mapProvider, apiKey, latitude, longitude, editing, o
             if (cancelled || !mapRef.current) return;
             setLoading(false);
 
-            const center = hasCoords
-                ? [parseFloat(latitude), parseFloat(longitude)]
+            const center: [number, number] = hasCoords
+                ? [parseFloat(String(latitude)), parseFloat(String(longitude))]
                 : [DEFAULT_CENTER.lat, DEFAULT_CENTER.lng];
 
             const map = L.map(mapRef.current, {
@@ -90,7 +102,7 @@ export function MapPicker({ mapProvider, apiKey, latitude, longitude, editing, o
             requestAnimationFrame(() => map.invalidateSize());
 
             // Prevent Leaflet's buttons from submitting the parent form
-            mapRef.current.querySelectorAll('button').forEach(b => b.type = 'button');
+            mapRef.current.querySelectorAll<HTMLButtonElement>('button').forEach(b => b.type = 'button');
 
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; OpenStreetMap contributors',
@@ -102,7 +114,7 @@ export function MapPicker({ mapProvider, apiKey, latitude, longitude, editing, o
             }
 
             if (editing) {
-                map.on('click', (e) => {
+                map.on('click', (e: any) => {
                     const { lat, lng } = e.latlng;
                     if (markerRef.current) {
                         markerRef.current.setLatLng(e.latlng);
@@ -138,12 +150,12 @@ export function MapPicker({ mapProvider, apiKey, latitude, longitude, editing, o
         setLoading(true);
         setError(false);
 
-        loadGoogleMaps(apiKey).then(() => {
+        loadGoogleMaps(apiKey || '').then(() => {
             if (cancelled || !mapRef.current) return;
             setLoading(false);
 
             const center = hasCoords
-                ? { lat: parseFloat(latitude), lng: parseFloat(longitude) }
+                ? { lat: parseFloat(String(latitude)), lng: parseFloat(String(longitude)) }
                 : DEFAULT_CENTER;
 
             const map = new google.maps.Map(mapRef.current, {
@@ -162,7 +174,7 @@ export function MapPicker({ mapProvider, apiKey, latitude, longitude, editing, o
             }
 
             if (editing) {
-                map.addListener('click', (e) => {
+                map.addListener('click', (e: any) => {
                     const lat = e.latLng.lat();
                     const lng = e.latLng.lng();
                     if (markerRef.current) {
@@ -192,7 +204,7 @@ export function MapPicker({ mapProvider, apiKey, latitude, longitude, editing, o
     useEffect(() => {
         if (mapProvider !== 'openstreetmap' || !mapInstanceRef.current || !leafletLoaded) return;
         if (hasCoords) {
-            const pos = [parseFloat(latitude), parseFloat(longitude)];
+            const pos: [number, number] = [parseFloat(String(latitude)), parseFloat(String(longitude))];
             if (!isNaN(pos[0]) && !isNaN(pos[1])) {
                 if (markerRef.current) {
                     markerRef.current.setLatLng(pos);
@@ -208,7 +220,7 @@ export function MapPicker({ mapProvider, apiKey, latitude, longitude, editing, o
     useEffect(() => {
         if (mapProvider !== 'google' || !mapInstanceRef.current || !mapsLoaded) return;
         if (hasCoords) {
-            const pos = { lat: parseFloat(latitude), lng: parseFloat(longitude) };
+            const pos = { lat: parseFloat(String(latitude)), lng: parseFloat(String(longitude)) };
             if (!isNaN(pos.lat) && !isNaN(pos.lng)) {
                 if (markerRef.current) {
                     markerRef.current.setPosition(pos);
@@ -230,5 +242,5 @@ export function MapPicker({ mapProvider, apiKey, latitude, longitude, editing, o
             ${loading && html`<div style="padding: 12px; color: #666;">Loading map...</div>`}
             <div ref=${mapRef} style="width: 100%; height: ${editing ? '250px' : '200px'}; ${loading ? 'display:none' : ''}" />
         </div>
-    `;
+    ` as VNode;
 }

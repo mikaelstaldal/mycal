@@ -1,15 +1,28 @@
+import type { VNode } from 'preact';
 import { html } from 'htm/preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { isToday, formatHour, formatTime, isPastEvent } from '../lib/date-utils.js';
 import { startDrag } from '../lib/drag.js';
 import { eventColor, computeOverlapLayout } from '../lib/event-utils.js';
+import type { CalendarEvent, AppConfig } from '../types/models.js';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
 const HOVER_CLASSES = ['hour-cell--hover-full', 'hour-cell--hover-top-half', 'hour-cell--hover-bottom-half'];
-let _dayHoverCells = [];
+let _dayHoverCells: Element[] = [];
 
-export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDayClick, onEventDrag, config, highlightEventId }) {
+interface DayViewProps {
+    currentDate: Date;
+    events: CalendarEvent[];
+    onDayClick: (date: Date) => void;
+    onEventClick: (event: CalendarEvent) => void;
+    onAllDayClick: (date: Date) => void;
+    onEventDrag: (eventId: string, startTime: string, endTime: string) => void;
+    config: AppConfig;
+    highlightEventId: string | null;
+}
+
+export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDayClick, onEventDrag, config, highlightEventId }: DayViewProps): VNode | null {
     const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
 
     function eventsForDay() {
@@ -19,7 +32,7 @@ export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDa
             if (e.all_day) {
                 const startDate = e.start_time.substring(0, 10);
                 const endDate = e.end_time.substring(0, 10);
-                const pad = n => String(n).padStart(2, '0');
+                const pad = (n: number) => String(n).padStart(2, '0');
                 const dayStr = `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`;
                 return dayStr >= startDate && dayStr < endDate;
             }
@@ -37,7 +50,7 @@ export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDa
         return eventsForDay().filter(e => e.all_day);
     }
 
-    function eventStyle(event, col, total) {
+    function eventStyle(event: CalendarEvent, col: number, total: number) {
         const start = new Date(event.start_time);
         const end = new Date(event.end_time);
         const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -46,8 +59,8 @@ export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDa
         const effectiveStart = start < dayStart ? dayStart : start;
         const effectiveEnd = end > dayEnd ? dayEnd : end;
 
-        const startMinutes = (effectiveStart - dayStart) / 60000;
-        const endMinutes = (effectiveEnd - dayStart) / 60000;
+        const startMinutes = (effectiveStart.getTime() - dayStart.getTime()) / 60000;
+        const endMinutes = (effectiveEnd.getTime() - dayStart.getTime()) / 60000;
         const duration = endMinutes - startMinutes;
 
         const top = (startMinutes / 60) * 48;
@@ -67,9 +80,8 @@ export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDa
 
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const adEvents = allDayEvents();
-    const hasAllDay = adEvents.length > 0;
 
-    const dayBodyRef = useRef(null);
+    const dayBodyRef = useRef<HTMLDivElement | null>(null);
     useEffect(() => {
         if (dayBodyRef.current) {
             const hour = config.dayStartHour || 0;
@@ -95,7 +107,7 @@ export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDa
                              key=${e.id}
                              title=${e.title}
                              style=${`background-color: ${eventColor(e, config)}`}
-                             onClick=${(ev) => { ev.stopPropagation(); onEventClick(e); }}>
+                             onClick=${(ev: MouseEvent) => { ev.stopPropagation(); onEventClick(e); }}>
                             ${e.title}
                         </div>
                     `)}
@@ -106,15 +118,15 @@ export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDa
                     ${HOURS.map(hour => html`
                         <div class="time-gutter">${formatHour(hour)}</div>
                         <div class="hour-cell"
-                             onMouseMove=${(ev) => {
+                             onMouseMove=${(ev: MouseEvent) => {
                                  _dayHoverCells.forEach(c => c.classList.remove(...HOVER_CLASSES));
-                                 const cell = ev.currentTarget;
+                                 const cell = ev.currentTarget as HTMLElement;
                                  if (ev.offsetY < 24) {
                                      cell.classList.add('hour-cell--hover-full');
                                      _dayHoverCells = [cell];
                                  } else {
                                      cell.classList.add('hour-cell--hover-bottom-half');
-                                     const allCells = cell.closest('.day-view-grid').querySelectorAll('.hour-cell');
+                                     const allCells = cell.closest('.day-view-grid')!.querySelectorAll('.hour-cell');
                                      const idx = Array.from(allCells).indexOf(cell);
                                      const nextCell = allCells[idx + 1];
                                      if (nextCell) {
@@ -125,11 +137,11 @@ export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDa
                                      }
                                  }
                              }}
-                             onMouseLeave=${(ev) => {
+                             onMouseLeave=${() => {
                                  _dayHoverCells.forEach(c => c.classList.remove(...HOVER_CLASSES));
                                  _dayHoverCells = [];
                              }}
-                             onClick=${(ev) => {
+                             onClick=${(ev: MouseEvent) => {
                                  const minutes = ev.offsetY >= 24 ? 30 : 0;
                                  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate(), hour, minutes);
                                  onDayClick(d);
@@ -145,7 +157,7 @@ export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDa
                             const layout = computeOverlapLayout(tevents);
                             return tevents.map((e, ei) => {
                             const { col, total } = layout[ei];
-                            const durationMin = (new Date(e.end_time) - new Date(e.start_time)) / 60000;
+                            const durationMin = (new Date(e.end_time).getTime() - new Date(e.start_time).getTime()) / 60000;
                             const isShort = durationMin <= 30;
                             const isHighlighted = highlightEventId === e.id + '|' + e.start_time;
                             const classes = ['week-event', isShort && 'short-event', isPastEvent(e) && 'past-event', isHighlighted && 'highlight-event'].filter(Boolean).join(' ');
@@ -155,18 +167,18 @@ export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDa
                                      key=${e.id}
                                      title=${e.title}
                                      style=${eventStyle(e, col, total)}
-                                     onClick=${(ev) => { ev.stopPropagation(); onEventClick(e); }}
-                                     onMouseDown=${canDrag ? (ev) => {
+                                     onClick=${(ev: MouseEvent) => { ev.stopPropagation(); onEventClick(e); }}
+                                     onMouseDown=${canDrag ? (ev: MouseEvent) => {
                                          if (ev.button !== 0) return;
-                                         startDrag(e, ev.currentTarget, ev, {
+                                         startDrag(e, ev.currentTarget as HTMLElement, ev, {
                                              mode: 'move',
-                                             onDragEnd: (s, end) => onEventDrag(e.id, s, end)
+                                             onDragEnd: (s: string, end: string) => onEventDrag(e.id, s, end)
                                          });
                                      } : undefined}
-                                     onTouchStart=${canDrag ? (ev) => {
-                                         startDrag(e, ev.currentTarget, ev, {
+                                     onTouchStart=${canDrag ? (ev: TouchEvent) => {
+                                         startDrag(e, ev.currentTarget as HTMLElement, ev, {
                                              mode: 'move',
-                                             onDragEnd: (s, end) => onEventDrag(e.id, s, end)
+                                             onDragEnd: (s: string, end: string) => onEventDrag(e.id, s, end)
                                          });
                                      } : undefined}>
                                     ${isShort ? html`
@@ -177,18 +189,18 @@ export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDa
                                         <span class="week-event-time">${formatTime(e.start_time)}</span>
                                     `}
                                     ${canDrag && html`<div class="resize-handle"
-                                        onMouseDown=${(ev) => {
+                                        onMouseDown=${(ev: MouseEvent) => {
                                             ev.stopPropagation();
-                                            startDrag(e, ev.currentTarget.parentElement, ev, {
+                                            startDrag(e, (ev.currentTarget as HTMLElement).parentElement!, ev, {
                                                 mode: 'resize',
-                                                onDragEnd: (s, end) => onEventDrag(e.id, s, end)
+                                                onDragEnd: (s: string, end: string) => onEventDrag(e.id, s, end)
                                             });
                                         }}
-                                        onTouchStart=${(ev) => {
+                                        onTouchStart=${(ev: TouchEvent) => {
                                             ev.stopPropagation();
-                                            startDrag(e, ev.currentTarget.parentElement, ev, {
+                                            startDrag(e, (ev.currentTarget as HTMLElement).parentElement!, ev, {
                                                 mode: 'resize',
-                                                onDragEnd: (s, end) => onEventDrag(e.id, s, end)
+                                                onDragEnd: (s: string, end: string) => onEventDrag(e.id, s, end)
                                             });
                                         }} />`}
                                 </div>
@@ -199,5 +211,5 @@ export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDa
                 </div>
             </div>
         </div>
-    `;
+    ` as VNode;
 }

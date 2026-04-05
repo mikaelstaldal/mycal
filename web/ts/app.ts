@@ -18,40 +18,41 @@ import { addMonths, addWeeks, startOfWeek, toRFC3339 } from './lib/date-utils.js
 import { getConfig, hasUserDefaultView } from './lib/config.js';
 import { checkAndNotify, requestPermission } from './lib/notifications.js';
 import { showChoice } from './lib/confirm.js';
+import type { CalendarEvent, CalendarMeta, AppConfig } from './types/models.js';
 
 function App() {
     const [darkMode, setDarkMode] = useState(() => localStorage.getItem('darkMode') === 'true');
     const [currentDate, setCurrentDate] = useState(new Date());
-    const [events, setEvents] = useState([]);
+    const [events, setEvents] = useState<CalendarEvent[]>([]);
     const [showForm, setShowForm] = useState(false);
-    const [selectedEvent, setSelectedEvent] = useState(null);
-    const [defaultDate, setDefaultDate] = useState(null);
+    const [selectedEvent, setSelectedEvent] = useState<(CalendarEvent & { _editInstance?: boolean }) | null>(null);
+    const [defaultDate, setDefaultDate] = useState<Date | null>(null);
     const [defaultAllDay, setDefaultAllDay] = useState(false);
-    const [config, setConfig] = useState(getConfig);
+    const [config, setConfig] = useState<AppConfig>(getConfig);
     const [showImportSingle, setShowImportSingle] = useState(false);
     const [showImportBulk, setShowImportBulk] = useState(false);
     const [showFeeds, setShowFeeds] = useState(false);
-    const [toast, setToast] = useState(null);
+    const [toast, setToast] = useState<string | null>(null);
     const [toastError, setToastError] = useState(false);
-    const [viewMode, setViewMode] = useState(() => {
+    const [viewMode, setViewMode] = useState<string>(() => {
         if (hasUserDefaultView()) return getConfig().defaultView;
         return window.innerWidth <= 600 ? 'schedule' : 'week';
     });
     const [searchQuery, setSearchQuery] = useState('');
-    const [searchResults, setSearchResults] = useState(null);
-    const searchTimer = useRef(null);
-    const preSearchViewMode = useRef(null);
-    const [highlightEventId, setHighlightEventId] = useState(null);
+    const [searchResults, setSearchResults] = useState<CalendarEvent[] | null>(null);
+    const searchTimer = useRef<number | null>(null);
+    const preSearchViewMode = useRef<string | null>(null);
+    const [highlightEventId, setHighlightEventId] = useState<string | null>(null);
     const [isDragging, setIsDragging] = useState(false);
     const dragCounter = useRef(0);
-    const [calendars, setCalendars] = useState([]);
-    const [selectedCalendarIds, setSelectedCalendarIds] = useState(null); // null = all
+    const [calendars, setCalendars] = useState<CalendarMeta[]>([]);
+    const [selectedCalendarIds, setSelectedCalendarIds] = useState<number[] | null>(null); // null = all
     const [scheduleDaysLoaded, setScheduleDaysLoaded] = useState(30);
     const [loadingMoreSchedule, setLoadingMoreSchedule] = useState(false);
 
     useEffect(() => {
         document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
-        localStorage.setItem('darkMode', darkMode);
+        localStorage.setItem('darkMode', String(darkMode));
     }, [darkMode]);
 
     const loadCalendars = useCallback(async () => {
@@ -60,7 +61,7 @@ function App() {
             setCalendars(cals);
             // Set default event color from default calendar (id=0)
             const defaultCal = cals.find(c => c.id === 0);
-            const calColors = {};
+            const calColors: Record<number, string> = {};
             for (const c of cals) { calColors[c.id] = c.color; }
             setConfig(prev => ({
                 ...prev,
@@ -75,7 +76,7 @@ function App() {
     useEffect(() => { loadCalendars(); }, [loadCalendars]);
 
     const loadEvents = useCallback(async () => {
-        let from, to;
+        let from: Date, to: Date;
         if (viewMode === 'schedule') {
             const today = new Date();
             from = new Date(today.getFullYear(), today.getMonth(), today.getDate());
@@ -143,7 +144,7 @@ function App() {
         return () => clearInterval(id);
     }, [events]);
 
-    function handleToggleCalendar(calId) {
+    function handleToggleCalendar(calId: number) {
         setSelectedCalendarIds(prev => {
             if (prev === null) {
                 // Currently showing all - switch to all except this one
@@ -165,7 +166,7 @@ function App() {
         setSelectedCalendarIds(prev => prev === null ? [] : null);
     }
 
-    async function handleEditCalendar(id, data) {
+    async function handleEditCalendar(id: number, data: { name: string; color: string }) {
         try {
             await updateCalendar(id, data);
             await loadCalendars();
@@ -205,23 +206,23 @@ function App() {
 
     function handleToday() { setCurrentDate(new Date()); }
 
-    function handleViewChange(mode) { setViewMode(mode); }
+    function handleViewChange(mode: string) { setViewMode(mode); }
 
-    function handleDayClick(date) {
+    function handleDayClick(date: Date) {
         setSelectedEvent(null);
         setDefaultDate(date);
         setDefaultAllDay(false);
         setShowForm(true);
     }
 
-    function handleAllDayClick(date) {
+    function handleAllDayClick(date: Date) {
         setSelectedEvent(null);
         setDefaultDate(date);
         setDefaultAllDay(true);
         setShowForm(true);
     }
 
-    async function handleEventClick(event) {
+    async function handleEventClick(event: CalendarEvent) {
         if (event.recurrence_parent_id) {
             // This is an override instance - edit it directly
             setSelectedEvent(event);
@@ -242,7 +243,7 @@ function App() {
             if (choice === null) return;
             if (choice === 'instance') {
                 // Edit single instance - composite ID encodes the instance
-                event._editInstance = true;
+                (event as any)._editInstance = true;
                 setSelectedEvent(event);
             } else {
                 // Edit all - fetch parent
@@ -261,7 +262,7 @@ function App() {
         setShowForm(true);
     }
 
-    async function handleSave(id, data) {
+    async function handleSave(id: string | null | undefined, data: any) {
         if (data.reminder_minutes > 0) {
             requestPermission();
         }
@@ -275,7 +276,7 @@ function App() {
         await loadEvents();
     }
 
-    async function handleDelete(id) {
+    async function handleDelete(id: string) {
         await deleteEvent(id);
         setShowForm(false);
         setSelectedEvent(null);
@@ -287,7 +288,7 @@ function App() {
         setSelectedEvent(null);
     }
 
-    async function handleEventDrag(eventId, startTime, endTime) {
+    async function handleEventDrag(eventId: string, startTime: string, endTime: string) {
         try {
             await updateEvent(eventId, { start_time: startTime, end_time: endTime });
             await loadEvents();
@@ -296,17 +297,17 @@ function App() {
         }
     }
 
-    function handleYearMonthClick(month) {
+    function handleYearMonthClick(month: number) {
         setCurrentDate(new Date(currentDate.getFullYear(), month, 1));
         setViewMode('month');
     }
 
-    function handleYearWeekClick(date) {
+    function handleYearWeekClick(date: Date) {
         setCurrentDate(date);
         setViewMode('week');
     }
 
-    function handleYearDayClick(date) {
+    function handleYearDayClick(date: Date) {
         setCurrentDate(date);
         setViewMode('day');
     }
@@ -317,7 +318,7 @@ function App() {
         if (searchTimer.current) clearTimeout(searchTimer.current);
     }
 
-    function handleSearchResultClick(event) {
+    function handleSearchResultClick(event: CalendarEvent) {
         setCurrentDate(new Date(event.start_time));
         setViewMode(preSearchViewMode.current || viewMode);
         setHighlightEventId(event.id + '|' + event.start_time);
@@ -331,8 +332,8 @@ function App() {
         }, 100);
     }
 
-    function handleSearchInput(e) {
-        const value = e.target.value;
+    function handleSearchInput(e: Event) {
+        const value = (e.target as HTMLInputElement).value;
         setSearchQuery(value);
         if (searchTimer.current) clearTimeout(searchTimer.current);
         if (!value.trim()) {
@@ -349,31 +350,31 @@ function App() {
             } catch (err) {
                 console.error('Search failed:', err);
             }
-        }, 300);
+        }, 300) as unknown as number;
     }
 
-    function handleDragOver(e) {
+    function handleDragOver(e: DragEvent) {
         e.preventDefault();
-        e.dataTransfer.dropEffect = 'copy';
+        e.dataTransfer!.dropEffect = 'copy';
     }
 
-    function handleDragEnter(e) {
+    function handleDragEnter(e: DragEvent) {
         e.preventDefault();
         dragCounter.current++;
         if (dragCounter.current === 1) setIsDragging(true);
     }
 
-    function handleDragLeave(e) {
+    function handleDragLeave(e: DragEvent) {
         e.preventDefault();
         dragCounter.current--;
         if (dragCounter.current === 0) setIsDragging(false);
     }
 
-    async function handleDrop(e) {
+    async function handleDrop(e: DragEvent) {
         e.preventDefault();
         dragCounter.current = 0;
         setIsDragging(false);
-        const file = e.dataTransfer.files[0];
+        const file = e.dataTransfer!.files[0];
         if (!file || !file.name.endsWith('.ics')) return;
         try {
             const text = await file.text();
@@ -381,23 +382,18 @@ function App() {
             setToastError(false);
             setToast('Event imported successfully');
             await loadEvents();
-        } catch (err) {
+        } catch (err: any) {
             setToastError(true);
             setToast(err.message || 'Import failed');
         }
     }
 
-    function handleClearSearch() {
-        setSearchQuery('');
-        setSearchResults(null);
-    }
-
-    function formatSearchDate(startTime) {
+    function formatSearchDate(startTime: string) {
         const d = new Date(startTime);
         return d.toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
     }
 
-    function formatSearchTime(startTime, endTime) {
+    function formatSearchTime(startTime: string, endTime: string) {
         const s = new Date(startTime);
         const e = new Date(endTime);
         return s.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) + ' - ' +
@@ -503,11 +499,11 @@ function App() {
                               config=${config} />
             `}
             ${showImportSingle && html`
-                <${ImportSingleForm} onImported=${(message, isError) => { setShowImportSingle(false); if (!isError) loadEvents(); setToastError(!!isError); setToast(message); }}
+                <${ImportSingleForm} onImported=${(message: string, isError?: boolean) => { setShowImportSingle(false); if (!isError) loadEvents(); setToastError(!!isError); setToast(message); }}
                                      onClose=${() => setShowImportSingle(false)} />
             `}
             ${showImportBulk && html`
-                <${ImportBulkForm} onImported=${(message, isError) => { setShowImportBulk(false); if (!isError) loadEvents(); setToastError(!!isError); setToast(message); }}
+                <${ImportBulkForm} onImported=${(message: string, isError?: boolean) => { setShowImportBulk(false); if (!isError) loadEvents(); setToastError(!!isError); setToast(message); }}
                                    onClose=${() => setShowImportBulk(false)} />
             `}
             ${showFeeds && html`
@@ -519,4 +515,4 @@ function App() {
     `;
 }
 
-render(html`<${App} />`, document.getElementById('app'));
+render(html`<${App} />` as any, document.getElementById('app'));

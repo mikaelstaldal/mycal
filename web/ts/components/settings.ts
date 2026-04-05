@@ -1,21 +1,28 @@
+import type { VNode } from 'preact';
 import { html } from 'htm/preact';
 import { useState, useRef, useEffect } from 'preact/hooks';
 import { saveConfig } from '../lib/config.js';
 import { formatHour } from '../lib/date-utils.js';
+import type { AppConfig } from '../types/models.js';
 
 // Google Maps API keys are 39 chars starting with "AIza"
-function isValidGoogleMapsApiKey(key) {
+function isValidGoogleMapsApiKey(key: string) {
     return /^AIza[A-Za-z0-9_-]{35}$/.test(key);
 }
 
-export function Settings({ config, onConfigChange }) {
+interface SettingsProps {
+    config: AppConfig;
+    onConfigChange: (config: AppConfig) => void;
+}
+
+export function Settings({ config, onConfigChange }: SettingsProps): VNode | null {
     const [open, setOpen] = useState(false);
     const [apiKeyError, setApiKeyError] = useState('');
     const [pendingApiKey, setPendingApiKey] = useState('');
     // Track dropdown selection locally so we can show the API key field
     // before actually saving 'google' as the provider
     const [selectedProvider, setSelectedProvider] = useState(config.mapProvider || 'none');
-    const dialogRef = useRef(null);
+    const dialogRef = useRef<HTMLDialogElement | null>(null);
 
     useEffect(() => {
         if (open && dialogRef.current && !dialogRef.current.open) {
@@ -35,15 +42,15 @@ export function Settings({ config, onConfigChange }) {
         setOpen(false);
     }
 
-    function handleChange(key, value) {
+    function handleChange(key: string, value: any) {
         const numericKeys = ['dayStartHour', 'weekStartDay'];
         const updated = { ...config, [key]: numericKeys.includes(key) ? Number(value) : value };
         saveConfig(updated);
         onConfigChange(updated);
     }
 
-    function handleMapProviderChange(value) {
-        setSelectedProvider(value);
+    function handleMapProviderChange(value: string) {
+        setSelectedProvider(value as any);
         if (value === 'google') {
             setPendingApiKey(config.googleMapsApiKey || '');
             if (isValidGoogleMapsApiKey(config.googleMapsApiKey)) {
@@ -59,7 +66,7 @@ export function Settings({ config, onConfigChange }) {
         }
     }
 
-    function handleApiKeyInput(value) {
+    function handleApiKeyInput(value: string) {
         setPendingApiKey(value);
         if (value === '') {
             setApiKeyError('API key is required for Google Maps');
@@ -68,7 +75,7 @@ export function Settings({ config, onConfigChange }) {
         } else {
             setApiKeyError('');
             // Key is valid — now save both the key and switch the provider
-            const updated = { ...config, googleMapsApiKey: value, mapProvider: 'google' };
+            const updated = { ...config, googleMapsApiKey: value, mapProvider: 'google' as const };
             saveConfig(updated);
             onConfigChange(updated);
             return;
@@ -90,7 +97,7 @@ export function Settings({ config, onConfigChange }) {
                 <label>
                     Default view
                     <select value=${config.defaultView}
-                            onChange=${e => handleChange('defaultView', e.target.value)}>
+                            onChange=${(e: Event) => handleChange('defaultView', (e.target as HTMLSelectElement).value)}>
                         <option value="year">Year</option>
                         <option value="month">Month</option>
                         <option value="week">Week</option>
@@ -101,7 +108,7 @@ export function Settings({ config, onConfigChange }) {
                 <label>
                     Week starts on
                     <select value=${config.weekStartDay}
-                            onChange=${e => handleChange('weekStartDay', e.target.value)}>
+                            onChange=${(e: Event) => handleChange('weekStartDay', (e.target as HTMLSelectElement).value)}>
                         <option value="0">Sunday</option>
                         <option value="1">Monday</option>
                         <option value="2">Tuesday</option>
@@ -114,7 +121,7 @@ export function Settings({ config, onConfigChange }) {
                 <label>
                     Week view starts at
                     <select value=${config.dayStartHour}
-                            onChange=${e => handleChange('dayStartHour', e.target.value)}>
+                            onChange=${(e: Event) => handleChange('dayStartHour', (e.target as HTMLSelectElement).value)}>
                         ${Array.from({ length: 24 }, (_, i) => html`
                             <option value=${i}>${formatHour(i)}</option>
                         `)}
@@ -123,7 +130,7 @@ export function Settings({ config, onConfigChange }) {
                 <label>
                     Map provider
                     <select value=${selectedProvider}
-                            onChange=${e => handleMapProviderChange(e.target.value)}>
+                            onChange=${(e: Event) => handleMapProviderChange((e.target as HTMLSelectElement).value)}>
                         <option value="none">None</option>
                         <option value="openstreetmap">OpenStreetMap</option>
                         <option value="google">Google Maps</option>
@@ -133,7 +140,7 @@ export function Settings({ config, onConfigChange }) {
                     <label>
                         Google Maps API key
                         <input type="text" value=${pendingApiKey}
-                               onInput=${e => handleApiKeyInput(e.target.value)}
+                               onInput=${(e: Event) => handleApiKeyInput((e.target as HTMLInputElement).value)}
                                placeholder="AIza..." />
                     </label>
                     ${apiKeyError && html`
@@ -147,5 +154,5 @@ export function Settings({ config, onConfigChange }) {
                 </div>
             </dialog>
         `}
-    `;
+    ` as VNode;
 }

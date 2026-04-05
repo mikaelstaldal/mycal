@@ -1,11 +1,13 @@
+import type { VNode } from 'preact';
 import { html } from 'htm/preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { toLocalDatetimeValue, fromLocalDatetimeValue, formatTime, toLocalDateValue, formatDateOnly, exclusiveToInclusiveDate, inclusiveToExclusiveDate } from '../lib/date-utils.js';
 import { MapPicker } from './map-picker.js';
 import { RichEditor } from './rich-editor.js';
 import { showConfirm } from '../lib/confirm.js';
-
 import { COLORS } from '../lib/colors.js';
+import type { CalendarEvent, AppConfig } from '../types/models.js';
+
 const WEEKDAYS = [
     { key: 'MO', label: 'Mon' },
     { key: 'TU', label: 'Tue' },
@@ -16,23 +18,33 @@ const WEEKDAYS = [
     { key: 'SU', label: 'Sun' },
 ];
 
-function formatDatetime(isoStr) {
+function formatDatetime(isoStr: string) {
     const d = new Date(isoStr);
     return d.toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
-function getWeekdayAbbr(date) {
+function getWeekdayAbbr(date: Date) {
     const days = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
     return days[date.getDay()];
 }
 
-function getNthWeekdayOfMonth(date) {
+function getNthWeekdayOfMonth(date: Date) {
     return Math.ceil(date.getDate() / 7);
 }
 
-export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete, onClose, config }) {
-    const dialogRef = useRef(null);
-    const titleRef = useRef(null);
+interface EventFormProps {
+    event: (CalendarEvent & { _editInstance?: boolean }) | null;
+    defaultDate: Date | null;
+    defaultAllDay: boolean;
+    onSave: (id: string | null | undefined, data: any) => Promise<void>;
+    onDelete: (id: string) => Promise<void>;
+    onClose: () => void;
+    config: AppConfig;
+}
+
+export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete, onClose, config }: EventFormProps): VNode | null {
+    const dialogRef = useRef<HTMLDialogElement | null>(null);
+    const titleRef = useRef<HTMLInputElement | null>(null);
     const isInstanceEdit = event && event._editInstance;
     const [editing, setEditing] = useState(!event);
     const [title, setTitle] = useState('');
@@ -56,7 +68,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
     const [latitude, setLatitude] = useState('');
     const [longitude, setLongitude] = useState('');
     const [error, setError] = useState('');
-    const [monthlyMode, setMonthlyMode] = useState('bymonthday');
+    const [monthlyMode, setMonthlyMode] = useState<'bymonthday' | 'byday'>('bymonthday');
     const [useDuration, setUseDuration] = useState(false);
     const [durationHours, setDurationHours] = useState(1);
     const [durationMinutes, setDurationMinutes] = useState(0);
@@ -79,7 +91,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
             setRecurrenceFreq(event.recurrence_freq || '');
             setRecurrenceCount(event.recurrence_count || 0);
             setRecurrenceUntil(event.recurrence_until ? event.recurrence_until.substring(0, 10) : '');
-            setRecurrenceInterval(event.recurrence_interval > 0 ? event.recurrence_interval : 1);
+            setRecurrenceInterval(event.recurrence_interval! > 0 ? event.recurrence_interval! : 1);
             setRecurrenceByDay(event.recurrence_by_day || '');
             setRecurrenceByMonthDay(event.recurrence_by_monthday || '');
             setRecurrenceByMonth(event.recurrence_by_month || '');
@@ -112,7 +124,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
         } else if (defaultDate) {
             const start = new Date(defaultDate);
             if (defaultAllDay) {
-                const pad = n => String(n).padStart(2, '0');
+                const pad = (n: number) => String(n).padStart(2, '0');
                 const dateStr = `${start.getFullYear()}-${pad(start.getMonth()+1)}-${pad(start.getDate())}`;
                 setStartTime(dateStr);
                 setEndTime(dateStr);
@@ -164,7 +176,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
         }
     });
 
-    function handleStartTimeChange(newStartTime) {
+    function handleStartTimeChange(newStartTime: string) {
         if (!useDuration && endTime && startTime) {
             if (allDay) {
                 const oldStartMs = new Date(startTime + 'T12:00:00').getTime();
@@ -173,7 +185,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                 if (durationDays >= 0) {
                     const newStartMs = new Date(newStartTime + 'T12:00:00').getTime();
                     const newEnd = new Date(newStartMs + durationDays * 24 * 60 * 60 * 1000);
-                    const pad = n => String(n).padStart(2, '0');
+                    const pad = (n: number) => String(n).padStart(2, '0');
                     setEndTime(`${newEnd.getFullYear()}-${pad(newEnd.getMonth()+1)}-${pad(newEnd.getDate())}`);
                 }
             } else {
@@ -189,7 +201,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
         setStartTime(newStartTime);
     }
 
-    function handleAllDayToggle(checked) {
+    function handleAllDayToggle(checked: boolean) {
         setAllDay(checked);
         if (checked && startTime) {
             const dateStr = startTime.substring(0, 10);
@@ -201,7 +213,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
         }
     }
 
-    function toggleByDay(dayKey) {
+    function toggleByDay(dayKey: string) {
         const current = recurrenceByDay ? recurrenceByDay.split(',') : [];
         const idx = current.indexOf(dayKey);
         if (idx >= 0) {
@@ -212,15 +224,15 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
         setRecurrenceByDay(current.filter(Boolean).join(','));
     }
 
-    function getStartDate() {
+    function getStartDate(): Date | null {
         const dateStr = startTime ? startTime.substring(0, 10) : '';
         if (!dateStr) return null;
         return new Date(dateStr + 'T12:00:00');
     }
 
     function buildDurationString() {
-        const h = parseInt(durationHours) || 0;
-        const m = parseInt(durationMinutes) || 0;
+        const h = parseInt(String(durationHours)) || 0;
+        const m = parseInt(String(durationMinutes)) || 0;
         if (h === 0 && m === 0) return '';
         let s = 'PT';
         if (h > 0) s += h + 'H';
@@ -228,7 +240,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
         return s;
     }
 
-    function handleSubmit(e) {
+    function handleSubmit(e: Event) {
         e.preventDefault();
         if (!title.trim()) { setError('Title is required'); return; }
 
@@ -238,7 +250,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
             longitude: longitude !== '' ? parseFloat(longitude) : null,
         };
 
-        const extraFields = {};
+        const extraFields: any = {};
         if (categories) extraFields.categories = categories;
         if (eventURL) extraFields.url = eventURL;
 
@@ -257,7 +269,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
 
         if (allDay) {
             if (!startTime) { setError('Start date is required'); return; }
-            const data = {
+            const data: any = {
                 title: title.trim(),
                 description,
                 all_day: true,
@@ -272,10 +284,10 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
             if (useDuration) {
                 data.duration = buildDurationString();
             }
-            onSave(event?.id, data).catch(err => setError(err.message));
+            onSave(event?.id, data).catch((err: any) => setError(err.message));
         } else {
             if (!startTime || (!useDuration && !endTime)) { setError('Start and end times are required'); return; }
-            const data = {
+            const data: any = {
                 title: title.trim(),
                 description,
                 all_day: false,
@@ -290,7 +302,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
             if (useDuration) {
                 data.duration = buildDurationString();
             }
-            onSave(event?.id, data).catch(err => setError(err.message));
+            onSave(event?.id, data).catch((err: any) => setError(err.message));
         }
     }
 
@@ -301,16 +313,16 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
             danger: true
         });
         if (confirmed) {
-            onDelete(event.id).catch(err => setError(err.message));
+            onDelete(event!.id).catch((err: any) => setError(err.message));
         }
     }
 
-    function handleClose(e) {
+    function handleClose(e: Event) {
         e.preventDefault();
         onClose();
     }
 
-    function handleRestoreExdate(exdate) {
+    function handleRestoreExdate(exdate: string) {
         const remaining = exdates.split(',').filter(d => d.trim() !== exdate).join(',');
         setExdates(remaining);
     }
@@ -326,7 +338,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
         setNewRdate('');
     }
 
-    function handleRemoveRdate(rdate) {
+    function handleRemoveRdate(rdate: string) {
         const remaining = rdates.split(',').filter(d => d.trim() !== rdate).join(',');
         setRdates(remaining);
     }
@@ -344,16 +356,16 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
     }
 
     function displayReminder() {
-        const labels = { 0: 'None', 5: '5 minutes', 10: '10 minutes', 15: '15 minutes', 30: '30 minutes', 60: '1 hour' };
+        const labels: Record<number, string> = { 0: 'None', 5: '5 minutes', 10: '10 minutes', 15: '15 minutes', 30: '30 minutes', 60: '1 hour' };
         return labels[reminderMinutes] || `${reminderMinutes} minutes`;
     }
 
     function displayRecurrence() {
         if (!recurrenceFreq) return 'None';
-        const freqLabels = { DAILY: 'Daily', WEEKLY: 'Weekly', MONTHLY: 'Monthly', YEARLY: 'Yearly' };
+        const freqLabels: Record<string, string> = { DAILY: 'Daily', WEEKLY: 'Weekly', MONTHLY: 'Monthly', YEARLY: 'Yearly' };
         let label = freqLabels[recurrenceFreq] || recurrenceFreq;
         if (recurrenceInterval > 1) {
-            const units = { DAILY: 'days', WEEKLY: 'weeks', MONTHLY: 'months', YEARLY: 'years' };
+            const units: Record<string, string> = { DAILY: 'days', WEEKLY: 'weeks', MONTHLY: 'months', YEARLY: 'years' };
             label = `Every ${recurrenceInterval} ${units[recurrenceFreq] || recurrenceFreq}`;
         }
         if (recurrenceByDay) {
@@ -412,7 +424,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                     <label>
                         Title
                         <input type="text" ref=${titleRef} value=${title}
-                               onInput=${e => setTitle(e.target.value)} />
+                               onInput=${(e: Event) => setTitle((e.target as HTMLInputElement).value)} />
                     </label>
                 ` : html`
                     <h3 class="event-title-display">${title}</h3>
@@ -421,7 +433,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                 ${editing ? html`
                     <label>
                         Description
-                        <${RichEditor} value=${description} onChange=${v => setDescription(v)} />
+                        <${RichEditor} value=${description} onChange=${(v: string) => setDescription(v)} />
                     </label>
                 ` : description && html`
                     <label>
@@ -433,7 +445,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                 ${editing && html`
                     <label class="checkbox-label">
                         <input type="checkbox" checked=${allDay}
-                               onChange=${e => handleAllDayToggle(e.target.checked)} />
+                               onChange=${(e: Event) => handleAllDayToggle((e.target as HTMLInputElement).checked)} />
                         All day
                     </label>
                 `}
@@ -443,9 +455,9 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                         Start
                         ${allDay
                             ? html`<input type="date" value=${startTime}
-                                          onInput=${e => handleStartTimeChange(e.target.value)} />`
+                                          onInput=${(e: Event) => handleStartTimeChange((e.target as HTMLInputElement).value)} />`
                             : html`<input type="datetime-local" value=${startTime}
-                                          onInput=${e => handleStartTimeChange(e.target.value)} />`
+                                          onInput=${(e: Event) => handleStartTimeChange((e.target as HTMLInputElement).value)} />`
                         }
                     </label>
                 ` : html`
@@ -455,7 +467,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                 ${editing && html`
                     <label class="checkbox-label">
                         <input type="checkbox" checked=${useDuration}
-                               onChange=${e => setUseDuration(e.target.checked)} />
+                               onChange=${(e: Event) => setUseDuration((e.target as HTMLInputElement).checked)} />
                         Use duration instead of end time
                     </label>
                 `}
@@ -466,11 +478,11 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                         <div class="duration-row">
                             <input type="number" min="0" max="999" value=${durationHours}
                                    style="width: 60px"
-                                   onInput=${e => setDurationHours(parseInt(e.target.value) || 0)} />
+                                   onInput=${(e: Event) => setDurationHours(parseInt((e.target as HTMLInputElement).value) || 0)} />
                             <span>h</span>
                             <input type="number" min="0" max="59" value=${durationMinutes}
                                    style="width: 60px"
-                                   onInput=${e => setDurationMinutes(parseInt(e.target.value) || 0)} />
+                                   onInput=${(e: Event) => setDurationMinutes(parseInt((e.target as HTMLInputElement).value) || 0)} />
                             <span>m</span>
                         </div>
                     </label>
@@ -480,9 +492,9 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                             End
                             ${allDay
                                 ? html`<input type="date" value=${endTime}
-                                              onInput=${e => setEndTime(e.target.value)} />`
+                                              onInput=${(e: Event) => setEndTime((e.target as HTMLInputElement).value)} />`
                                 : html`<input type="datetime-local" value=${endTime}
-                                              onInput=${e => setEndTime(e.target.value)} />`
+                                              onInput=${(e: Event) => setEndTime((e.target as HTMLInputElement).value)} />`
                             }
                         </label>
                     ` : html`
@@ -495,7 +507,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                         <label>
                             Location
                             <input type="text" value=${location}
-                                   onInput=${e => setLocation(e.target.value)}
+                                   onInput=${(e: Event) => setLocation((e.target as HTMLInputElement).value)}
                                    placeholder="e.g. Conference Room A" />
                         </label>
                     `}
@@ -505,14 +517,14 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                                 Latitude
                                 <input type="number" step="any" min="-90" max="90"
                                        value=${latitude}
-                                       onInput=${e => setLatitude(e.target.value)}
+                                       onInput=${(e: Event) => setLatitude((e.target as HTMLInputElement).value)}
                                        placeholder="e.g. 59.3293" />
                             </label>
                             <label>
                                 Longitude
                                 <input type="number" step="any" min="-180" max="180"
                                        value=${longitude}
-                                       onInput=${e => setLongitude(e.target.value)}
+                                       onInput=${(e: Event) => setLongitude((e.target as HTMLInputElement).value)}
                                        placeholder="e.g. 18.0686" />
                             </label>
                         </div>
@@ -523,7 +535,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                         latitude=${latitude}
                         longitude=${longitude}
                         editing=${true}
-                        onCoordinateChange=${(lat, lng) => { setLatitude(lat); setLongitude(lng); }}
+                        onCoordinateChange=${(lat: string, lng: string) => { setLatitude(lat); setLongitude(lng); }}
                     />
                 ` : html`
                     ${location && html`
@@ -580,13 +592,13 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                         <label>
                             Categories
                             <input type="text" value=${categories}
-                                   onInput=${e => setCategories(e.target.value)}
+                                   onInput=${(e: Event) => setCategories((e.target as HTMLInputElement).value)}
                                    placeholder="e.g. Work, Meeting" />
                         </label>
                         <label>
                             URL
                             <input type="url" value=${eventURL}
-                                   onInput=${e => setEventURL(e.target.value)}
+                                   onInput=${(e: Event) => setEventURL((e.target as HTMLInputElement).value)}
                                    placeholder="https://example.com" />
                         </label>
                     </div>
@@ -617,7 +629,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                         <label>
                             Repeat
                             <select value=${recurrenceFreq}
-                                    onChange=${e => setRecurrenceFreq(e.target.value)}>
+                                    onChange=${(e: Event) => setRecurrenceFreq((e.target as HTMLSelectElement).value)}>
                                 <option value="">None</option>
                                 <option value="DAILY">Daily</option>
                                 <option value="WEEKLY">Weekly</option>
@@ -629,7 +641,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                             <label>
                                 Reminder
                                 <select value=${reminderMinutes}
-                                        onChange=${e => setReminderMinutes(parseInt(e.target.value) || 0)}>
+                                        onChange=${(e: Event) => setReminderMinutes(parseInt((e.target as HTMLSelectElement).value) || 0)}>
                                     <option value="0">None</option>
                                     <option value="5">5 min before</option>
                                     <option value="10">10 min before</option>
@@ -646,8 +658,8 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                             <div class="interval-row">
                                 <input type="number" min="1" max="99" value=${recurrenceInterval}
                                        style="width: 60px"
-                                       onInput=${e => setRecurrenceInterval(parseInt(e.target.value) || 1)} />
-                                <span>${{DAILY:'day(s)',WEEKLY:'week(s)',MONTHLY:'month(s)',YEARLY:'year(s)'}[recurrenceFreq]}</span>
+                                       onInput=${(e: Event) => setRecurrenceInterval(parseInt((e.target as HTMLInputElement).value) || 1)} />
+                                <span>${({DAILY:'day(s)',WEEKLY:'week(s)',MONTHLY:'month(s)',YEARLY:'year(s)'} as Record<string,string>)[recurrenceFreq]}</span>
                             </div>
                         </label>
                         ${recurrenceFreq === 'WEEKLY' && html`
@@ -697,12 +709,12 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                         <label>
                             Occurrences (0 = unlimited)
                             <input type="number" min="0" value=${recurrenceCount}
-                                   onInput=${e => setRecurrenceCount(parseInt(e.target.value) || 0)} />
+                                   onInput=${(e: Event) => setRecurrenceCount(parseInt((e.target as HTMLInputElement).value) || 0)} />
                         </label>
                         <label>
                             Until date (optional)
                             <input type="date" value=${recurrenceUntil}
-                                   onInput=${e => setRecurrenceUntil(e.target.value)} />
+                                   onInput=${(e: Event) => setRecurrenceUntil((e.target as HTMLInputElement).value)} />
                         </label>
                         ${displayExdates().length > 0 && html`
                             <div class="exdates-section">
@@ -722,7 +734,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                                 <span>Additional dates</span>
                                 <div class="rdate-add-row">
                                     <input type="date" value=${newRdate}
-                                           onInput=${e => setNewRdate(e.target.value)} />
+                                           onInput=${(e: Event) => setNewRdate((e.target as HTMLInputElement).value)} />
                                     <button type="button" class="small-btn" onClick=${handleAddRdate}>Add</button>
                                 </div>
                                 ${displayRdates().length > 0 && html`
@@ -754,10 +766,10 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
 
             </form>
         </dialog>
-    `;
+    ` as VNode;
 }
 
-function parseDurationString(s) {
+function parseDurationString(s: string): { hours: number; minutes: number } {
     let hours = 0, minutes = 0;
     if (!s) return { hours, minutes };
     s = s.toUpperCase();
@@ -770,7 +782,7 @@ function parseDurationString(s) {
     return { hours, minutes };
 }
 
-function ordinalLabel(n) {
+function ordinalLabel(n: number): string {
     if (n === 1) return '1st';
     if (n === 2) return '2nd';
     if (n === 3) return '3rd';

@@ -1,19 +1,31 @@
+import type { VNode } from 'preact';
 import { html } from 'htm/preact';
 import { getCalendarDays, getWeekdays, isToday, getISOWeekNumber } from '../lib/date-utils.js';
+import type { CalendarEvent, AppConfig } from '../types/models.js';
 
-export function YearView({ currentDate, events, onMonthClick, onWeekClick, onDayClick, config, highlightEventId }) {
+interface YearViewProps {
+    currentDate: Date;
+    events: CalendarEvent[];
+    onMonthClick: (month: number) => void;
+    onWeekClick: (date: Date) => void;
+    onDayClick: (date: Date) => void;
+    config: AppConfig;
+    highlightEventId?: string | null;
+}
+
+export function YearView({ currentDate, events, onMonthClick, onWeekClick, onDayClick, config, highlightEventId }: YearViewProps): VNode | null {
     const year = currentDate.getFullYear();
     const weekStartDay = config.weekStartDay;
     const weekdays = getWeekdays(weekStartDay);
 
-    function eventsForDay(date) {
+    function eventsForDay(date: Date): CalendarEvent[] {
         const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
         const dayEnd = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
         return events.filter(e => {
             if (e.all_day) {
                 const startDate = e.start_time.substring(0, 10);
                 const endDate = e.end_time.substring(0, 10);
-                const pad = n => String(n).padStart(2, '0');
+                const pad = (n: number) => String(n).padStart(2, '0');
                 const dayStr = `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`;
                 return dayStr >= startDate && dayStr < endDate;
             }
@@ -23,7 +35,7 @@ export function YearView({ currentDate, events, onMonthClick, onWeekClick, onDay
         });
     }
 
-    function renderMonth(month) {
+    function renderMonth(month: number): VNode {
         const monthDate = new Date(year, month, 1);
         const monthName = monthDate.toLocaleDateString(undefined, { month: 'long' });
         const days = getCalendarDays(year, month, weekStartDay);
@@ -50,7 +62,7 @@ export function YearView({ currentDate, events, onMonthClick, onWeekClick, onDay
                     </div>
                     ${weeks.map(week => html`
                         <div class="year-week-row">
-                            <div class="year-week-number" onClick=${(ev) => { ev.stopPropagation(); onWeekClick(week[0].date); }}>
+                            <div class="year-week-number" onClick=${(ev: MouseEvent) => { ev.stopPropagation(); onWeekClick(week[0].date); }}>
                                 week ${getISOWeekNumber(week[0].date)}
                             </div>
                             ${week.map(({ date, currentMonth }) => {
@@ -65,18 +77,18 @@ export function YearView({ currentDate, events, onMonthClick, onWeekClick, onDay
                                 ].filter(Boolean).join(' ');
                                 return html`<div class=${classes}
                                     style=${currentMonth ? 'cursor: pointer' : ''}
-                                    onClick=${currentMonth ? (ev) => { ev.stopPropagation(); onDayClick(date); } : undefined}>${date.getDate()}</div>`;
+                                    onClick=${currentMonth ? (ev: MouseEvent) => { ev.stopPropagation(); onDayClick(date); } : undefined}>${date.getDate()}</div>`;
                             })}
                         </div>
                     `)}
                 </div>
             </div>
-        `;
+        ` as VNode;
     }
 
     return html`
         <div class="year-view">
             ${Array.from({ length: 12 }, (_, i) => renderMonth(i))}
         </div>
-    `;
+    ` as VNode;
 }

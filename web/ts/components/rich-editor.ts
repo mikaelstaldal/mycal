@@ -1,10 +1,11 @@
+import type { VNode } from 'preact';
 import { html } from 'htm/preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 
-let quillLoadPromise = null;
+let quillLoadPromise: Promise<void> | null = null;
 let quillLoaded = false;
 
-function loadQuill() {
+function loadQuill(): Promise<void> {
     if (quillLoaded) return Promise.resolve();
     if (quillLoadPromise) return quillLoadPromise;
     quillLoadPromise = new Promise((resolve, reject) => {
@@ -35,9 +36,14 @@ const TOOLBAR_OPTIONS = [
     ['clean'],
 ];
 
-export function RichEditor({ value, onChange }) {
-    const containerRef = useRef(null);
-    const quillRef = useRef(null);
+interface RichEditorProps {
+    value: string;
+    onChange?: (value: string) => void;
+}
+
+export function RichEditor({ value, onChange }: RichEditorProps): VNode | null {
+    const containerRef = useRef<HTMLDivElement | null>(null);
+    const quillRef = useRef<Quill | null>(null);
     const [loading, setLoading] = useState(true);
     const lastValueRef = useRef(value);
 
@@ -64,16 +70,16 @@ export function RichEditor({ value, onChange }) {
             // Prevent toolbar buttons from submitting the parent form
             containerRef.current.closest('.ql-container')
                 ?.previousElementSibling
-                ?.querySelectorAll('button')
+                ?.querySelectorAll<HTMLButtonElement>('button')
                 .forEach(b => b.type = 'button');
 
             // Paste URL over selected text to create a link.
             // Use capture phase + stopImmediatePropagation to intercept before
             // Quill's own clipboard handler replaces the selected text.
-            quill.root.addEventListener('paste', (e) => {
+            quill.root.addEventListener('paste', (e: ClipboardEvent) => {
                 const sel = quill.getSelection();
                 if (!sel || sel.length === 0) return;
-                const text = (e.clipboardData || window.clipboardData).getData('text/plain').trim();
+                const text = ((e.clipboardData || (window as any).clipboardData) as DataTransfer).getData('text/plain').trim();
                 if (!URL_RE.test(text)) return;
                 e.preventDefault();
                 e.stopImmediatePropagation();
@@ -109,5 +115,5 @@ export function RichEditor({ value, onChange }) {
             ${loading && html`<div style="padding: 8px; color: #666; font-size: 0.85rem;">Loading editor...</div>`}
             <div ref=${containerRef} style="${loading ? 'display:none' : ''}" />
         </div>
-    `;
+    ` as VNode;
 }

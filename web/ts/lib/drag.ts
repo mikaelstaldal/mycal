@@ -1,45 +1,55 @@
+import type { CalendarEvent } from '../types/models.js';
+
 const PIXELS_PER_HOUR = 48;
 const SNAP_MINUTES = 15;
 const MIN_DURATION_MINUTES = 15;
 const CLICK_THRESHOLD = 4; // pixels moved before it counts as a drag
 
-function snapMinutes(minutes) {
+function snapMinutes(minutes: number): number {
     return Math.round(minutes / SNAP_MINUTES) * SNAP_MINUTES;
 }
 
-function addMinutes(dateStr, minutes) {
+function addMinutes(dateStr: string, minutes: number): string {
     const d = new Date(dateStr);
     d.setUTCMinutes(d.getUTCMinutes() + minutes);
     return d.toISOString();
 }
 
-function shiftDate(dateStr, daysDelta) {
+function shiftDate(dateStr: string, daysDelta: number): string {
     const d = new Date(dateStr);
     d.setUTCDate(d.getUTCDate() + daysDelta);
     return d.toISOString();
 }
 
-function shiftDateOnly(dateStr, daysDelta) {
+function shiftDateOnly(dateStr: string, daysDelta: number): string {
     // For all-day events: parse YYYY-MM-DD or ISO, shift days, return YYYY-MM-DD
     const d = new Date(dateStr);
     d.setUTCDate(d.getUTCDate() + daysDelta);
-    const pad = n => String(n).padStart(2, '0');
+    const pad = (n: number) => String(n).padStart(2, '0');
     return `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())}`;
+}
+
+function isTouch(e: MouseEvent | TouchEvent): e is TouchEvent {
+    return 'touches' in e;
+}
+
+interface DragOptions {
+    mode: 'move' | 'resize' | 'move-horizontal';
+    onDragEnd: (newStartTime: string, newEndTime: string) => void;
+    dayColumns?: Date[];
+    columnsContainer?: HTMLElement | null;
+    columnSelector?: string;
 }
 
 /**
  * Initialize drag behavior on an event element.
  *
- * @param {Object} event - The calendar event object
- * @param {HTMLElement} el - The event DOM element
- * @param {Object} options
- * @param {'move'|'resize'|'move-horizontal'} options.mode
- * @param {Function} options.onDragEnd(newStartTime, newEndTime)
- * @param {Date[]} [options.dayColumns] - Array of day Dates for horizontal movement (week view)
- * @param {HTMLElement} [options.columnsContainer] - Parent element containing day columns
- * @param {string} [options.columnSelector] - CSS selector for day columns (default: '.week-day-events')
+ * @param event - The calendar event object
+ * @param el - The event DOM element
+ * @param startEvent - The initiating mouse or touch event
+ * @param options
  */
-export function startDrag(event, el, startEvent, options) {
+export function startDrag(event: CalendarEvent, el: HTMLElement, startEvent: MouseEvent | TouchEvent, options: DragOptions): void {
     // Skip recurring instances
     if (event.parent_id) return;
 
@@ -49,9 +59,9 @@ export function startDrag(event, el, startEvent, options) {
     // Prevent text selection on mousedown
     startEvent.preventDefault();
 
-    const isTouch = startEvent.type === 'touchstart';
-    const startX = isTouch ? startEvent.touches[0].clientX : startEvent.clientX;
-    const startY = isTouch ? startEvent.touches[0].clientY : startEvent.clientY;
+    const isTouchEvent = isTouch(startEvent);
+    const startX = isTouchEvent ? startEvent.touches[0].clientX : startEvent.clientX;
+    const startY = isTouchEvent ? startEvent.touches[0].clientY : startEvent.clientY;
 
     const origTop = parseFloat(el.style.top) || 0;
     const origHeight = parseFloat(el.style.height) || 0;
@@ -61,7 +71,7 @@ export function startDrag(event, el, startEvent, options) {
 
     // Find the starting column index and cache column positions for horizontal movement
     let startColIndex = -1;
-    let colRects = [];
+    let colRects: DOMRect[] = [];
     if (dayColumns && columnsContainer) {
         const cols = columnsContainer.querySelectorAll(columnSelector);
         for (let i = 0; i < cols.length; i++) {
@@ -72,13 +82,13 @@ export function startDrag(event, el, startEvent, options) {
         }
     }
 
-    function getPos(e) {
-        if (e.touches) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
-        return { x: e.clientX, y: e.clientY };
+    function getPos(e: MouseEvent | TouchEvent): { x: number; y: number } {
+        if (isTouch(e)) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        return { x: (e as MouseEvent).clientX, y: (e as MouseEvent).clientY };
     }
 
-    function onMove(e) {
-        const pos = getPos(e);
+    function onMove(e: Event): void {
+        const pos = getPos(e as MouseEvent | TouchEvent);
         const deltaX = pos.x - startX;
         const deltaY = pos.y - startY;
 
@@ -87,19 +97,19 @@ export function startDrag(event, el, startEvent, options) {
             isDragging = true;
             el.classList.add('dragging');
             document.body.style.userSelect = 'none';
-            if (isTouch) e.preventDefault();
+            if (isTouchEvent) (e as TouchEvent).preventDefault();
         }
 
-        if (isDragging && isTouch) e.preventDefault();
+        if (isDragging && isTouchEvent) (e as TouchEvent).preventDefault();
 
         if (mode !== 'move-horizontal') {
             totalDeltaMinutes = snapMinutes((deltaY / PIXELS_PER_HOUR) * 60);
         }
 
-        function detectColumn(posX) {
+        function detectColumn(posX: number): void {
             if (colRects.length === 0 || startColIndex < 0) return;
             // Refresh column rects (they may shift if the page scrolls)
-            const cols = columnsContainer.querySelectorAll(columnSelector);
+            const cols = columnsContainer!.querySelectorAll(columnSelector);
             for (let i = 0; i < cols.length; i++) {
                 colRects[i] = cols[i].getBoundingClientRect();
             }
@@ -129,14 +139,14 @@ export function startDrag(event, el, startEvent, options) {
             const minHeight = (MIN_DURATION_MINUTES / 60) * PIXELS_PER_HOUR;
             el.style.height = `${Math.max(newHeight, minHeight)}px`;
             // Clamp totalDeltaMinutes for resize
-            const origDuration = (new Date(event.end_time) - new Date(event.start_time)) / 60000;
+            const origDuration = (new Date(event.end_time).getTime() - new Date(event.start_time).getTime()) / 60000;
             if (origDuration + totalDeltaMinutes < MIN_DURATION_MINUTES) {
                 totalDeltaMinutes = MIN_DURATION_MINUTES - origDuration;
             }
         }
     }
 
-    function onEnd(e) {
+    function onEnd(e: Event): void {
         document.removeEventListener('mousemove', onMove);
         document.removeEventListener('mouseup', onEnd);
         document.removeEventListener('touchmove', onMove);
@@ -148,13 +158,13 @@ export function startDrag(event, el, startEvent, options) {
         if (!isDragging) return; // was just a click
 
         // Suppress the click event that follows mouseup
-        function suppressClick(e) {
+        function suppressClick(e: Event): void {
             e.stopPropagation();
             e.preventDefault();
         }
         el.addEventListener('click', suppressClick, { capture: true, once: true });
 
-        let newStart, newEnd;
+        let newStart: string, newEnd: string;
         if (mode === 'move') {
             newStart = addMinutes(event.start_time, totalDeltaMinutes);
             newEnd = addMinutes(event.end_time, totalDeltaMinutes);

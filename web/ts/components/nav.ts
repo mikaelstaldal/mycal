@@ -1,7 +1,18 @@
+import type { VNode } from 'preact';
 import { html } from 'htm/preact';
 import { formatMonthYear, formatWeekRange, formatDayHeading } from '../lib/date-utils.js';
 
-export function Nav({ currentDate, onPrev, onNext, onToday, viewMode, onViewChange, weekStartDay }) {
+interface NavProps {
+    currentDate: Date;
+    onPrev: () => void;
+    onNext: () => void;
+    onToday: () => void;
+    viewMode: string;
+    onViewChange: (mode: string) => void;
+    weekStartDay: number;
+}
+
+export function Nav({ currentDate, onPrev, onNext, onToday, viewMode, onViewChange, weekStartDay }: NavProps): VNode | null {
     const heading = viewMode === 'schedule'
         ? formatDayHeading(currentDate)
         : viewMode === 'day'
@@ -26,5 +37,5 @@ export function Nav({ currentDate, onPrev, onNext, onToday, viewMode, onViewChan
             </div>
             <h1>${heading}</h1>
         </nav>
-    `;
+    ` as VNode;
 }
