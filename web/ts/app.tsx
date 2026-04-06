@@ -41,6 +41,7 @@ function App() {
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<CalendarEvent[] | null>(null);
     const searchTimer = useRef<number | null>(null);
+    const searchGeneration = useRef(0);
     const preSearchViewMode = useRef<string | null>(null);
     const [highlightEventId, setHighlightEventId] = useState<string | null>(null);
     const [isDragging, setIsDragging] = useState(false);
@@ -337,12 +338,17 @@ function App() {
         if (!searchQuery.trim()) {
             preSearchViewMode.current = viewMode;
         }
+        const generation = ++searchGeneration.current;
         searchTimer.current = setTimeout(async () => {
             try {
                 const results = await searchEvents(value.trim());
-                setSearchResults(results);
+                if (generation === searchGeneration.current) {
+                    setSearchResults(results);
+                }
             } catch (err) {
-                console.error('Search failed:', err);
+                if (generation === searchGeneration.current) {
+                    console.error('Search failed:', err);
+                }
             }
         }, 300) as unknown as number;
     }
