@@ -3,7 +3,7 @@ import type { VNode } from 'preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { isToday, formatHour, formatTime, isPastEvent } from '../lib/date-utils.js';
 import { startDrag } from '../lib/drag.js';
-import { eventColor, computeOverlapLayout } from '../lib/event-utils.js';
+import { eventColor, computeOverlapLayout, buildDayIndex, dayKey } from '../lib/event-utils.js';
 import type { CalendarEvent, AppConfig } from '../types/models.js';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
@@ -24,31 +24,9 @@ interface DayViewProps {
 
 export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDayClick, onEventDrag, config, highlightEventId }: DayViewProps): VNode | null {
     const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
-
-    function eventsForDay() {
-        const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-        const dayEnd = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
-        return events.filter(e => {
-            if (e.all_day) {
-                const startDate = e.start_time.substring(0, 10);
-                const endDate = e.end_time.substring(0, 10);
-                const pad = (n: number) => String(n).padStart(2, '0');
-                const dayStr = `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`;
-                return dayStr >= startDate && dayStr < endDate;
-            }
-            const start = new Date(e.start_time);
-            const end = new Date(e.end_time);
-            return start < dayEnd && end > dayStart;
-        });
-    }
-
-    function timedEvents() {
-        return eventsForDay().filter(e => !e.all_day);
-    }
-
-    function allDayEvents() {
-        return eventsForDay().filter(e => e.all_day);
-    }
+    const _dayEntry = buildDayIndex(events, [date]).get(dayKey(date))!;
+    const timedEvents = () => _dayEntry.timed;
+    const allDayEvents = () => _dayEntry.allDay;
 
     function eventStyle(event: CalendarEvent, col: number, total: number) {
         const start = new Date(event.start_time);

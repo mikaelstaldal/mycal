@@ -1,5 +1,45 @@
 import type { CalendarEvent, AppConfig } from '../types/models.js';
 
+export function dayKey(d: Date): string {
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+export type DayIndex = Map<string, { timed: CalendarEvent[], allDay: CalendarEvent[] }>;
+
+/**
+ * Build a day-keyed index of events for a set of visible days in a single pass.
+ * Eliminates the O(n × days) repeated full-scan pattern when each day cell
+ * calls eventsForDay() independently.
+ */
+export function buildDayIndex(events: CalendarEvent[], days: Date[]): DayIndex {
+    const index: DayIndex = new Map();
+    for (const day of days) {
+        index.set(dayKey(day), { timed: [], allDay: [] });
+    }
+    for (const e of events) {
+        if (e.all_day) {
+            const startStr = e.start_time.substring(0, 10);
+            const endStr = e.end_time.substring(0, 10);
+            for (const day of days) {
+                const k = dayKey(day);
+                if (k >= startStr && k < endStr) {
+                    index.get(k)!.allDay.push(e);
+                }
+            }
+        } else {
+            const startMs = new Date(e.start_time).getTime();
+            const endMs = new Date(e.end_time).getTime();
+            for (const day of days) {
+                const dayStartMs = new Date(day.getFullYear(), day.getMonth(), day.getDate()).getTime();
+                if (startMs < dayStartMs + 86400000 && endMs > dayStartMs) {
+                    index.get(dayKey(day))!.timed.push(e);
+                }
+            }
+        }
+    }
+    return index;
+}
+
 /**
  * Resolve the display color for an event, falling back to its calendar's color,
  * then the global default.

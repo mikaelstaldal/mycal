@@ -1,7 +1,7 @@
 import { h, Fragment } from 'preact';
 import type { VNode } from 'preact';
 import { getCalendarDays, getWeekdays, isToday, formatTime, getISOWeekNumber, isPastEvent } from '../lib/date-utils.js';
-import { eventColor } from '../lib/event-utils.js';
+import { eventColor, buildDayIndex, dayKey } from '../lib/event-utils.js';
 import type { CalendarEvent, AppConfig } from '../types/models.js';
 
 interface CalendarProps {
@@ -18,23 +18,7 @@ export function Calendar({ currentDate, events, onDayClick, onEventClick, onWeek
     const weekStartDay = config.weekStartDay;
     const days = getCalendarDays(currentDate.getFullYear(), currentDate.getMonth(), weekStartDay);
     const weekdays = getWeekdays(weekStartDay);
-
-    function eventsForDay(date: Date): CalendarEvent[] {
-        const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-        const dayEnd = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
-        return events.filter(e => {
-            if (e.all_day) {
-                const startDate = e.start_time.substring(0, 10);
-                const endDate = e.end_time.substring(0, 10);
-                const pad = (n: number) => String(n).padStart(2, '0');
-                const dayStr = `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`;
-                return dayStr >= startDate && dayStr < endDate;
-            }
-            const start = new Date(e.start_time);
-            const end = new Date(e.end_time);
-            return start < dayEnd && end > dayStart;
-        });
-    }
+    const dayIndex = buildDayIndex(events, days.map(d => d.date));
 
     const weeks = [];
     for (let i = 0; i < days.length; i += 7) {
@@ -55,7 +39,8 @@ export function Calendar({ currentDate, events, onDayClick, onEventClick, onWeek
                              onKeyDown={(e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onWeekClick(week[0].date); } }}
                              aria-label={`Week ${getISOWeekNumber(week[0].date)}`}>week {getISOWeekNumber(week[0].date)}</div>
                         {week.map(({ date, currentMonth }) => {
-                            const dayEvents = eventsForDay(date);
+                            const { allDay, timed } = dayIndex.get(dayKey(date)) ?? { allDay: [], timed: [] };
+                            const dayEvents = [...allDay, ...timed];
                             const classes = ['day',
                                 !currentMonth && 'other-month',
                                 isToday(date) && 'today'

@@ -3,7 +3,7 @@ import type { VNode } from 'preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { getWeekDays, isToday, formatHour, formatTime, getISOWeekNumber, isPastEvent } from '../lib/date-utils.js';
 import { startDrag } from '../lib/drag.js';
-import { eventColor, computeOverlapLayout } from '../lib/event-utils.js';
+import { eventColor, computeOverlapLayout, buildDayIndex, dayKey } from '../lib/event-utils.js';
 import type { CalendarEvent, AppConfig } from '../types/models.js';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
@@ -25,31 +25,7 @@ interface WeekViewProps {
 export function WeekView({ currentDate, events, onDayClick, onEventClick, onAllDayClick, onEventDrag, config, highlightEventId }: WeekViewProps): VNode | null {
     const weekStartDay = config.weekStartDay;
     const days = getWeekDays(currentDate, weekStartDay);
-
-    function eventsForDay(date: Date) {
-        const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-        const dayEnd = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
-        return events.filter(e => {
-            if (e.all_day) {
-                const startDate = e.start_time.substring(0, 10);
-                const endDate = e.end_time.substring(0, 10);
-                const pad = (n: number) => String(n).padStart(2, '0');
-                const dayStr = `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`;
-                return dayStr >= startDate && dayStr < endDate;
-            }
-            const start = new Date(e.start_time);
-            const end = new Date(e.end_time);
-            return start < dayEnd && end > dayStart;
-        });
-    }
-
-    function timedEventsForDay(date: Date) {
-        return eventsForDay(date).filter(e => !e.all_day);
-    }
-
-    function allDayEventsForDay(date: Date) {
-        return eventsForDay(date).filter(e => e.all_day);
-    }
+    const dayIndex = buildDayIndex(events, days);
 
     function eventStyle(event: CalendarEvent, date: Date, col: number, total: number) {
         const start = new Date(event.start_time);
@@ -81,9 +57,9 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, onAllD
 
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-    const hasAnyAllDay = days.some(date => allDayEventsForDay(date).length > 0);
+    const hasAnyAllDay = days.some(date => (dayIndex.get(dayKey(date))?.allDay.length ?? 0) > 0);
     const maxAllDay = 2;
-    const maxAllDayCount = Math.max(...days.map(date => allDayEventsForDay(date).length));
+    const maxAllDayCount = Math.max(...days.map(date => dayIndex.get(dayKey(date))?.allDay.length ?? 0));
     const hasOverflow = maxAllDayCount > maxAllDay;
     const [allDayExpanded, setAllDayExpanded] = useState(false);
 
@@ -122,7 +98,7 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, onAllD
                     )}
                 </div>
                 {days.map(date => {
-                    const adEvents = allDayEventsForDay(date);
+                    const adEvents = dayIndex.get(dayKey(date))?.allDay ?? [];
                     const visible = allDayExpanded ? adEvents : adEvents.slice(0, maxAllDay);
                     const hidden = adEvents.length - visible.length;
                     return (
@@ -210,7 +186,7 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, onAllD
                 <div class="week-events-overlay" ref={overlayRef}>
                     <div class="week-events-gutter-spacer"></div>
                     {days.map((date) => {
-                        const dayEvents = timedEventsForDay(date);
+                        const dayEvents = dayIndex.get(dayKey(date))?.timed ?? [];
                         const layout = computeOverlapLayout(dayEvents);
                         return (
                             <div class="week-day-events">
