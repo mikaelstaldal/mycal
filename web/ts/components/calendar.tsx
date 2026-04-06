@@ -50,7 +50,10 @@ export function Calendar({ currentDate, events, onDayClick, onEventClick, onWeek
             <div class="calendar-grid">
                 {weeks.map(week => (
                     <Fragment>
-                        <div class="week-number" onClick={() => onWeekClick(week[0].date)}>week {getISOWeekNumber(week[0].date)}</div>
+                        <div class="week-number" role="button" tabIndex={0}
+                             onClick={() => onWeekClick(week[0].date)}
+                             onKeyDown={(e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onWeekClick(week[0].date); } }}
+                             aria-label={`Week ${getISOWeekNumber(week[0].date)}`}>week {getISOWeekNumber(week[0].date)}</div>
                         {week.map(({ date, currentMonth }) => {
                             const dayEvents = eventsForDay(date);
                             const classes = ['day',
@@ -59,7 +62,10 @@ export function Calendar({ currentDate, events, onDayClick, onEventClick, onWeek
                             ].filter(Boolean).join(' ');
 
                             return (
-                                <div class={classes} onClick={() => onDayClick(date)}>
+                                <div class={classes} role="button" tabIndex={0}
+                                     onClick={() => onDayClick(date)}
+                                     onKeyDown={(e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onDayClick(date); } }}
+                                     aria-label={date.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}>
                                     <span class="day-number">{date.getDate()}</span>
                                     <div class="day-events">
                                         {dayEvents.map(e => (

@@ -169,3 +169,9 @@ export function formatHour(hour: number): string {
     const d = new Date(2000, 0, 1, hour, 0, 0);
     return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 }
+
+export function getTimezoneAbbr(): string {
+    return Intl.DateTimeFormat(undefined, { timeZoneName: 'short' })
+        .formatToParts(new Date())
+        .find(p => p.type === 'timeZoneName')?.value || '';
+}
