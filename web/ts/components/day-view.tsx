@@ -30,6 +30,7 @@ export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDa
     const _dayEntry = useMemo(() => buildDayIndex(events, [date]).get(dayKey(date))!, [events, date]);
     const timedEvents = _dayEntry.timed;
     const allDayEvents = _dayEntry.allDay;
+    const overlapLayout = useMemo(() => computeOverlapLayout(timedEvents), [timedEvents]);
 
     const eventStyle = useCallback(function(event: CalendarEvent, col: number, total: number) {
         const start = new Date(event.start_time);
@@ -136,9 +137,8 @@ export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDa
                     <div class="day-view-events-gutter-spacer"></div>
                     <div class="day-view-day-events">
                         {(() => {
-                            const layout = computeOverlapLayout(timedEvents);
                             return timedEvents.map((e, ei) => {
-                            const { col, total } = layout[ei];
+                            const { col, total } = overlapLayout[ei];
                             const durationMin = (new Date(e.end_time).getTime() - new Date(e.start_time).getTime()) / 60000;
                             const isShort = durationMin <= 30;
                             const isHighlighted = highlightEventId === e.id + '|' + e.start_time;

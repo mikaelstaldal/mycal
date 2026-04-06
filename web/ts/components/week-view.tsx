@@ -29,6 +29,14 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, onAllD
         [currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), weekStartDay]
     );
     const dayIndex = useMemo(() => buildDayIndex(events, days), [events, days]);
+    const overlapLayouts = useMemo(() => {
+        const map = new Map<string, { col: number; total: number }[]>();
+        for (const date of days) {
+            const k = dayKey(date);
+            map.set(k, computeOverlapLayout(dayIndex.get(k)?.timed ?? []));
+        }
+        return map;
+    }, [dayIndex, days]);
 
     const eventStyle = useCallback(function(event: CalendarEvent, date: Date, col: number, total: number) {
         const start = new Date(event.start_time);
@@ -189,8 +197,9 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, onAllD
                 <div class="week-events-overlay" ref={overlayRef}>
                     <div class="week-events-gutter-spacer"></div>
                     {days.map((date) => {
-                        const dayEvents = dayIndex.get(dayKey(date))?.timed ?? [];
-                        const layout = computeOverlapLayout(dayEvents);
+                        const k = dayKey(date);
+                        const dayEvents = dayIndex.get(k)?.timed ?? [];
+                        const layout = overlapLayouts.get(k)!;
                         return (
                             <div class="week-day-events">
                                 {dayEvents.map((e, ei) => {
