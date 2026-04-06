@@ -427,13 +427,31 @@ func (r *SQLiteRepository) DeleteByParentID(parentID int64) error {
 	return err
 }
 
-func (r *SQLiteRepository) ExistsByIcsUID(uid string) (bool, error) {
-	var count int
-	err := r.db.QueryRow(`SELECT COUNT(*) FROM events WHERE ics_uid = ?`, uid).Scan(&count)
-	if err != nil {
-		return false, err
+func (r *SQLiteRepository) FilterExistingIcsUIDs(uids []string) (map[string]bool, error) {
+	if len(uids) == 0 {
+		return map[string]bool{}, nil
 	}
-	return count > 0, nil
+	placeholders := make([]string, len(uids))
+	args := make([]any, len(uids))
+	for i, uid := range uids {
+		placeholders[i] = "?"
+		args[i] = uid
+	}
+	query := "SELECT ics_uid FROM events WHERE ics_uid IN (" + strings.Join(placeholders, ",") + ")"
+	rows, err := r.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	existing := make(map[string]bool, len(uids))
+	for rows.Next() {
+		var uid string
+		if err := rows.Scan(&uid); err != nil {
+			return nil, err
+		}
+		existing[uid] = true
+	}
+	return existing, rows.Err()
 }
 
 // Feed repository methods

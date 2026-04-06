@@ -202,19 +202,25 @@ func (s *FeedService) fetchAndImport(feedURL string, calendarID int64, eventColo
 		return 0, fmt.Errorf("failed to parse iCalendar data: %v", err)
 	}
 
+	// Collect all UIDs to check existence in a single query.
+	var uidsToCheck []string
+	for _, e := range events {
+		if e.ImportUID != "" && e.RecurrenceOriginalStart == "" {
+			uidsToCheck = append(uidsToCheck, e.ImportUID)
+		}
+	}
+	existingUIDs, err := s.eventRepo.FilterExistingIcsUIDs(uidsToCheck)
+	if err != nil {
+		return 0, fmt.Errorf("failed to check existing UIDs: %v", err)
+	}
+
 	imported := 0
 	for _, e := range events {
 		if e.RecurrenceOriginalStart != "" {
 			continue // skip overrides for now
 		}
-		if e.ImportUID != "" {
-			exists, err := s.eventRepo.ExistsByIcsUID(e.ImportUID)
-			if err != nil {
-				continue
-			}
-			if exists {
-				continue
-			}
+		if e.ImportUID != "" && existingUIDs[e.ImportUID] {
+			continue
 		}
 		ev, err := buildEventForImport(e)
 		if err != nil {
