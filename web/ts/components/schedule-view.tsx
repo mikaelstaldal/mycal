@@ -70,12 +70,17 @@ export function ScheduleView({ currentDate, events, onEventClick, onDayClick, co
 
     const { dayMap, sortedDays } = useMemo(() => {
         const map = new Map<string, CalendarEvent[]>();
+        const fromKey = toDateKey(from);
+        const toKey = toDateKey(to);
         events.forEach(event => {
             if (event.all_day) {
                 const startDate = event.start_time.substring(0, 10);
                 const endDate = event.end_time.substring(0, 10);
-                const cur = new Date(startDate + 'T12:00:00');
-                const end = new Date(endDate + 'T12:00:00');
+                // Clamp iteration to the visible window to avoid O(span) work for long events
+                const clampedStart = startDate < fromKey ? fromKey : startDate;
+                const clampedEnd = endDate > toKey ? toKey : endDate;
+                const cur = new Date(clampedStart + 'T12:00:00');
+                const end = new Date(clampedEnd + 'T12:00:00');
                 while (cur < end) {
                     const key = toDateKey(cur);
                     if (!map.has(key)) map.set(key, []);
@@ -84,16 +89,14 @@ export function ScheduleView({ currentDate, events, onEventClick, onDayClick, co
                 }
             } else {
                 const key = toDateKey(new Date(event.start_time));
-                if (!map.has(key)) map.set(key, []);
-                map.get(key)!.push(event);
+                if (key >= fromKey && key < toKey) {
+                    if (!map.has(key)) map.set(key, []);
+                    map.get(key)!.push(event);
+                }
             }
         });
 
-        const fromKey = toDateKey(from);
-        const toKey = toDateKey(to);
-        const days = Array.from(map.keys())
-            .filter(k => k >= fromKey && k < toKey)
-            .sort();
+        const days = Array.from(map.keys()).sort();
         return { dayMap: map, sortedDays: days };
     }, [events, daysLoaded]);
 
