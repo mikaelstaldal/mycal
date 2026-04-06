@@ -310,36 +310,27 @@ func (r *SQLiteRepository) GetByID(id int64) (*model.Event, error) {
 }
 
 func (r *SQLiteRepository) Create(event *model.Event) error {
-	result, err := r.db.Exec(
-		`INSERT INTO events (title, description, start_time, end_time, all_day, color, recurrence_freq, recurrence_count, recurrence_until, recurrence_interval, recurrence_by_day, recurrence_by_monthday, recurrence_by_month, exdates, rdates, recurrence_parent_id, recurrence_original_start, duration, categories, url, reminder_minutes, location, latitude, longitude, calendar_id, ics_uid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+	err := r.db.QueryRow(
+		`INSERT INTO events (title, description, start_time, end_time, all_day, color, recurrence_freq, recurrence_count, recurrence_until, recurrence_interval, recurrence_by_day, recurrence_by_monthday, recurrence_by_month, exdates, rdates, recurrence_parent_id, recurrence_original_start, duration, categories, url, reminder_minutes, location, latitude, longitude, calendar_id, ics_uid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id, created_at, updated_at`,
 		event.Title, event.Description, event.StartTime, event.EndTime, event.AllDay, event.Color, event.RecurrenceFreq, event.RecurrenceCount, event.RecurrenceUntil, event.RecurrenceInterval, event.RecurrenceByDay, event.RecurrenceByMonthDay, event.RecurrenceByMonth, event.ExDates, event.RDates, event.RecurrenceParentID, event.RecurrenceOriginalStart, event.Duration, event.Categories, event.URL, event.ReminderMinutes, event.Location, event.Latitude, event.Longitude, event.CalendarID, event.IcsUID,
-	)
+	).Scan(&event.ID, &event.CreatedAt, &event.UpdatedAt)
 	if err != nil {
 		return err
 	}
-	id, err := result.LastInsertId()
-	if err != nil {
-		return err
+	if event.CalendarID != 0 {
+		return r.db.QueryRow(
+			`SELECT COALESCE(name, '') FROM calendars WHERE id = ?`, event.CalendarID,
+		).Scan(&event.CalendarName)
 	}
-	event.ID = id
-
-	return r.db.QueryRow(
-		`SELECT e.created_at, e.updated_at, COALESCE(cal.name, '') FROM events e LEFT JOIN calendars cal ON e.calendar_id = cal.id WHERE e.id = ?`, id,
-	).Scan(&event.CreatedAt, &event.UpdatedAt, &event.CalendarName)
+	return nil
 }
 
 func (r *SQLiteRepository) Update(event *model.Event) error {
-	_, err := r.db.Exec(
-		`UPDATE events SET title=?, description=?, start_time=?, end_time=?, all_day=?, color=?, recurrence_freq=?, recurrence_count=?, recurrence_until=?, recurrence_interval=?, recurrence_by_day=?, recurrence_by_monthday=?, recurrence_by_month=?, exdates=?, rdates=?, recurrence_parent_id=?, recurrence_original_start=?, duration=?, categories=?, url=?, reminder_minutes=?, location=?, latitude=?, longitude=?, calendar_id=?, ics_uid=?,
-		 updated_at=strftime('%Y-%m-%dT%H:%M:%SZ','now') WHERE id=?`,
-		event.Title, event.Description, event.StartTime, event.EndTime, event.AllDay, event.Color, event.RecurrenceFreq, event.RecurrenceCount, event.RecurrenceUntil, event.RecurrenceInterval, event.RecurrenceByDay, event.RecurrenceByMonthDay, event.RecurrenceByMonth, event.ExDates, event.RDates, event.RecurrenceParentID, event.RecurrenceOriginalStart, event.Duration, event.Categories, event.URL, event.ReminderMinutes, event.Location, event.Latitude, event.Longitude, event.CalendarID, event.IcsUID, event.ID,
-	)
-	if err != nil {
-		return err
-	}
 	return r.db.QueryRow(
-		`SELECT e.updated_at, COALESCE(cal.name, '') FROM events e LEFT JOIN calendars cal ON e.calendar_id = cal.id WHERE e.id = ?`, event.ID,
-	).Scan(&event.UpdatedAt, &event.CalendarName)
+		`UPDATE events SET title=?, description=?, start_time=?, end_time=?, all_day=?, color=?, recurrence_freq=?, recurrence_count=?, recurrence_until=?, recurrence_interval=?, recurrence_by_day=?, recurrence_by_monthday=?, recurrence_by_month=?, exdates=?, rdates=?, recurrence_parent_id=?, recurrence_original_start=?, duration=?, categories=?, url=?, reminder_minutes=?, location=?, latitude=?, longitude=?, calendar_id=?, ics_uid=?,
+		updated_at=strftime('%Y-%m-%dT%H:%M:%SZ','now') WHERE id=? RETURNING updated_at`,
+		event.Title, event.Description, event.StartTime, event.EndTime, event.AllDay, event.Color, event.RecurrenceFreq, event.RecurrenceCount, event.RecurrenceUntil, event.RecurrenceInterval, event.RecurrenceByDay, event.RecurrenceByMonthDay, event.RecurrenceByMonth, event.ExDates, event.RDates, event.RecurrenceParentID, event.RecurrenceOriginalStart, event.Duration, event.Categories, event.URL, event.ReminderMinutes, event.Location, event.Latitude, event.Longitude, event.CalendarID, event.IcsUID, event.ID,
+	).Scan(&event.UpdatedAt)
 }
 
 func (r *SQLiteRepository) ListRecurring(to string, calendarIDs []int64) ([]model.Event, error) {
