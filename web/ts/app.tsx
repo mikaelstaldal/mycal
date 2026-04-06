@@ -99,13 +99,13 @@ function App() {
             to = new Date(year, month + 1, 7);
         }
         try {
-            const data = await listEvents(toRFC3339(from), toRFC3339(to), selectedCalendarIds);
+            const data = await listEvents(toRFC3339(from), toRFC3339(to));
             setEvents(data);
         } catch (err) {
             setToastError(true);
             setToast('Failed to load events');
         }
-    }, [currentDate, viewMode, config.weekStartDay, selectedCalendarIds, scheduleDaysLoaded]);
+    }, [currentDate, viewMode, config.weekStartDay, scheduleDaysLoaded]);
 
     useEffect(() => { loadEvents(); }, [loadEvents]);
 
@@ -127,7 +127,7 @@ function App() {
         const newDays = scheduleDaysLoaded + 30;
         const to = new Date(today.getFullYear(), today.getMonth(), today.getDate() + newDays);
         try {
-            const data = await listEvents(toRFC3339(from), toRFC3339(to), selectedCalendarIds);
+            const data = await listEvents(toRFC3339(from), toRFC3339(to));
             setEvents(prev => [...prev, ...data]);
             setScheduleDaysLoaded(newDays);
         } catch (err) {
@@ -136,7 +136,7 @@ function App() {
         } finally {
             setLoadingMoreSchedule(false);
         }
-    }, [scheduleDaysLoaded, selectedCalendarIds, loadingMoreSchedule]);
+    }, [scheduleDaysLoaded, loadingMoreSchedule]);
 
     useEffect(() => {
         checkAndNotify(events);
@@ -394,6 +394,10 @@ function App() {
                e.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
     }
 
+    const visibleEvents = selectedCalendarIds === null
+        ? events
+        : events.filter(e => selectedCalendarIds.includes(e.calendar_id ?? 0));
+
     return (
         <div class={`app${isDragging ? ' drag-over' : ''}`}
              onDragOver={handleDragOver} onDragEnter={handleDragEnter}
@@ -458,27 +462,27 @@ function App() {
                             ))}
                         </div>
                     ) : viewMode === 'year' ? (
-                        <YearView currentDate={currentDate} events={events}
+                        <YearView currentDate={currentDate} events={visibleEvents}
                                   onMonthClick={handleYearMonthClick} onWeekClick={handleYearWeekClick}
                                   onDayClick={handleYearDayClick} config={config}
                                   highlightEventId={highlightEventId} />
                     ) : viewMode === 'schedule' ? (
-                        <ScheduleView currentDate={currentDate} events={events}
+                        <ScheduleView currentDate={currentDate} events={visibleEvents}
                                       onEventClick={handleEventClick} onDayClick={handleDayClick} config={config}
                                       onLoadMore={loadMoreScheduleEvents} daysLoaded={scheduleDaysLoaded}
                                       highlightEventId={highlightEventId} />
                     ) : viewMode === 'day' ? (
-                        <DayView currentDate={currentDate} events={events}
+                        <DayView currentDate={currentDate} events={visibleEvents}
                                  onDayClick={handleDayClick} onEventClick={handleEventClick}
                                  onAllDayClick={handleAllDayClick} onEventDrag={handleEventDrag} config={config}
                                  highlightEventId={highlightEventId} />
                     ) : viewMode === 'week' ? (
-                        <WeekView currentDate={currentDate} events={events}
+                        <WeekView currentDate={currentDate} events={visibleEvents}
                                   onDayClick={handleDayClick} onEventClick={handleEventClick}
                                   onAllDayClick={handleAllDayClick} onEventDrag={handleEventDrag} config={config}
                                   highlightEventId={highlightEventId} />
                     ) : (
-                        <Calendar currentDate={currentDate} events={events}
+                        <Calendar currentDate={currentDate} events={visibleEvents}
                                   onDayClick={handleDayClick} onEventClick={handleEventClick}
                                   onWeekClick={handleYearWeekClick}
                                   config={config}
