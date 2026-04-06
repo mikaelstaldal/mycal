@@ -1,5 +1,6 @@
 import { h } from 'preact';
 import type { VNode } from 'preact';
+import { useMemo } from 'preact/hooks';
 import { getCalendarDays, getWeekdays, isToday, getISOWeekNumber } from '../lib/date-utils.js';
 import type { CalendarEvent, AppConfig } from '../types/models.js';
 
@@ -22,32 +23,35 @@ export function YearView({ currentDate, events, onMonthClick, onWeekClick, onDay
     const toDateStr = (y: number, mo: number, d: number) => `${y}-${pad(mo + 1)}-${pad(d)}`;
 
     // Pre-index events by date string for O(1) per-day lookup instead of O(n) per day
-    const eventsByDate = new Map<string, CalendarEvent[]>();
-    for (const e of events) {
-        if (e.all_day) {
-            const endStr = e.end_time.substring(0, 10);
-            const cursor = new Date(e.start_time.substring(0, 10) + 'T00:00:00');
-            while (true) {
-                const key = toDateStr(cursor.getFullYear(), cursor.getMonth(), cursor.getDate());
-                if (key >= endStr) break;
-                let list = eventsByDate.get(key);
-                if (!list) eventsByDate.set(key, list = []);
-                list.push(e);
-                cursor.setDate(cursor.getDate() + 1);
-            }
-        } else {
-            const start = new Date(e.start_time);
-            const end = new Date(e.end_time);
-            const cursor = new Date(start.getFullYear(), start.getMonth(), start.getDate());
-            while (end > cursor) {
-                const key = toDateStr(cursor.getFullYear(), cursor.getMonth(), cursor.getDate());
-                let list = eventsByDate.get(key);
-                if (!list) eventsByDate.set(key, list = []);
-                list.push(e);
-                cursor.setDate(cursor.getDate() + 1);
+    const eventsByDate = useMemo(() => {
+        const map = new Map<string, CalendarEvent[]>();
+        for (const e of events) {
+            if (e.all_day) {
+                const endStr = e.end_time.substring(0, 10);
+                const cursor = new Date(e.start_time.substring(0, 10) + 'T00:00:00');
+                while (true) {
+                    const key = toDateStr(cursor.getFullYear(), cursor.getMonth(), cursor.getDate());
+                    if (key >= endStr) break;
+                    let list = map.get(key);
+                    if (!list) map.set(key, list = []);
+                    list.push(e);
+                    cursor.setDate(cursor.getDate() + 1);
+                }
+            } else {
+                const start = new Date(e.start_time);
+                const end = new Date(e.end_time);
+                const cursor = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+                while (end > cursor) {
+                    const key = toDateStr(cursor.getFullYear(), cursor.getMonth(), cursor.getDate());
+                    let list = map.get(key);
+                    if (!list) map.set(key, list = []);
+                    list.push(e);
+                    cursor.setDate(cursor.getDate() + 1);
+                }
             }
         }
-    }
+        return map;
+    }, [events]);
 
     function renderMonth(month: number): VNode {
         const monthDate = new Date(year, month, 1);

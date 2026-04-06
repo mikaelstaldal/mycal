@@ -1,5 +1,6 @@
 import { h, Fragment } from 'preact';
 import type { VNode } from 'preact';
+import { useMemo } from 'preact/hooks';
 import { getCalendarDays, getWeekdays, isToday, formatTime, getISOWeekNumber, isPastEvent } from '../lib/date-utils.js';
 import { eventColor, buildDayIndex, dayKey } from '../lib/event-utils.js';
 import type { CalendarEvent, AppConfig } from '../types/models.js';
@@ -16,14 +17,18 @@ interface CalendarProps {
 
 export function Calendar({ currentDate, events, onDayClick, onEventClick, onWeekClick, config, highlightEventId }: CalendarProps): VNode | null {
     const weekStartDay = config.weekStartDay;
-    const days = getCalendarDays(currentDate.getFullYear(), currentDate.getMonth(), weekStartDay);
-    const weekdays = getWeekdays(weekStartDay);
-    const dayIndex = buildDayIndex(events, days.map(d => d.date));
-
-    const weeks = [];
-    for (let i = 0; i < days.length; i += 7) {
-        weeks.push(days.slice(i, i + 7));
-    }
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const days = useMemo(() => getCalendarDays(year, month, weekStartDay), [year, month, weekStartDay]);
+    const weekdays = useMemo(() => getWeekdays(weekStartDay), [weekStartDay]);
+    const dayIndex = useMemo(() => buildDayIndex(events, days.map(d => d.date)), [events, days]);
+    const weeks = useMemo(() => {
+        const result = [];
+        for (let i = 0; i < days.length; i += 7) {
+            result.push(days.slice(i, i + 7));
+        }
+        return result;
+    }, [days]);
 
     return (
         <div class="calendar">

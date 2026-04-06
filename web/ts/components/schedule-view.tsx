@@ -1,6 +1,6 @@
 import { h } from 'preact';
 import type { VNode } from 'preact';
-import { useRef, useEffect } from 'preact/hooks';
+import { useRef, useEffect, useMemo } from 'preact/hooks';
 import { formatTime, isPastEvent } from '../lib/date-utils.js';
 import { eventColor } from '../lib/event-utils.js';
 import type { CalendarEvent, AppConfig } from '../types/models.js';
@@ -14,6 +14,39 @@ interface ScheduleViewProps {
     onLoadMore?: () => void;
     daysLoaded?: number;
     highlightEventId?: string | null;
+}
+
+function toDateKey(d: Date): string {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function sortEvents(evts: CalendarEvent[]): CalendarEvent[] {
+    return [...evts].sort((a, b) => {
+        if (a.all_day && !b.all_day) return -1;
+        if (!a.all_day && b.all_day) return 1;
+        return a.start_time.localeCompare(b.start_time);
+    });
+}
+
+function formatDateHeader(dateKey: string): string {
+    const d = new Date(dateKey + 'T12:00:00');
+    return d.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+}
+
+function formatEventTime(event: CalendarEvent): string | null {
+    if (event.all_day) return null;
+    return `${formatTime(event.start_time)} \u2013 ${formatTime(event.end_time)}`;
+}
+
+function dedup(evts: CalendarEvent[]): CalendarEvent[] {
+    const seen = new Set<string>();
+    return evts.filter(e => {
+        const key = e.id + ':' + e.start_time;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
 }
 
 export function ScheduleView({ currentDate, events, onEventClick, onDayClick, config, onLoadMore, daysLoaded, highlightEventId }: ScheduleViewProps): VNode | null {
@@ -35,65 +68,34 @@ export function ScheduleView({ currentDate, events, onEventClick, onDayClick, co
         return () => observer.disconnect();
     }, [onLoadMore]);
 
-    const dayMap = new Map<string, CalendarEvent[]>();
-
-    events.forEach(event => {
-        if (event.all_day) {
-            const startDate = event.start_time.substring(0, 10);
-            const endDate = event.end_time.substring(0, 10);
-            const cur = new Date(startDate + 'T12:00:00');
-            const end = new Date(endDate + 'T12:00:00');
-            while (cur < end) {
-                const key = toDateKey(cur);
-                if (!dayMap.has(key)) dayMap.set(key, []);
-                dayMap.get(key)!.push(event);
-                cur.setDate(cur.getDate() + 1);
+    const { dayMap, sortedDays } = useMemo(() => {
+        const map = new Map<string, CalendarEvent[]>();
+        events.forEach(event => {
+            if (event.all_day) {
+                const startDate = event.start_time.substring(0, 10);
+                const endDate = event.end_time.substring(0, 10);
+                const cur = new Date(startDate + 'T12:00:00');
+                const end = new Date(endDate + 'T12:00:00');
+                while (cur < end) {
+                    const key = toDateKey(cur);
+                    if (!map.has(key)) map.set(key, []);
+                    map.get(key)!.push(event);
+                    cur.setDate(cur.getDate() + 1);
+                }
+            } else {
+                const key = toDateKey(new Date(event.start_time));
+                if (!map.has(key)) map.set(key, []);
+                map.get(key)!.push(event);
             }
-        } else {
-            const key = toDateKey(new Date(event.start_time));
-            if (!dayMap.has(key)) dayMap.set(key, []);
-            dayMap.get(key)!.push(event);
-        }
-    });
-
-    const fromKey = toDateKey(from);
-    const toKey = toDateKey(to);
-    const sortedDays = Array.from(dayMap.keys())
-        .filter(k => k >= fromKey && k < toKey)
-        .sort();
-
-    function toDateKey(d: Date): string {
-        const pad = (n: number) => String(n).padStart(2, '0');
-        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-    }
-
-    function sortEvents(evts: CalendarEvent[]): CalendarEvent[] {
-        return [...evts].sort((a, b) => {
-            if (a.all_day && !b.all_day) return -1;
-            if (!a.all_day && b.all_day) return 1;
-            return a.start_time.localeCompare(b.start_time);
         });
-    }
 
-    function formatDateHeader(dateKey: string): string {
-        const d = new Date(dateKey + 'T12:00:00');
-        return d.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
-    }
-
-    function formatEventTime(event: CalendarEvent): string | null {
-        if (event.all_day) return null;
-        return `${formatTime(event.start_time)} \u2013 ${formatTime(event.end_time)}`;
-    }
-
-    function dedup(evts: CalendarEvent[]): CalendarEvent[] {
-        const seen = new Set<string>();
-        return evts.filter(e => {
-            const key = e.id + ':' + e.start_time;
-            if (seen.has(key)) return false;
-            seen.add(key);
-            return true;
-        });
-    }
+        const fromKey = toDateKey(from);
+        const toKey = toDateKey(to);
+        const days = Array.from(map.keys())
+            .filter(k => k >= fromKey && k < toKey)
+            .sort();
+        return { dayMap: map, sortedDays: days };
+    }, [events, daysLoaded]);
 
     return (
         <div class="schedule-view" ref={containerRef}>

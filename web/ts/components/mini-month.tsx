@@ -1,6 +1,6 @@
 import { h } from 'preact';
 import type { VNode } from 'preact';
-import { useState } from 'preact/hooks';
+import { useState, useMemo } from 'preact/hooks';
 import { getCalendarDays, getWeekdays, isToday } from '../lib/date-utils.js';
 import type { AppConfig } from '../types/models.js';
 
@@ -13,22 +13,27 @@ interface MiniMonthProps {
 
 export function MiniMonth({ currentDate, onDayClick, onMonthClick, config }: MiniMonthProps): VNode | null {
     const [offset, setOffset] = useState(0);
-    const displayDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + offset, 1);
+    const weekStartDay = config.weekStartDay;
+    const displayDate = useMemo(
+        () => new Date(currentDate.getFullYear(), currentDate.getMonth() + offset, 1),
+        [currentDate.getFullYear(), currentDate.getMonth(), offset]
+    );
     const year = displayDate.getFullYear();
     const month = displayDate.getMonth();
-    const weekStartDay = config.weekStartDay;
-    const weekdays = getWeekdays(weekStartDay);
+    const weekdays = useMemo(() => getWeekdays(weekStartDay), [weekStartDay]);
     const monthName = displayDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
-    const days = getCalendarDays(year, month, weekStartDay);
-
-    let weeks = [];
-    for (let i = 0; i < days.length; i += 7) {
-        weeks.push(days.slice(i, i + 7));
-    }
-    const lastWeek = weeks[weeks.length - 1];
-    if (lastWeek.every(d => !d.currentMonth)) {
-        weeks = weeks.slice(0, -1);
-    }
+    const days = useMemo(() => getCalendarDays(year, month, weekStartDay), [year, month, weekStartDay]);
+    const weeks = useMemo(() => {
+        let w = [];
+        for (let i = 0; i < days.length; i += 7) {
+            w.push(days.slice(i, i + 7));
+        }
+        const lastWeek = w[w.length - 1];
+        if (lastWeek.every(d => !d.currentMonth)) {
+            w = w.slice(0, -1);
+        }
+        return w;
+    }, [days]);
 
     return (
         <div class="mini-month">

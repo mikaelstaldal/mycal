@@ -1,6 +1,6 @@
 import { h, Fragment } from 'preact';
 import type { VNode } from 'preact';
-import { useState, useEffect, useRef } from 'preact/hooks';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'preact/hooks';
 import { getWeekDays, isToday, formatHour, formatTime, getISOWeekNumber, isPastEvent } from '../lib/date-utils.js';
 import { startDrag } from '../lib/drag.js';
 import { eventColor, computeOverlapLayout, buildDayIndex, dayKey } from '../lib/event-utils.js';
@@ -24,10 +24,13 @@ interface WeekViewProps {
 
 export function WeekView({ currentDate, events, onDayClick, onEventClick, onAllDayClick, onEventDrag, config, highlightEventId }: WeekViewProps): VNode | null {
     const weekStartDay = config.weekStartDay;
-    const days = getWeekDays(currentDate, weekStartDay);
-    const dayIndex = buildDayIndex(events, days);
+    const days = useMemo(
+        () => getWeekDays(currentDate, weekStartDay),
+        [currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), weekStartDay]
+    );
+    const dayIndex = useMemo(() => buildDayIndex(events, days), [events, days]);
 
-    function eventStyle(event: CalendarEvent, date: Date, col: number, total: number) {
+    const eventStyle = useCallback(function(event: CalendarEvent, date: Date, col: number, total: number) {
         const start = new Date(event.start_time);
         const end = new Date(event.end_time);
         const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -53,13 +56,13 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, onAllD
             width: `calc(${colWidth}% - 2px)`,
             backgroundColor: eventColor(event, config)
         };
-    }
+    }, [config]);
 
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-    const hasAnyAllDay = days.some(date => (dayIndex.get(dayKey(date))?.allDay.length ?? 0) > 0);
+    const hasAnyAllDay = useMemo(() => days.some(date => (dayIndex.get(dayKey(date))?.allDay.length ?? 0) > 0), [days, dayIndex]);
     const maxAllDay = 2;
-    const maxAllDayCount = Math.max(...days.map(date => dayIndex.get(dayKey(date))?.allDay.length ?? 0));
+    const maxAllDayCount = useMemo(() => Math.max(...days.map(date => dayIndex.get(dayKey(date))?.allDay.length ?? 0)), [days, dayIndex]);
     const hasOverflow = maxAllDayCount > maxAllDay;
     const [allDayExpanded, setAllDayExpanded] = useState(false);
 

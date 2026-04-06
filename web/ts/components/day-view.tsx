@@ -1,6 +1,6 @@
 import { h, Fragment } from 'preact';
 import type { VNode } from 'preact';
-import { useState, useEffect, useRef } from 'preact/hooks';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'preact/hooks';
 import { isToday, formatHour, formatTime, isPastEvent } from '../lib/date-utils.js';
 import { startDrag } from '../lib/drag.js';
 import { eventColor, computeOverlapLayout, buildDayIndex, dayKey } from '../lib/event-utils.js';
@@ -23,12 +23,15 @@ interface DayViewProps {
 }
 
 export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDayClick, onEventDrag, config, highlightEventId }: DayViewProps): VNode | null {
-    const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
-    const _dayEntry = buildDayIndex(events, [date]).get(dayKey(date))!;
-    const timedEvents = () => _dayEntry.timed;
-    const allDayEvents = () => _dayEntry.allDay;
+    const date = useMemo(
+        () => new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate()),
+        [currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate()]
+    );
+    const _dayEntry = useMemo(() => buildDayIndex(events, [date]).get(dayKey(date))!, [events, date]);
+    const timedEvents = _dayEntry.timed;
+    const allDayEvents = _dayEntry.allDay;
 
-    function eventStyle(event: CalendarEvent, col: number, total: number) {
+    const eventStyle = useCallback(function(event: CalendarEvent, col: number, total: number) {
         const start = new Date(event.start_time);
         const end = new Date(event.end_time);
         const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -54,10 +57,10 @@ export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDa
             width: `calc(${colWidth}% - 2px)`,
             backgroundColor: eventColor(event, config)
         };
-    }
+    }, [date, config]);
 
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const adEvents = allDayEvents();
+    const adEvents = allDayEvents;
 
     const dayBodyRef = useRef<HTMLDivElement | null>(null);
     useEffect(() => {
@@ -133,9 +136,8 @@ export function DayView({ currentDate, events, onDayClick, onEventClick, onAllDa
                     <div class="day-view-events-gutter-spacer"></div>
                     <div class="day-view-day-events">
                         {(() => {
-                            const tevents = timedEvents();
-                            const layout = computeOverlapLayout(tevents);
-                            return tevents.map((e, ei) => {
+                            const layout = computeOverlapLayout(timedEvents);
+                            return timedEvents.map((e, ei) => {
                             const { col, total } = layout[ei];
                             const durationMin = (new Date(e.end_time).getTime() - new Date(e.start_time).getTime()) / 60000;
                             const isShort = durationMin <= 30;
