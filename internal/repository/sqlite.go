@@ -153,6 +153,9 @@ func initSchema(db *sql.DB) error {
 	_, _ = db.Exec(`ALTER TABLE feeds DROP COLUMN calendar_name`)
 	_, _ = db.Exec(`ALTER TABLE events DROP COLUMN calendar_name`)
 
+	// Migration: composite index for time-range overlap queries (start_time < to AND end_time > from)
+	_, _ = db.Exec(`CREATE INDEX IF NOT EXISTS idx_events_time_range ON events(start_time, end_time)`)
+
 	return nil
 }
 
