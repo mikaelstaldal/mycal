@@ -66,7 +66,7 @@ func (s *EventService) List(from, to string, calendarIDs []int64) ([]model.Event
 		for i, re := range recurring {
 			parentIDs[i] = re.ID
 		}
-		overrides, err := s.repo.ListOverrides(parentIDs)
+		overrides, err := s.repo.ListOverrides(parentIDs, from, to)
 		if err != nil {
 			return nil, err
 		}

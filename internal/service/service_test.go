@@ -18,7 +18,7 @@ type mockRepo struct {
 	createFn           func(event *model.Event) error
 	updateFn           func(event *model.Event) error
 	deleteFn           func(id int64) error
-	listOverridesFn    func(parentIDs []int64) ([]model.Event, error)
+	listOverridesFn    func(parentIDs []int64, from, to string) ([]model.Event, error)
 	getOverrideFn      func(parentID int64, originalStart string) (*model.Event, error)
 	deleteByParentIDFn func(parentID int64) error
 	filterExistingIcsUIDsFn func(uids []string) (map[string]bool, error)
@@ -109,9 +109,9 @@ func (m *mockRepo) Delete(id int64) error {
 	return nil
 }
 
-func (m *mockRepo) ListOverrides(parentIDs []int64) ([]model.Event, error) {
+func (m *mockRepo) ListOverrides(parentIDs []int64, from, to string) ([]model.Event, error) {
 	if m.listOverridesFn != nil {
-		return m.listOverridesFn(parentIDs)
+		return m.listOverridesFn(parentIDs, from, to)
 	}
 	return nil, nil
 }
@@ -281,7 +281,7 @@ func TestList_WithRecurringAndOverrides(t *testing.T) {
 				RecurrenceFreq: "DAILY",
 			}}, nil
 		},
-		listOverridesFn: func(parentIDs []int64) ([]model.Event, error) {
+		listOverridesFn: func(parentIDs []int64, from, to string) ([]model.Event, error) {
 			return []model.Event{{
 				ID:                      20,
 				Title:                   "Daily (modified)",
@@ -327,7 +327,7 @@ func TestList_ListOverridesError(t *testing.T) {
 				RecurrenceFreq: "DAILY",
 			}}, nil
 		},
-		listOverridesFn: func(parentIDs []int64) ([]model.Event, error) {
+		listOverridesFn: func(parentIDs []int64, from, to string) ([]model.Event, error) {
 			return nil, errRepo
 		},
 	}

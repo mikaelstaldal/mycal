@@ -11,7 +11,7 @@ type EventRepository interface {
 	Create(event *model.Event) error
 	Update(event *model.Event) error
 	Delete(id int64) error
-	ListOverrides(parentIDs []int64) ([]model.Event, error)
+	ListOverrides(parentIDs []int64, from, to string) ([]model.Event, error)
 	GetOverride(parentID int64, originalStart string) (*model.Event, error)
 	DeleteByParentID(parentID int64) error
 	FilterExistingIcsUIDs(uids []string) (map[string]bool, error)

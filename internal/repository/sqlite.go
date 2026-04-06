@@ -372,7 +372,7 @@ func (r *SQLiteRepository) Delete(id int64) error {
 	return nil
 }
 
-func (r *SQLiteRepository) ListOverrides(parentIDs []int64) ([]model.Event, error) {
+func (r *SQLiteRepository) ListOverrides(parentIDs []int64, from, to string) ([]model.Event, error) {
 	if len(parentIDs) == 0 {
 		return nil, nil
 	}
@@ -382,7 +382,13 @@ func (r *SQLiteRepository) ListOverrides(parentIDs []int64) ([]model.Event, erro
 		placeholders[i] = "?"
 		args[i] = id
 	}
-	query := `SELECT ` + selectColumnsBase + fromEventsJoin + ` WHERE e.recurrence_parent_id IN (` + strings.Join(placeholders, ",") + `) ORDER BY e.start_time, e.created_at`
+	// Include overrides whose new time overlaps the window, or whose original
+	// occurrence falls within the window (so we can suppress the generated instance).
+	query := `SELECT ` + selectColumnsBase + fromEventsJoin +
+		` WHERE e.recurrence_parent_id IN (` + strings.Join(placeholders, ",") + `)` +
+		` AND ((e.start_time < ? AND e.end_time > ?) OR (e.recurrence_original_start >= ? AND e.recurrence_original_start < ?))` +
+		` ORDER BY e.start_time, e.created_at`
+	args = append(args, to, from, from, to)
 	rows, err := r.db.Query(query, args...)
 	if err != nil {
 		return nil, err
