@@ -68,7 +68,8 @@ function App() {
                 calendarColors: calColors
             }));
         } catch (err) {
-            console.error('Failed to load calendars:', err);
+            setToastError(true);
+            setToast('Failed to load calendars');
         }
     }, []);
 
@@ -101,7 +102,8 @@ function App() {
             const data = await listEvents(toRFC3339(from), toRFC3339(to), selectedCalendarIds);
             setEvents(data);
         } catch (err) {
-            console.error('Failed to load events:', err);
+            setToastError(true);
+            setToast('Failed to load events');
         }
     }, [currentDate, viewMode, config.weekStartDay, selectedCalendarIds, scheduleDaysLoaded]);
 
@@ -129,7 +131,8 @@ function App() {
             setEvents(prev => [...prev, ...data]);
             setScheduleDaysLoaded(newDays);
         } catch (err) {
-            console.error('Failed to load more schedule events:', err);
+            setToastError(true);
+            setToast('Failed to load more events');
         } finally {
             setLoadingMoreSchedule(false);
         }
@@ -284,7 +287,8 @@ function App() {
             await updateEvent(eventId, { start_time: startTime, end_time: endTime });
             await loadEvents();
         } catch (err) {
-            console.error('Failed to update event via drag:', err);
+            setToastError(true);
+            setToast('Failed to update event');
         }
     }
 
@@ -402,19 +406,19 @@ function App() {
                 <div class="top-bar-actions">
                     <input type="search" class="search-input" placeholder="Search events..."
                            value={searchQuery} onInput={handleSearchInput} />
-                    <button class="dark-mode-btn" onClick={() => setDarkMode(d => !d)} title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}>
+                    <button class="dark-mode-btn" onClick={() => setDarkMode(d => !d)} title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'} aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}>
                         {darkMode ? '☀︎' : '☾︎'}
                     </button>
-                    <button class="settings-btn" onClick={() => { loadEvents(); loadCalendars(); }} title="Refresh">
+                    <button class="settings-btn" onClick={() => { loadEvents(); loadCalendars(); }} title="Refresh" aria-label="Refresh">
                         ↻
                     </button>
-                    <button class="settings-btn" onClick={() => setShowImportSingle(true)} title="Import Event">
+                    <button class="settings-btn" onClick={() => setShowImportSingle(true)} title="Import Event" aria-label="Import Event">
                         ⬇︎
                     </button>
-                    <button class="settings-btn" onClick={() => setShowImportBulk(true)} title="Bulk Import">
+                    <button class="settings-btn" onClick={() => setShowImportBulk(true)} title="Bulk Import" aria-label="Bulk Import">
                         ⇊︎
                     </button>
-                    <button class="settings-btn" onClick={() => setShowFeeds(true)} title="Feed Subscriptions">
+                    <button class="settings-btn" onClick={() => setShowFeeds(true)} title="Feed Subscriptions" aria-label="Feed Subscriptions">
                         🔗︎
                     </button>
                     <Settings config={config} onConfigChange={setConfig} />

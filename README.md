@@ -50,6 +50,10 @@ htpasswd -Bc htpasswd admin
 
 When enabled, all endpoints (UI, API, and iCalendar feed) require valid credentials. The browser will prompt for a username and password automatically.
 
+## Deployment
+
+See [deployment guide](docs/deployment.md) for reverse-proxy requirements, authentication setup, and a systemd service example.
+
 ## API
 
 See [API docs](docs/API.md).

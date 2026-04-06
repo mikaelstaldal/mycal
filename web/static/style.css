@@ -1582,6 +1582,19 @@ body {
     gap: 6px;
 }
 
+/* Time input with timezone label */
+.time-input-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.tz-label {
+    font-size: 0.85em;
+    color: var(--color-text-secondary, #888);
+    white-space: nowrap;
+}
+
 /* Categories display */
 .categories-display {
     display: flex;

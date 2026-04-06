@@ -14,7 +14,6 @@ import (
 	"github.com/mikaelstaldal/mycal/internal/ical"
 	"github.com/mikaelstaldal/mycal/internal/model"
 	"github.com/mikaelstaldal/mycal/internal/repository"
-
 )
 
 const maxFeedImportSize = 10 * 1024 * 1024 // 10 MiB
@@ -174,8 +173,8 @@ func (s *FeedService) doRefresh(feed *model.Feed) {
 	now := time.Now().UTC().Format(time.RFC3339)
 	feed.LastRefreshedAt = now
 	if err != nil {
-		feed.LastError = err.Error()
 		log.Printf("feed %d refresh error: %v", feed.ID, err)
+		feed.LastError = "feed refresh failed"
 	} else {
 		feed.LastError = ""
 		if imported > 0 {

@@ -1,7 +1,7 @@
 import { h, Fragment } from 'preact';
 import type { VNode } from 'preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
-import { toLocalDatetimeValue, fromLocalDatetimeValue, formatTime, toLocalDateValue, formatDateOnly, exclusiveToInclusiveDate, inclusiveToExclusiveDate } from '../lib/date-utils.js';
+import { toLocalDatetimeValue, fromLocalDatetimeValue, formatTime, toLocalDateValue, formatDateOnly, exclusiveToInclusiveDate, inclusiveToExclusiveDate, getTimezoneAbbr } from '../lib/date-utils.js';
 import { MapPicker } from './map-picker.js';
 import { RichEditor } from './rich-editor.js';
 import { showConfirm } from '../lib/confirm.js';
@@ -20,7 +20,7 @@ const WEEKDAYS = [
 
 function formatDatetime(isoStr: string) {
     const d = new Date(isoStr);
-    return d.toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    return d.toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });
 }
 
 function getWeekdayAbbr(date: Date) {
@@ -242,6 +242,14 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
         e.preventDefault();
         if (!title.trim()) { setError('Title is required'); return; }
 
+        if (!useDuration && startTime && endTime) {
+            if (allDay) {
+                if (endTime < startTime) { setError('End date must not be before start date'); return; }
+            } else {
+                if (new Date(endTime) <= new Date(startTime)) { setError('End time must be after start time'); return; }
+            }
+        }
+
         const locationFields = {
             location,
             latitude: latitude !== '' ? parseFloat(latitude) : null,
@@ -449,13 +457,16 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                 {editing ? (
                     <label>
                         Start
-                        {allDay ? (
-                            <input type="date" value={startTime}
-                                   onInput={(e: Event) => handleStartTimeChange((e.target as HTMLInputElement).value)} />
-                        ) : (
-                            <input type="datetime-local" value={startTime}
-                                   onInput={(e: Event) => handleStartTimeChange((e.target as HTMLInputElement).value)} />
-                        )}
+                        <div class="time-input-row">
+                            {allDay ? (
+                                <input type="date" value={startTime}
+                                       onInput={(e: Event) => handleStartTimeChange((e.target as HTMLInputElement).value)} />
+                            ) : (
+                                <input type="datetime-local" value={startTime}
+                                       onInput={(e: Event) => handleStartTimeChange((e.target as HTMLInputElement).value)} />
+                            )}
+                            {!allDay && <span class="tz-label">{getTimezoneAbbr()}</span>}
+                        </div>
                     </label>
                 ) : (
                     <div class="detail-row"><span class="detail-label">Start:</span> {displayStart()}</div>
@@ -486,13 +497,16 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                 ) : editing ? (
                     <label>
                         End
-                        {allDay ? (
-                            <input type="date" value={endTime}
-                                   onInput={(e: Event) => setEndTime((e.target as HTMLInputElement).value)} />
-                        ) : (
-                            <input type="datetime-local" value={endTime}
-                                   onInput={(e: Event) => setEndTime((e.target as HTMLInputElement).value)} />
-                        )}
+                        <div class="time-input-row">
+                            {allDay ? (
+                                <input type="date" value={endTime}
+                                       onInput={(e: Event) => setEndTime((e.target as HTMLInputElement).value)} />
+                            ) : (
+                                <input type="datetime-local" value={endTime}
+                                       onInput={(e: Event) => setEndTime((e.target as HTMLInputElement).value)} />
+                            )}
+                            {!allDay && <span class="tz-label">{getTimezoneAbbr()}</span>}
+                        </div>
                     </label>
                 ) : (
                     <div class="detail-row"><span class="detail-label">End:</span> {displayEnd()}</div>
