@@ -18,21 +18,35 @@ export function YearView({ currentDate, events, onMonthClick, onWeekClick, onDay
     const weekStartDay = config.weekStartDay;
     const weekdays = getWeekdays(weekStartDay);
 
-    function eventsForDay(date: Date): CalendarEvent[] {
-        const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-        const dayEnd = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
-        return events.filter(e => {
-            if (e.all_day) {
-                const startDate = e.start_time.substring(0, 10);
-                const endDate = e.end_time.substring(0, 10);
-                const pad = (n: number) => String(n).padStart(2, '0');
-                const dayStr = `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`;
-                return dayStr >= startDate && dayStr < endDate;
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const toDateStr = (y: number, mo: number, d: number) => `${y}-${pad(mo + 1)}-${pad(d)}`;
+
+    // Pre-index events by date string for O(1) per-day lookup instead of O(n) per day
+    const eventsByDate = new Map<string, CalendarEvent[]>();
+    for (const e of events) {
+        if (e.all_day) {
+            const endStr = e.end_time.substring(0, 10);
+            const cursor = new Date(e.start_time.substring(0, 10) + 'T00:00:00');
+            while (true) {
+                const key = toDateStr(cursor.getFullYear(), cursor.getMonth(), cursor.getDate());
+                if (key >= endStr) break;
+                let list = eventsByDate.get(key);
+                if (!list) eventsByDate.set(key, list = []);
+                list.push(e);
+                cursor.setDate(cursor.getDate() + 1);
             }
+        } else {
             const start = new Date(e.start_time);
             const end = new Date(e.end_time);
-            return start < dayEnd && end > dayStart;
-        });
+            const cursor = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+            while (end > cursor) {
+                const key = toDateStr(cursor.getFullYear(), cursor.getMonth(), cursor.getDate());
+                let list = eventsByDate.get(key);
+                if (!list) eventsByDate.set(key, list = []);
+                list.push(e);
+                cursor.setDate(cursor.getDate() + 1);
+            }
+        }
     }
 
     function renderMonth(month: number): VNode {
@@ -65,7 +79,7 @@ export function YearView({ currentDate, events, onMonthClick, onWeekClick, onDay
                                 week {getISOWeekNumber(week[0].date)}
                             </div>
                             {week.map(({ date, currentMonth }) => {
-                                const dayEvents = currentMonth ? eventsForDay(date) : [];
+                                const dayEvents = currentMonth ? (eventsByDate.get(toDateStr(date.getFullYear(), date.getMonth(), date.getDate())) ?? []) : [];
                                 const hasEvents = dayEvents.length > 0;
                                 const isHighlighted = highlightEventId && dayEvents.some(e => (e.id + '|' + e.start_time) === highlightEventId);
                                 const classes = ['year-day',
