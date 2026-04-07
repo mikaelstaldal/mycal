@@ -601,6 +601,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                                     class={`color-swatch ${!color ? 'selected' : ''}`}
                                     style={`background-color: ${config.defaultEventColor || 'dodgerblue'}`}
                                     title="Default color"
+                                    aria-label="Default color"
                                     aria-pressed={!color}
                                     onClick={() => setColor('')} />
                             {COLORS.map(c => (
@@ -608,6 +609,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                                         class={`color-swatch ${color === c.name ? 'selected' : ''}`}
                                         style={`background-color: ${c.name}`}
                                         title={c.name}
+                                        aria-label={c.name}
                                         aria-pressed={color === c.name}
                                         onClick={() => setColor(c.name)} />
                             ))}
