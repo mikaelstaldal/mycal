@@ -10,7 +10,15 @@ import (
 )
 
 func withMiddleware(h http.Handler) http.Handler {
-	return recovery.Middleware(gzipMiddleware(h))
+	return recovery.Middleware(gzipMiddleware(apiCacheMiddleware(h)))
+}
+
+// apiCacheMiddleware prevents caching of dynamic API responses.
+func apiCacheMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		next.ServeHTTP(w, r)
+	})
 }
 
 type gzipResponseWriter struct {

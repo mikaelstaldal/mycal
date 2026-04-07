@@ -146,7 +146,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("static fs: %v", err)
 	}
-	mux.Handle("/", http.FileServer(http.FS(staticFS)))
+	mux.Handle("/", staticCacheMiddleware(http.FileServer(http.FS(staticFS))))
 
 	var root http.Handler = handler.SecurityHeadersMiddleware(csrf.Middleware(mux))
 	if authMiddleware != nil {
@@ -165,6 +165,15 @@ func main() {
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
+}
+
+// staticCacheMiddleware sets Cache-Control: no-cache so browsers revalidate via ETag
+// on each request rather than re-downloading unchanged embedded assets.
+func staticCacheMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-cache")
+		next.ServeHTTP(w, r)
+	})
 }
 
 func ensureWritable(db *sql.DB) error {
