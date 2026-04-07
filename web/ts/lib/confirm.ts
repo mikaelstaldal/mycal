@@ -21,6 +21,45 @@ interface ChoiceOptions {
     choices?: ChoiceOption[];
 }
 
+let dialogIdCounter = 0;
+
+function buildDialogShell(titleText: string, messageText: string): {
+    dialog: HTMLDialogElement;
+    actionsDiv: HTMLDivElement;
+} {
+    const id = ++dialogIdCounter;
+    const titleId = `confirm-dialog-title-${id}`;
+    const msgId = `confirm-dialog-msg-${id}`;
+
+    const dialog = document.createElement('dialog');
+    dialog.className = 'confirm-dialog';
+    dialog.setAttribute('aria-labelledby', titleId);
+    dialog.setAttribute('aria-describedby', msgId);
+
+    const body = document.createElement('div');
+    body.className = 'confirm-dialog-body';
+
+    const h3 = document.createElement('h3');
+    h3.id = titleId;
+    h3.className = 'confirm-dialog-title';
+    h3.textContent = titleText;
+
+    const p = document.createElement('p');
+    p.id = msgId;
+    p.className = 'confirm-dialog-message';
+    p.textContent = messageText;
+
+    const actionsDiv = document.createElement('div');
+    actionsDiv.className = 'confirm-dialog-actions';
+
+    body.appendChild(h3);
+    body.appendChild(p);
+    body.appendChild(actionsDiv);
+    dialog.appendChild(body);
+
+    return { dialog, actionsDiv };
+}
+
 /**
  * Show a confirm dialog with OK/Cancel buttons.
  * @param message - The message to display
@@ -31,21 +70,18 @@ export function showConfirm(message: string, options: ConfirmOptions = {}): Prom
     const { title = 'Confirm', okText = 'OK', cancelText = 'Cancel', danger = false } = options;
 
     return new Promise(resolve => {
-        const dialog = document.createElement('dialog');
-        dialog.className = 'confirm-dialog';
+        const { dialog, actionsDiv } = buildDialogShell(title, message);
 
-        const okBtnClass = danger ? 'confirm-btn confirm-btn-danger' : 'confirm-btn confirm-btn-primary';
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = 'confirm-btn';
+        cancelBtn.textContent = cancelText;
 
-        dialog.innerHTML = `
-            <div class="confirm-dialog-body">
-                <h3 class="confirm-dialog-title">${escapeHtml(title)}</h3>
-                <p class="confirm-dialog-message">${escapeHtml(message)}</p>
-                <div class="confirm-dialog-actions">
-                    <button class="confirm-btn" data-action="cancel">${escapeHtml(cancelText)}</button>
-                    <button class="${okBtnClass}" data-action="ok">${escapeHtml(okText)}</button>
-                </div>
-            </div>
-        `;
+        const okBtn = document.createElement('button');
+        okBtn.className = danger ? 'confirm-btn confirm-btn-danger' : 'confirm-btn confirm-btn-primary';
+        okBtn.textContent = okText;
+
+        actionsDiv.appendChild(cancelBtn);
+        actionsDiv.appendChild(okBtn);
 
         function cleanup(result: boolean) {
             dialog.close();
@@ -53,13 +89,13 @@ export function showConfirm(message: string, options: ConfirmOptions = {}): Prom
             resolve(result);
         }
 
-        (dialog.querySelector('[data-action="ok"]') as HTMLElement).onclick = () => cleanup(true);
-        (dialog.querySelector('[data-action="cancel"]') as HTMLElement).onclick = () => cleanup(false);
+        okBtn.onclick = () => cleanup(true);
+        cancelBtn.onclick = () => cleanup(false);
         dialog.addEventListener('cancel', () => cleanup(false));
 
         document.body.appendChild(dialog);
         dialog.showModal();
-        (dialog.querySelector('[data-action="ok"]') as HTMLElement).focus();
+        okBtn.focus();
     });
 }
 
@@ -73,23 +109,7 @@ export function showChoice(message: string, options: ChoiceOptions = {}): Promis
     const { title = 'Choose', choices = [] } = options;
 
     return new Promise(resolve => {
-        const dialog = document.createElement('dialog');
-        dialog.className = 'confirm-dialog';
-
-        const buttonsHtml = choices.map(c => {
-            const cls = c.primary ? 'confirm-btn confirm-btn-primary' : 'confirm-btn';
-            return `<button class="${cls}" data-value="${escapeHtml(c.value)}">${escapeHtml(c.label)}</button>`;
-        }).join('');
-
-        dialog.innerHTML = `
-            <div class="confirm-dialog-body">
-                <h3 class="confirm-dialog-title">${escapeHtml(title)}</h3>
-                <p class="confirm-dialog-message">${escapeHtml(message)}</p>
-                <div class="confirm-dialog-actions">
-                    ${buttonsHtml}
-                </div>
-            </div>
-        `;
+        const { dialog, actionsDiv } = buildDialogShell(title, message);
 
         function cleanup(result: string | null) {
             dialog.close();
@@ -98,17 +118,16 @@ export function showChoice(message: string, options: ChoiceOptions = {}): Promis
         }
 
         choices.forEach(c => {
-            (dialog.querySelector(`[data-value="${c.value}"]`) as HTMLElement).onclick = () => cleanup(c.value);
+            const btn = document.createElement('button');
+            btn.className = c.primary ? 'confirm-btn confirm-btn-primary' : 'confirm-btn';
+            btn.textContent = c.label;
+            btn.onclick = () => cleanup(c.value);
+            actionsDiv.appendChild(btn);
         });
+
         dialog.addEventListener('cancel', () => cleanup(null));
 
         document.body.appendChild(dialog);
         dialog.showModal();
     });
-}
-
-function escapeHtml(str: string): string {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
 }
