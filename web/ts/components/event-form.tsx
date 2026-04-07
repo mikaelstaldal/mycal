@@ -67,6 +67,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
     const [location, setLocation] = useState('');
     const [latitude, setLatitude] = useState('');
     const [longitude, setLongitude] = useState('');
+    const [showMap, setShowMap] = useState(false);
     const [error, setError] = useState('');
     const [monthlyMode, setMonthlyMode] = useState<'bymonthday' | 'byday'>('bymonthday');
     const [useDuration, setUseDuration] = useState(false);
@@ -101,6 +102,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
             setLocation(event.location || '');
             setLatitude(event.latitude != null ? String(event.latitude) : '');
             setLongitude(event.longitude != null ? String(event.longitude) : '');
+            setShowMap(event.latitude != null && event.longitude != null);
             setCategories(event.categories || '');
             setEventURL(event.url || '');
             if (event.duration) {
@@ -540,14 +542,18 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
                                 </label>
                             </div>
                         )}
-                        <MapPicker
-                            mapProvider={config.mapProvider}
-                            apiKey={config.googleMapsApiKey}
-                            latitude={latitude}
-                            longitude={longitude}
-                            editing={true}
-                            onCoordinateChange={(lat: string, lng: string) => { setLatitude(lat); setLongitude(lng); }}
-                        />
+                        {showMap ? (
+                            <MapPicker
+                                mapProvider={config.mapProvider}
+                                apiKey={config.googleMapsApiKey}
+                                latitude={latitude}
+                                longitude={longitude}
+                                editing={true}
+                                onCoordinateChange={(lat: string, lng: string) => { setLatitude(lat); setLongitude(lng); }}
+                            />
+                        ) : hasMapProvider && (
+                            <button type="button" onClick={() => setShowMap(true)}>Pick on map</button>
+                        )}
                     </Fragment>
                 ) : (
                     <Fragment>
