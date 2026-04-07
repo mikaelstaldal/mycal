@@ -69,7 +69,7 @@ export function YearView({ currentDate, events, onMonthClick, onWeekClick, onDay
 
         return (
             <div class="year-month">
-                <div class="year-month-header" onClick={() => onMonthClick(month)}>
+                <div class="year-month-header" role="button" tabIndex={0} onClick={() => onMonthClick(month)} onKeyDown={(ev: KeyboardEvent) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); onMonthClick(month); } }}>
                     {monthName}
                 </div>
                 <div class="year-month-grid">
@@ -79,7 +79,7 @@ export function YearView({ currentDate, events, onMonthClick, onWeekClick, onDay
                     </div>
                     {weeks.map(week => (
                         <div class="year-week-row">
-                            <div class="year-week-number" onClick={(ev: MouseEvent) => { ev.stopPropagation(); onWeekClick(week[0].date); }}>
+                            <div class="year-week-number" role="button" tabIndex={0} onClick={(ev: MouseEvent) => { ev.stopPropagation(); onWeekClick(week[0].date); }} onKeyDown={(ev: KeyboardEvent) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); ev.stopPropagation(); onWeekClick(week[0].date); } }}>
                                 week {getISOWeekNumber(week[0].date)}
                             </div>
                             {week.map(({ date, currentMonth }) => {

@@ -39,7 +39,7 @@ export function MiniMonth({ currentDate, onDayClick, onMonthClick, config }: Min
         <div class="mini-month">
             <div class="mini-month-header">
                 <button class="mini-month-nav" onClick={() => setOffset(o => o - 1)} title="Previous month">&#x25C0;</button>
-                <span class="mini-month-title" onClick={() => onMonthClick && onMonthClick(month)}>
+                <span class="mini-month-title" role="button" tabIndex={0} onClick={() => onMonthClick && onMonthClick(month)} onKeyDown={(ev: KeyboardEvent) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); onMonthClick && onMonthClick(month); } }}>
                     {monthName}
                 </span>
                 <button class="mini-month-nav" onClick={() => setOffset(o => o + 1)} title="Next month">&#x25B6;</button>
