@@ -103,7 +103,8 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, onAllD
                 <div class="allday-label">
                     all-day
                     {hasOverflow && (
-                        <div class="allday-toggle" onClick={() => setAllDayExpanded(!allDayExpanded)}>
+                        <div class="allday-toggle" onClick={() => setAllDayExpanded(!allDayExpanded)}
+                             role="button" aria-label={allDayExpanded ? 'Collapse all-day events' : 'Expand all-day events'}>
                             {allDayExpanded ? '▲' : '▼'}
                         </div>
                     )}
