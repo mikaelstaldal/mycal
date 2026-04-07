@@ -172,6 +172,8 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
             dialog.showModal();
             if (!event && titleRef.current) {
                 titleRef.current.focus();
+            } else {
+                dialog.focus();
             }
         }
     });
