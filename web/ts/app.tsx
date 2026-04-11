@@ -26,6 +26,7 @@ function App() {
     const [events, setEvents] = useState<CalendarEvent[]>([]);
     const [showForm, setShowForm] = useState(false);
     const [selectedEvent, setSelectedEvent] = useState<(CalendarEvent & { _editInstance?: boolean }) | null>(null);
+    const [copiedEvent, setCopiedEvent] = useState<CalendarEvent | null>(null);
     const [defaultDate, setDefaultDate] = useState<Date | null>(null);
     const [defaultAllDay, setDefaultAllDay] = useState(false);
     const [config, setConfig] = useState<AppConfig>(getConfig);
@@ -268,6 +269,7 @@ function App() {
         }
         setShowForm(false);
         setSelectedEvent(null);
+        setCopiedEvent(null);
         await loadEvents();
     }
 
@@ -278,9 +280,19 @@ function App() {
         await loadEvents();
     }
 
+    function handleCopy() {
+        const src = selectedEvent;
+        setShowForm(false);
+        setSelectedEvent(null);
+        setCopiedEvent(src);
+        setDefaultDate(null);
+        setShowForm(true);
+    }
+
     function handleClose() {
         setShowForm(false);
         setSelectedEvent(null);
+        setCopiedEvent(null);
     }
 
     async function handleEventDrag(eventId: string, startTime: string, endTime: string) {
@@ -499,7 +511,9 @@ function App() {
             {showForm && (
                 <EventForm event={selectedEvent} defaultDate={defaultDate}
                            defaultAllDay={defaultAllDay}
+                           copiedEvent={copiedEvent}
                            onSave={handleSave} onDelete={handleDelete} onClose={handleClose}
+                           onCopy={selectedEvent ? handleCopy : undefined}
                            config={config} />
             )}
             {showImportSingle && (

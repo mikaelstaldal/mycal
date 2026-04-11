@@ -36,13 +36,15 @@ interface EventFormProps {
     event: (CalendarEvent & { _editInstance?: boolean }) | null;
     defaultDate: Date | null;
     defaultAllDay: boolean;
+    copiedEvent?: CalendarEvent | null;
     onSave: (id: string | null | undefined, data: any) => Promise<void>;
     onDelete: (id: string) => Promise<void>;
     onClose: () => void;
+    onCopy?: () => void;
     config: AppConfig;
 }
 
-export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete, onClose, config }: EventFormProps): VNode | null {
+export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSave, onDelete, onClose, onCopy, config }: EventFormProps): VNode | null {
     const dialogRef = useRef<HTMLDialogElement | null>(null);
     const titleRef = useRef<HTMLInputElement | null>(null);
     const isInstanceEdit = event && event._editInstance;
@@ -76,51 +78,60 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
     const [categories, setCategories] = useState('');
     const [eventURL, setEventURL] = useState('');
 
+    function populateFromEvent(src: CalendarEvent) {
+        setTitle(src.title);
+        setDescription(src.description);
+        setAllDay(src.all_day || false);
+        if (src.all_day) {
+            setStartTime(toLocalDateValue(src.start_time));
+            setEndTime(exclusiveToInclusiveDate(src.end_time));
+        } else {
+            setStartTime(toLocalDatetimeValue(src.start_time));
+            setEndTime(toLocalDatetimeValue(src.end_time));
+        }
+        setColor(src.color);
+        setRecurrenceFreq(src.recurrence_freq || '');
+        setRecurrenceCount(src.recurrence_count || 0);
+        setRecurrenceUntil(src.recurrence_until ? src.recurrence_until.substring(0, 10) : '');
+        setRecurrenceInterval(src.recurrence_interval! > 0 ? src.recurrence_interval! : 1);
+        setRecurrenceByDay(src.recurrence_by_day || '');
+        setRecurrenceByMonthDay(src.recurrence_by_monthday || '');
+        setRecurrenceByMonth(src.recurrence_by_month || '');
+        setReminderMinutes(src.reminder_minutes || 0);
+        setLocation(src.location || '');
+        setLatitude(src.latitude != null ? String(src.latitude) : '');
+        setLongitude(src.longitude != null ? String(src.longitude) : '');
+        setShowMap(src.latitude != null && src.longitude != null);
+        setCategories(src.categories || '');
+        setEventURL(src.url || '');
+        if (src.duration) {
+            setUseDuration(true);
+            const parsed = parseDurationString(src.duration);
+            setDurationHours(parsed.hours);
+            setDurationMinutes(parsed.minutes);
+        } else {
+            setUseDuration(false);
+            setDurationHours(1);
+            setDurationMinutes(0);
+        }
+        if (src.recurrence_by_day) {
+            setMonthlyMode('byday');
+        } else {
+            setMonthlyMode('bymonthday');
+        }
+    }
+
     useEffect(() => {
         if (event) {
-            setTitle(event.title);
-            setDescription(event.description);
-            setAllDay(event.all_day || false);
-            if (event.all_day) {
-                setStartTime(toLocalDateValue(event.start_time));
-                setEndTime(exclusiveToInclusiveDate(event.end_time));
-            } else {
-                setStartTime(toLocalDatetimeValue(event.start_time));
-                setEndTime(toLocalDatetimeValue(event.end_time));
-            }
-            setColor(event.color);
-            setRecurrenceFreq(event.recurrence_freq || '');
-            setRecurrenceCount(event.recurrence_count || 0);
-            setRecurrenceUntil(event.recurrence_until ? event.recurrence_until.substring(0, 10) : '');
-            setRecurrenceInterval(event.recurrence_interval! > 0 ? event.recurrence_interval! : 1);
-            setRecurrenceByDay(event.recurrence_by_day || '');
-            setRecurrenceByMonthDay(event.recurrence_by_monthday || '');
-            setRecurrenceByMonth(event.recurrence_by_month || '');
+            populateFromEvent(event);
             setExdates(event.exdates || '');
             setRdates(event.rdates || '');
-            setReminderMinutes(event.reminder_minutes || 0);
-            setLocation(event.location || '');
-            setLatitude(event.latitude != null ? String(event.latitude) : '');
-            setLongitude(event.longitude != null ? String(event.longitude) : '');
-            setShowMap(event.latitude != null && event.longitude != null);
-            setCategories(event.categories || '');
-            setEventURL(event.url || '');
-            if (event.duration) {
-                setUseDuration(true);
-                const parsed = parseDurationString(event.duration);
-                setDurationHours(parsed.hours);
-                setDurationMinutes(parsed.minutes);
-            } else {
-                setUseDuration(false);
-                setDurationHours(1);
-                setDurationMinutes(0);
-            }
-            if (event.recurrence_by_day) {
-                setMonthlyMode('byday');
-            } else {
-                setMonthlyMode('bymonthday');
-            }
             setEditing(isInstanceEdit ? true : false);
+        } else if (copiedEvent) {
+            populateFromEvent(copiedEvent);
+            setExdates('');
+            setRdates('');
+            setEditing(true);
         } else if (defaultDate) {
             const start = new Date(defaultDate);
             if (defaultAllDay) {
@@ -164,7 +175,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
             setEditing(true);
         }
         setError('');
-    }, [event, defaultDate]);
+    }, [event, copiedEvent, defaultDate]);
 
     useEffect(() => {
         const dialog = dialogRef.current;
@@ -406,11 +417,12 @@ export function EventForm({ event, defaultDate, defaultAllDay, onSave, onDelete,
         <dialog ref={dialogRef} class="event-dialog" onClose={onClose}>
             <form onSubmit={handleSubmit}>
                 <div class="dialog-header">
-                    <h2>{event ? (editing ? (isInstanceEdit ? 'Edit Instance' : 'Edit Event') : 'Event') : 'New Event'}</h2>
+                    <h2>{event ? (editing ? (isInstanceEdit ? 'Edit Instance' : 'Edit Event') : 'Event') : (copiedEvent ? 'Copy Event' : 'New Event')}</h2>
                     <div class="dialog-actions">
                         {event && !editing && (
                             <Fragment>
                                 <button type="button" onClick={() => setEditing(true)}>Edit</button>
+                                {onCopy && <button type="button" onClick={onCopy}>Copy</button>}
                                 <button type="button" class="danger" onClick={handleDelete}>Delete</button>
                             </Fragment>
                         )}
