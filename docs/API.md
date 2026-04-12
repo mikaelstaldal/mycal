@@ -65,8 +65,10 @@ Returns the updated calendar object.
 | `parent_id`                 | string | Parent event ID for recurrence instances (read-only, absent for non-instances)   |
 | `title`                     | string | Event title (required, max 500 chars)                                            |
 | `description`               | string | Event description (max 10000 chars)                                              |
-| `start_time`                | string | Start time in RFC 3339 or `YYYY-MM-DD` for all-day (required)                    |
-| `end_time`                  | string | End time in RFC 3339 or `YYYY-MM-DD` for all-day (required, must be after start) |
+| `start_date`                | string | Start date in `YYYY-MM-DD` format. Set for all-day events; absent for timed events. |
+| `end_date`                  | string | Exclusive end date in `YYYY-MM-DD` format. Set for all-day events; absent for timed events. |
+| `start_time`                | string | Start datetime in RFC 3339. Set for timed events; absent for all-day events.     |
+| `end_time`                  | string | End datetime in RFC 3339. Set for timed events; absent for all-day events.       |
 | `all_day`                   | bool   | Whether this is an all-day event                                                 |
 | `color`                     | string | CSS3 color name per RFC 7986 (e.g. `dodgerblue`, `red`, `gold`)                  |
 | `recurrence_freq`           | string | `""`, `"DAILY"`, `"WEEKLY"`, `"MONTHLY"`, or `"YEARLY"`                          |
@@ -79,7 +81,7 @@ Returns the updated calendar object.
 | `exdates`                   | string | Comma-separated RFC 3339 timestamps of excluded recurrence instances             |
 | `rdates`                    | string | Comma-separated RFC 3339 timestamps of additional recurrence dates               |
 | `recurrence_parent_id`      | int    | Parent event DB ID for instance overrides (read-only)                            |
-| `recurrence_original_start` | string | Original start time of overridden instance (read-only)                           |
+| `recurrence_original_start` | string | Original start datetime (RFC 3339) of overridden instance (read-only)            |
 | `duration`                  | string | ISO 8601 duration (e.g. `PT1H`, `PT30M`, `P1D`) — alternative to `end_time`      |
 | `categories`                | string | Comma-separated category tags (max 500 chars)                                    |
 | `url`                       | string | Reference URL (must start with `http://` or `https://`, max 2000 chars)          |
@@ -192,6 +194,7 @@ curl -X POST http://localhost:8080/api/v1/events \
   -H 'Content-Type: application/json' \
   -d '{
     "title": "Team Meeting",
+    "all_day": false,
     "start_time": "2026-02-17T14:00:00Z",
     "end_time": "2026-02-17T15:00:00Z",
     "color": "dodgerblue"
@@ -202,9 +205,9 @@ curl -X POST http://localhost:8080/api/v1/events \
   -H 'Content-Type: application/json' \
   -d '{
     "title": "Holiday",
-    "start_time": "2026-06-06",
-    "end_time": "2026-06-07",
     "all_day": true,
+    "start_date": "2026-06-06",
+    "end_date": "2026-06-07",
     "color": "green"
   }'
 

@@ -616,19 +616,28 @@ components:
           readOnly: true
           description: >
             Parent event ID for recurrence instances. Present only on expanded or overridden recurring instances; absent for regular events.
-
         title:
           type: string
           maxLength: 500
         description:
           type: string
           maxLength: 10000
+        start_date:
+          type: string
+          format: date
+          description: Start date (YYYY-MM-DD). Set for all-day events; mutually exclusive with start_time.
+        end_date:
+          type: string
+          format: date
+          description: Exclusive end date (YYYY-MM-DD). Set for all-day events; mutually exclusive with end_time.
         start_time:
           type: string
-          description: RFC 3339 datetime or YYYY-MM-DD for all-day events
+          format: date-time
+          description: Start datetime (RFC 3339). Set for timed events; mutually exclusive with start_date.
         end_time:
           type: string
-          description: RFC 3339 datetime or YYYY-MM-DD for all-day events
+          format: date-time
+          description: End datetime (RFC 3339). Set for timed events; mutually exclusive with end_date.
         all_day:
           type: boolean
         color:
@@ -670,6 +679,7 @@ components:
           description: Parent event ID for instance overrides
         recurrence_original_start:
           type: string
+          format: date-time
           readOnly: true
           description: Original start time of overridden instance
         duration:
@@ -723,13 +733,11 @@ components:
       required:
         - id
         - title
-        - start_time
-        - end_time
     CreateEventRequest:
       type: object
       required:
         - title
-        - start_time
+        - all_day
       properties:
         title:
           type: string
@@ -737,12 +745,22 @@ components:
         description:
           type: string
           maxLength: 10000
+        start_date:
+          type: string
+          format: date
+          description: Start date (YYYY-MM-DD). Required when all_day is true; mutually exclusive with start_time.
+        end_date:
+          type: string
+          format: date
+          description: Exclusive end date (YYYY-MM-DD). Required when all_day is true; mutually exclusive with end_time.
         start_time:
           type: string
-          description: RFC 3339 datetime or YYYY-MM-DD for all-day events
+          format: date-time
+          description: Start datetime (RFC 3339). Required when all_day is false; mutually exclusive with start_date.
         end_time:
           type: string
-          description: RFC 3339 datetime or YYYY-MM-DD for all-day events. Required unless `duration` is provided.
+          format: date-time
+          description: End datetime (RFC 3339). Required when all_day is false, unless duration is provided; mutually exclusive with end_date.
         all_day:
           type: boolean
           default: false
@@ -808,10 +826,22 @@ components:
         description:
           type: string
           maxLength: 10000
+        start_date:
+          type: string
+          format: date
+          description: Start date (YYYY-MM-DD). For all-day events; mutually exclusive with start_time.
+        end_date:
+          type: string
+          format: date
+          description: Exclusive end date (YYYY-MM-DD). For all-day events; mutually exclusive with end_time.
         start_time:
           type: string
+          format: date-time
+          description: Start datetime (RFC 3339). For timed events; mutually exclusive with start_date.
         end_time:
           type: string
+          format: date-time
+          description: End datetime (RFC 3339). For timed events; mutually exclusive with end_date.
         all_day:
           type: boolean
         color:

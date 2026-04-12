@@ -44,7 +44,7 @@ export function checkAndNotify(events: CalendarEvent[]): void {
             continue;
         }
 
-        const startMs = new Date(event.start_time).getTime();
+        const startMs = new Date(event.start_time!).getTime();
         const reminderMs = startMs - event.reminder_minutes * 60 * 1000;
 
         if (now >= reminderMs && now < startMs) {

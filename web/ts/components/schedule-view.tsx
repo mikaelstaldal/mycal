@@ -1,7 +1,7 @@
 import { h } from 'preact';
 import type { VNode } from 'preact';
 import { useRef, useEffect, useMemo } from 'preact/hooks';
-import { formatTime, isPastEvent } from '../lib/date-utils.js';
+import { formatTime, isPastEvent, eventStartStr, eventEndStr } from '../lib/date-utils.js';
 import { eventColor } from '../lib/event-utils.js';
 import type { CalendarEvent, AppConfig } from '../types/models.js';
 
@@ -25,7 +25,7 @@ function sortEvents(evts: CalendarEvent[]): CalendarEvent[] {
     return [...evts].sort((a, b) => {
         if (a.all_day && !b.all_day) return -1;
         if (!a.all_day && b.all_day) return 1;
-        return a.start_time.localeCompare(b.start_time);
+        return eventStartStr(a).localeCompare(eventStartStr(b));
     });
 }
 
@@ -36,13 +36,13 @@ function formatDateHeader(dateKey: string): string {
 
 function formatEventTime(event: CalendarEvent): string | null {
     if (event.all_day) return null;
-    return `${formatTime(event.start_time)} \u2013 ${formatTime(event.end_time)}`;
+    return `${formatTime(event.start_time!)} \u2013 ${formatTime(event.end_time!)}`;
 }
 
 function dedup(evts: CalendarEvent[]): CalendarEvent[] {
     const seen = new Set<string>();
     return evts.filter(e => {
-        const key = e.id + ':' + e.start_time;
+        const key = e.id + ':' + eventStartStr(e);
         if (seen.has(key)) return false;
         seen.add(key);
         return true;
@@ -74,8 +74,8 @@ export function ScheduleView({ currentDate, events, onEventClick, onDayClick, co
         const toKey = toDateKey(to);
         events.forEach(event => {
             if (event.all_day) {
-                const startDate = event.start_time.substring(0, 10);
-                const endDate = event.end_time.substring(0, 10);
+                const startDate = event.start_date ?? '';
+                const endDate = event.end_date ?? '';
                 // Clamp iteration to the visible window to avoid O(span) work for long events
                 const clampedStart = startDate < fromKey ? fromKey : startDate;
                 const clampedEnd = endDate > toKey ? toKey : endDate;
@@ -88,7 +88,7 @@ export function ScheduleView({ currentDate, events, onEventClick, onDayClick, co
                     cur.setDate(cur.getDate() + 1);
                 }
             } else {
-                const key = toDateKey(new Date(event.start_time));
+                const key = toDateKey(new Date(event.start_time!));
                 if (key >= fromKey && key < toKey) {
                     if (!map.has(key)) map.set(key, []);
                     map.get(key)!.push(event);
@@ -115,8 +115,8 @@ export function ScheduleView({ currentDate, events, onEventClick, onDayClick, co
                             {formatDateHeader(dateKey)}
                         </div>
                         {dayEvents.map(event => (
-                            <div class={`schedule-event${isPastEvent(event) ? ' past-event' : ''}${highlightEventId === event.id + '|' + event.start_time ? ' highlight-event' : ''}`}
-                                 key={event.id + ':' + event.start_time}
+                            <div class={`schedule-event${isPastEvent(event) ? ' past-event' : ''}${highlightEventId === event.id + '|' + eventStartStr(event) ? ' highlight-event' : ''}`}
+                                 key={event.id + ':' + eventStartStr(event)}
                                  style={'background:' + (eventColor(event, config))}
                                  onClick={(e: MouseEvent) => { e.stopPropagation(); onEventClick(event); }}>
                                 <div class="schedule-event-title">{event.title}</div>

@@ -14,7 +14,7 @@ import { Settings } from './components/settings.js';
 import { CalendarSidebar } from './components/calendar-sidebar.js';
 import { MiniMonth } from './components/mini-month.js';
 import { listEvents, searchEvents, createEvent, updateEvent, deleteEvent, getEvent, importSingleEvent, listCalendars, updateCalendar } from './lib/api.js';
-import { addMonths, addWeeks, startOfWeek, toRFC3339 } from './lib/date-utils.js';
+import { addMonths, addWeeks, startOfWeek, toRFC3339, eventStartStr } from './lib/date-utils.js';
 import { getConfig, hasUserDefaultView } from './lib/config.js';
 import { checkAndNotify, requestPermission } from './lib/notifications.js';
 import { showChoice } from './lib/confirm.js';
@@ -297,7 +297,12 @@ function App() {
 
     async function handleEventDrag(eventId: string, startTime: string, endTime: string) {
         try {
-            await updateEvent(eventId, { start_time: startTime, end_time: endTime });
+            // YYYY-MM-DD strings (no 'T') are all-day dates; ISO strings are datetimes
+            const isDateOnly = !startTime.includes('T');
+            const update = isDateOnly
+                ? { start_date: startTime, end_date: endTime }
+                : { start_time: startTime, end_time: endTime };
+            await updateEvent(eventId, update);
             await loadEvents();
         } catch (err) {
             setToastError(true);
@@ -327,9 +332,9 @@ function App() {
     }
 
     function handleSearchResultClick(event: CalendarEvent) {
-        setCurrentDate(new Date(event.start_time));
+        setCurrentDate(new Date(eventStartStr(event)));
         setViewMode(preSearchViewMode.current || viewMode);
-        setHighlightEventId(event.id + '|' + event.start_time);
+        setHighlightEventId(event.id + '|' + eventStartStr(event));
         clearSearch();
         setSelectedEvent(event);
         setDefaultDate(null);
@@ -470,11 +475,11 @@ function App() {
                             {searchResults.length === 0 ? (
                                 <div class="search-empty">No events found</div>
                             ) : searchResults.map(event => (
-                                <div class={`search-result-item${new Date(event.end_time) < new Date() ? ' search-result-past' : ''}`} key={event.id}
+                                <div class={`search-result-item${new Date(eventStartStr(event)) < new Date() ? ' search-result-past' : ''}`} key={event.id}
                                      onClick={() => handleSearchResultClick(event)}>
                                     <div class="search-result-title">{event.title}</div>
-                                    <div class="search-result-date">{formatSearchDate(event.start_time)}</div>
-                                    <div class="search-result-time">{formatSearchTime(event.start_time, event.end_time)}</div>
+                                    <div class="search-result-date">{formatSearchDate(eventStartStr(event))}</div>
+                                    <div class="search-result-time">{event.all_day ? '' : formatSearchTime(event.start_time!, event.end_time!)}</div>
                                     {event.description && <div class="search-result-desc" dangerouslySetInnerHTML={{ __html: event.description }} />}
                                 </div>
                             ))}

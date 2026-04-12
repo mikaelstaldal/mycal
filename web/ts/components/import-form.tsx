@@ -2,6 +2,7 @@ import { h } from 'preact';
 import type { VNode } from 'preact';
 import { useState, useRef, useEffect } from 'preact/hooks';
 import { importEvents, importSingleEvent } from '../lib/api.js';
+import { eventStartStr } from '../lib/date-utils.js';
 
 interface ImportSingleFormProps {
     onImported: (message: string, isError?: boolean) => void;
@@ -35,7 +36,8 @@ export function ImportSingleForm({ onImported, onClose }: ImportSingleFormProps)
         setLoading(true);
         try {
             const event = await importSingleEvent(input, calendarName.trim());
-            const date = event.start_time ? new Date(event.start_time).toLocaleDateString() : '';
+            const startStr = eventStartStr(event);
+            const date = startStr ? new Date(startStr).toLocaleDateString() : '';
             onImported(`Event imported successfully.${date ? ' Start: ' + date : ''}`);
         } catch (err: any) {
             onImported(err.message, true);

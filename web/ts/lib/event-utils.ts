@@ -1,4 +1,5 @@
 import type { CalendarEvent, AppConfig } from '../types/models.js';
+import { eventStartStr, eventEndStr } from './date-utils.js';
 
 export function dayKey(d: Date): string {
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -18,8 +19,8 @@ export function buildDayIndex(events: CalendarEvent[], days: Date[]): DayIndex {
     }
     for (const e of events) {
         if (e.all_day) {
-            const startStr = e.start_time.substring(0, 10);
-            const endStr = e.end_time.substring(0, 10);
+            const startStr = e.start_date ?? '';
+            const endStr = e.end_date ?? '';
             for (const day of days) {
                 const k = dayKey(day);
                 if (k >= startStr && k < endStr) {
@@ -27,8 +28,8 @@ export function buildDayIndex(events: CalendarEvent[], days: Date[]): DayIndex {
                 }
             }
         } else {
-            const startMs = new Date(e.start_time).getTime();
-            const endMs = new Date(e.end_time).getTime();
+            const startMs = new Date(e.start_time!).getTime();
+            const endMs = new Date(e.end_time!).getTime();
             for (const day of days) {
                 const dayStartMs = new Date(day.getFullYear(), day.getMonth(), day.getDate()).getTime();
                 if (startMs < dayStartMs + 86400000 && endMs > dayStartMs) {
@@ -61,8 +62,8 @@ export function computeOverlapLayout(events: CalendarEvent[]): { col: number; to
     const n = events.length;
     if (n === 0) return [];
 
-    const starts = events.map(e => new Date(e.start_time).getTime());
-    const ends = events.map(e => new Date(e.end_time).getTime());
+    const starts = events.map(e => new Date(eventStartStr(e)).getTime());
+    const ends = events.map(e => new Date(eventEndStr(e)).getTime());
 
     // Build overlap adjacency list
     const overlaps: number[][] = Array.from({ length: n }, (_, i) => {

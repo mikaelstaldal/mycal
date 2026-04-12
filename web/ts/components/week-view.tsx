@@ -1,7 +1,7 @@
 import { h, Fragment } from 'preact';
 import type { VNode } from 'preact';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'preact/hooks';
-import { getWeekDays, isToday, formatHour, formatTime, getISOWeekNumber, isPastEvent } from '../lib/date-utils.js';
+import { getWeekDays, isToday, formatHour, formatTime, getISOWeekNumber, isPastEvent, eventStartStr } from '../lib/date-utils.js';
 import { startDrag } from '../lib/drag.js';
 import { eventColor, computeOverlapLayout, buildDayIndex, dayKey } from '../lib/event-utils.js';
 import type { CalendarEvent, AppConfig } from '../types/models.js';
@@ -39,8 +39,8 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, onAllD
     }, [dayIndex, days]);
 
     const eventStyle = useCallback(function(event: CalendarEvent, date: Date, col: number, total: number) {
-        const start = new Date(event.start_time);
-        const end = new Date(event.end_time);
+        const start = new Date(event.start_time!);
+        const end = new Date(event.end_time!);
         const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
         const dayEnd = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
 
@@ -118,7 +118,7 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, onAllD
                             {visible.map(e => {
                                 const canDrag = !e.parent_id;
                                 return (
-                                    <div class={`allday-event${isPastEvent(e) ? ' past-event' : ''}${highlightEventId === e.id + '|' + e.start_time ? ' highlight-event' : ''}`}
+                                    <div class={`allday-event${isPastEvent(e) ? ' past-event' : ''}${highlightEventId === e.id + '|' + eventStartStr(e) ? ' highlight-event' : ''}`}
                                          key={e.id}
                                          title={e.title}
                                          style={`background-color: ${eventColor(e, config)}`}
@@ -205,9 +205,9 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, onAllD
                             <div class="week-day-events">
                                 {dayEvents.map((e, ei) => {
                                     const { col, total } = layout[ei];
-                                    const durationMin = (new Date(e.end_time).getTime() - new Date(e.start_time).getTime()) / 60000;
+                                    const durationMin = (new Date(e.end_time!).getTime() - new Date(e.start_time!).getTime()) / 60000;
                                     const isShort = durationMin <= 30;
-                                    const isHighlighted = highlightEventId === e.id + '|' + e.start_time;
+                                    const isHighlighted = highlightEventId === e.id + '|' + eventStartStr(e);
                                     const classes = ['week-event', isShort && 'short-event', isPastEvent(e) && 'past-event', isHighlighted && 'highlight-event'].filter(Boolean).join(' ');
                                     const canDrag = !e.parent_id;
                                     return (
@@ -235,13 +235,13 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, onAllD
                                              } : undefined}>
                                             {isShort ? (
                                                 <Fragment>
-                                                    <span class="week-event-time">{formatTime(e.start_time)}</span>
+                                                    <span class="week-event-time">{formatTime(e.start_time!)}</span>
                                                     <span class="week-event-title">{e.title}</span>
                                                 </Fragment>
                                             ) : (
                                                 <Fragment>
                                                     <span class="week-event-title">{e.title}</span>
-                                                    <span class="week-event-time">{formatTime(e.start_time)}</span>
+                                                    <span class="week-event-time">{formatTime(e.start_time!)}</span>
                                                 </Fragment>
                                             )}
                                             {canDrag && <div class="resize-handle"

@@ -78,19 +78,30 @@ func toOptURI(s string) api.OptURI {
 
 func modelEventToAPI(e *model.Event) *api.Event {
 	ae := &api.Event{
-		ID:        e.StringID,
-		Title:     e.Title,
-		StartTime: e.StartTime,
-		EndTime:   e.EndTime,
+		ID:    e.StringID,
+		Title: e.Title,
+	}
+	if e.AllDay {
+		ae.AllDay = api.NewOptBool(true)
+		if t, err := time.Parse(time.RFC3339, e.StartTime); err == nil {
+			ae.StartDate = api.NewOptDate(t)
+		}
+		if t, err := time.Parse(time.RFC3339, e.EndTime); err == nil {
+			ae.EndDate = api.NewOptDate(t)
+		}
+	} else {
+		if t, err := time.Parse(time.RFC3339, e.StartTime); err == nil {
+			ae.StartTime = api.NewOptDateTime(t)
+		}
+		if t, err := time.Parse(time.RFC3339, e.EndTime); err == nil {
+			ae.EndTime = api.NewOptDateTime(t)
+		}
 	}
 	if e.ParentID != "" {
 		ae.ParentID = api.NewOptString(e.ParentID)
 	}
 	if e.Description != "" {
 		ae.Description = api.NewOptString(e.Description)
-	}
-	if e.AllDay {
-		ae.AllDay = api.NewOptBool(true)
 	}
 	if e.Color != "" {
 		ae.Color = api.NewOptString(e.Color)
@@ -124,7 +135,7 @@ func modelEventToAPI(e *model.Event) *api.Event {
 		ae.RecurrenceParentID = api.NewOptNilInt64(*e.RecurrenceParentID)
 	}
 	if e.RecurrenceOriginalStart != "" {
-		ae.RecurrenceOriginalStart = api.NewOptString(e.RecurrenceOriginalStart)
+		ae.RecurrenceOriginalStart = toOptDateTime(e.RecurrenceOriginalStart)
 	}
 	if e.Duration != "" {
 		ae.Duration = api.NewOptString(e.Duration)
@@ -178,17 +189,26 @@ func modelFeedToAPI(f *model.Feed) *api.Feed {
 
 func apiCreateEventToModel(req *api.CreateEventRequest) *model.CreateEventRequest {
 	m := &model.CreateEventRequest{
-		Title:     req.Title,
-		StartTime: req.StartTime,
+		Title:  req.Title,
+		AllDay: req.AllDay,
+	}
+	if req.AllDay {
+		if req.StartDate.Set {
+			m.StartTime = req.StartDate.Value.Format("2006-01-02")
+		}
+		if req.EndDate.Set {
+			m.EndTime = req.EndDate.Value.Format("2006-01-02")
+		}
+	} else {
+		if req.StartTime.Set {
+			m.StartTime = req.StartTime.Value.Format(time.RFC3339)
+		}
+		if req.EndTime.Set {
+			m.EndTime = req.EndTime.Value.Format(time.RFC3339)
+		}
 	}
 	if req.Description.Set {
 		m.Description = req.Description.Value
-	}
-	if req.EndTime.Set {
-		m.EndTime = req.EndTime.Value
-	}
-	if req.AllDay.Set {
-		m.AllDay = req.AllDay.Value
 	}
 	if req.Color.Set {
 		m.Color = req.Color.Value
@@ -254,11 +274,21 @@ func apiUpdateEventToModel(req *api.UpdateEventRequest) *model.UpdateEventReques
 	if req.Description.Set {
 		m.Description = &req.Description.Value
 	}
+	if req.StartDate.Set {
+		v := req.StartDate.Value.Format("2006-01-02")
+		m.StartTime = &v
+	}
+	if req.EndDate.Set {
+		v := req.EndDate.Value.Format("2006-01-02")
+		m.EndTime = &v
+	}
 	if req.StartTime.Set {
-		m.StartTime = &req.StartTime.Value
+		v := req.StartTime.Value.Format(time.RFC3339)
+		m.StartTime = &v
 	}
 	if req.EndTime.Set {
-		m.EndTime = &req.EndTime.Value
+		v := req.EndTime.Value.Format(time.RFC3339)
+		m.EndTime = &v
 	}
 	if req.AllDay.Set {
 		m.AllDay = &req.AllDay.Value

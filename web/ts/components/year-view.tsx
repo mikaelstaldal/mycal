@@ -1,7 +1,7 @@
 import { h } from 'preact';
 import type { VNode } from 'preact';
 import { useMemo } from 'preact/hooks';
-import { getCalendarDays, getWeekdays, isToday, getISOWeekNumber } from '../lib/date-utils.js';
+import { getCalendarDays, getWeekdays, isToday, getISOWeekNumber, eventStartStr } from '../lib/date-utils.js';
 import type { CalendarEvent, AppConfig } from '../types/models.js';
 
 interface YearViewProps {
@@ -27,8 +27,8 @@ export function YearView({ currentDate, events, onMonthClick, onWeekClick, onDay
         const map = new Map<string, CalendarEvent[]>();
         for (const e of events) {
             if (e.all_day) {
-                const endStr = e.end_time.substring(0, 10);
-                const cursor = new Date(e.start_time.substring(0, 10) + 'T00:00:00');
+                const endStr = e.end_date ?? '';
+                const cursor = new Date((e.start_date ?? '') + 'T00:00:00');
                 while (true) {
                     const key = toDateStr(cursor.getFullYear(), cursor.getMonth(), cursor.getDate());
                     if (key >= endStr) break;
@@ -38,8 +38,8 @@ export function YearView({ currentDate, events, onMonthClick, onWeekClick, onDay
                     cursor.setDate(cursor.getDate() + 1);
                 }
             } else {
-                const start = new Date(e.start_time);
-                const end = new Date(e.end_time);
+                const start = new Date(e.start_time!);
+                const end = new Date(e.end_time!);
                 const cursor = new Date(start.getFullYear(), start.getMonth(), start.getDate());
                 while (end > cursor) {
                     const key = toDateStr(cursor.getFullYear(), cursor.getMonth(), cursor.getDate());
@@ -85,7 +85,7 @@ export function YearView({ currentDate, events, onMonthClick, onWeekClick, onDay
                             {week.map(({ date, currentMonth }) => {
                                 const dayEvents = currentMonth ? (eventsByDate.get(toDateStr(date.getFullYear(), date.getMonth(), date.getDate())) ?? []) : [];
                                 const hasEvents = dayEvents.length > 0;
-                                const isHighlighted = highlightEventId && dayEvents.some(e => (e.id + '|' + e.start_time) === highlightEventId);
+                                const isHighlighted = highlightEventId && dayEvents.some(e => (e.id + '|' + eventStartStr(e)) === highlightEventId);
                                 const classes = ['year-day',
                                     !currentMonth && 'year-day-other',
                                     currentMonth && isToday(date) && 'year-day-today',

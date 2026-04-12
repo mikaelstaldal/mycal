@@ -1,4 +1,5 @@
 import type { CalendarEvent } from '../types/models.js';
+import { eventStartStr, eventEndStr } from './date-utils.js';
 
 const PIXELS_PER_HOUR = 48;
 const SNAP_MINUTES = 15;
@@ -139,7 +140,7 @@ export function startDrag(event: CalendarEvent, el: HTMLElement, startEvent: Mou
             const minHeight = (MIN_DURATION_MINUTES / 60) * PIXELS_PER_HOUR;
             el.style.height = `${Math.max(newHeight, minHeight)}px`;
             // Clamp totalDeltaMinutes for resize
-            const origDuration = (new Date(event.end_time).getTime() - new Date(event.start_time).getTime()) / 60000;
+            const origDuration = (new Date(eventEndStr(event)).getTime() - new Date(eventStartStr(event)).getTime()) / 60000;
             if (origDuration + totalDeltaMinutes < MIN_DURATION_MINUTES) {
                 totalDeltaMinutes = MIN_DURATION_MINUTES - origDuration;
             }
@@ -166,18 +167,18 @@ export function startDrag(event: CalendarEvent, el: HTMLElement, startEvent: Mou
 
         let newStart: string, newEnd: string;
         if (mode === 'move') {
-            newStart = addMinutes(event.start_time, totalDeltaMinutes);
-            newEnd = addMinutes(event.end_time, totalDeltaMinutes);
+            newStart = addMinutes(eventStartStr(event), totalDeltaMinutes);
+            newEnd = addMinutes(eventEndStr(event), totalDeltaMinutes);
             if (dayDelta !== 0) {
                 newStart = shiftDate(newStart, dayDelta);
                 newEnd = shiftDate(newEnd, dayDelta);
             }
         } else if (mode === 'move-horizontal') {
-            newStart = shiftDateOnly(event.start_time, dayDelta);
-            newEnd = shiftDateOnly(event.end_time, dayDelta);
+            newStart = shiftDateOnly(eventStartStr(event), dayDelta);
+            newEnd = shiftDateOnly(eventEndStr(event), dayDelta);
         } else {
-            newStart = event.start_time;
-            newEnd = addMinutes(event.end_time, totalDeltaMinutes);
+            newStart = eventStartStr(event);
+            newEnd = addMinutes(eventEndStr(event), totalDeltaMinutes);
         }
 
         // Reset inline styles so re-render takes over

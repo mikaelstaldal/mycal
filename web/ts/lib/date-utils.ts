@@ -157,8 +157,18 @@ export function formatWeekRange(date: Date, weekStartDay: number = 1): string {
     return `${firstStr} \u2013 ${lastStr}, ${year}`;
 }
 
+// Return the effective start/end string for any event.
+// All-day events use date strings (YYYY-MM-DD); timed events use RFC 3339.
+export function eventStartStr(event: CalendarEvent): string {
+    return event.all_day ? (event.start_date ?? '') : (event.start_time ?? '');
+}
+
+export function eventEndStr(event: CalendarEvent): string {
+    return event.all_day ? (event.end_date ?? '') : (event.end_time ?? '');
+}
+
 export function isPastEvent(event: CalendarEvent): boolean {
-    return new Date(event.end_time) < new Date();
+    return new Date(eventEndStr(event)) < new Date();
 }
 
 export function formatDayHeading(date: Date): string {

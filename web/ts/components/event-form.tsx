@@ -83,11 +83,11 @@ export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSa
         setDescription(src.description);
         setAllDay(src.all_day || false);
         if (src.all_day) {
-            setStartTime(toLocalDateValue(src.start_time));
-            setEndTime(exclusiveToInclusiveDate(src.end_time));
+            setStartTime(src.start_date ?? '');
+            setEndTime(exclusiveToInclusiveDate(src.end_date ?? ''));
         } else {
-            setStartTime(toLocalDatetimeValue(src.start_time));
-            setEndTime(toLocalDatetimeValue(src.end_time));
+            setStartTime(toLocalDatetimeValue(src.start_time!));
+            setEndTime(toLocalDatetimeValue(src.end_time!));
         }
         setColor(src.color);
         setRecurrenceFreq(src.recurrence_freq || '');
@@ -293,8 +293,8 @@ export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSa
                 title: title.trim(),
                 description,
                 all_day: true,
-                start_time: startTime,
-                end_time: useDuration ? undefined : inclusiveToExclusiveDate(endTime || startTime),
+                start_date: startTime,
+                end_date: useDuration ? undefined : inclusiveToExclusiveDate(endTime || startTime),
                 color,
                 ...recurrenceFields,
                 reminder_minutes: 0,
@@ -365,14 +365,14 @@ export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSa
 
     function displayStart() {
         if (!event) return '';
-        if (event.all_day) return formatDateOnly(event.start_time);
-        return formatDatetime(event.start_time);
+        if (event.all_day) return formatDateOnly(event.start_date!);
+        return formatDatetime(event.start_time!);
     }
 
     function displayEnd() {
         if (!event) return '';
-        if (event.all_day) return formatDateOnly(exclusiveToInclusiveDate(event.end_time));
-        return formatDatetime(event.end_time);
+        if (event.all_day) return formatDateOnly(exclusiveToInclusiveDate(event.end_date!));
+        return formatDatetime(event.end_time!);
     }
 
     function displayReminder() {

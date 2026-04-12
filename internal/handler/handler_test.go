@@ -11,6 +11,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/mikaelstaldal/mycal/internal/api"
 	"github.com/mikaelstaldal/mycal/internal/handler"
@@ -18,6 +19,22 @@ import (
 	"github.com/mikaelstaldal/mycal/internal/service"
 	_ "modernc.org/sqlite"
 )
+
+func mustTime(s string) time.Time {
+	t, err := time.Parse(time.RFC3339, s)
+	if err != nil {
+		panic(err)
+	}
+	return t
+}
+
+func mustDate(s string) time.Time {
+	t, err := time.Parse("2006-01-02", s)
+	if err != nil {
+		panic(err)
+	}
+	return t
+}
 
 func setupTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
@@ -120,8 +137,9 @@ func createTestEvent(t *testing.T, ts *httptest.Server) api.Event {
 	t.Helper()
 	body := api.CreateEventRequest{
 		Title:     "Test Event",
-		StartTime: "2026-03-15T10:00:00Z",
-		EndTime:   api.NewOptString("2026-03-15T11:00:00Z"),
+		AllDay:    false,
+		StartTime: api.NewOptDateTime(mustTime("2026-03-15T10:00:00Z")),
+		EndTime:   api.NewOptDateTime(mustTime("2026-03-15T11:00:00Z")),
 	}
 	resp := postJSON(t, ts.URL+"/api/v1/events", body)
 	if resp.StatusCode != http.StatusCreated {
@@ -137,8 +155,9 @@ func TestCreateEvent(t *testing.T) {
 	body := api.CreateEventRequest{
 		Title:       "Meeting",
 		Description: api.NewOptString("Team sync"),
-		StartTime:   "2026-03-15T10:00:00Z",
-		EndTime:     api.NewOptString("2026-03-15T11:00:00Z"),
+		AllDay:      false,
+		StartTime:   api.NewOptDateTime(mustTime("2026-03-15T10:00:00Z")),
+		EndTime:     api.NewOptDateTime(mustTime("2026-03-15T11:00:00Z")),
 		Location:    api.NewOptString("Room 42"),
 	}
 	resp := postJSON(t, ts.URL+"/api/v1/events", body)
@@ -176,31 +195,26 @@ func TestCreateEvent_ValidationErrors(t *testing.T) {
 		{
 			name: "missing title",
 			body: api.CreateEventRequest{
-				StartTime: "2026-03-15T10:00:00Z",
-				EndTime:   api.NewOptString("2026-03-15T11:00:00Z"),
+				AllDay:    false,
+				StartTime: api.NewOptDateTime(mustTime("2026-03-15T10:00:00Z")),
+				EndTime:   api.NewOptDateTime(mustTime("2026-03-15T11:00:00Z")),
 			},
 		},
 		{
 			name: "missing start_time",
 			body: api.CreateEventRequest{
 				Title:   "Event",
-				EndTime: api.NewOptString("2026-03-15T11:00:00Z"),
-			},
-		},
-		{
-			name: "bad start_time format",
-			body: api.CreateEventRequest{
-				Title:     "Event",
-				StartTime: "not-a-date",
-				EndTime:   api.NewOptString("2026-03-15T11:00:00Z"),
+				AllDay:  false,
+				EndTime: api.NewOptDateTime(mustTime("2026-03-15T11:00:00Z")),
 			},
 		},
 		{
 			name: "end before start",
 			body: api.CreateEventRequest{
 				Title:     "Event",
-				StartTime: "2026-03-15T11:00:00Z",
-				EndTime:   api.NewOptString("2026-03-15T10:00:00Z"),
+				AllDay:    false,
+				StartTime: api.NewOptDateTime(mustTime("2026-03-15T11:00:00Z")),
+				EndTime:   api.NewOptDateTime(mustTime("2026-03-15T10:00:00Z")),
 			},
 		},
 	}
@@ -275,8 +289,8 @@ func TestUpdateEvent(t *testing.T) {
 		t.Errorf("title = %q, want %q", updated.Title, "Updated Title")
 	}
 	// Unchanged fields should be preserved
-	if updated.StartTime != created.StartTime {
-		t.Errorf("start_time = %q, want %q", updated.StartTime, created.StartTime)
+	if !updated.StartTime.Value.Equal(created.StartTime.Value) {
+		t.Errorf("start_time = %v, want %v", updated.StartTime.Value, created.StartTime.Value)
 	}
 }
 
@@ -328,10 +342,12 @@ func TestListEvents(t *testing.T) {
 
 	// Create events at different times
 	for _, start := range []string{"2026-03-10T10:00:00Z", "2026-03-15T10:00:00Z", "2026-03-20T10:00:00Z"} {
+		startT := mustTime(start)
 		postJSON(t, ts.URL+"/api/v1/events", api.CreateEventRequest{
 			Title:     "Event at " + start,
-			StartTime: start,
-			EndTime:   api.NewOptString(start[:11] + "11:00:00Z"),
+			AllDay:    false,
+			StartTime: api.NewOptDateTime(startT),
+			EndTime:   api.NewOptDateTime(startT.Add(time.Hour)),
 		}).Body.Close()
 	}
 
@@ -377,13 +393,15 @@ func TestSearchEvents(t *testing.T) {
 
 	postJSON(t, ts.URL+"/api/v1/events", api.CreateEventRequest{
 		Title:     "Go Conference",
-		StartTime: "2026-03-15T10:00:00Z",
-		EndTime:   api.NewOptString("2026-03-15T18:00:00Z"),
+		AllDay:    false,
+		StartTime: api.NewOptDateTime(mustTime("2026-03-15T10:00:00Z")),
+		EndTime:   api.NewOptDateTime(mustTime("2026-03-15T18:00:00Z")),
 	}).Body.Close()
 	postJSON(t, ts.URL+"/api/v1/events", api.CreateEventRequest{
 		Title:     "Lunch Break",
-		StartTime: "2026-03-15T12:00:00Z",
-		EndTime:   api.NewOptString("2026-03-15T13:00:00Z"),
+		AllDay:    false,
+		StartTime: api.NewOptDateTime(mustTime("2026-03-15T12:00:00Z")),
+		EndTime:   api.NewOptDateTime(mustTime("2026-03-15T13:00:00Z")),
 	}).Body.Close()
 
 	resp, err := http.Get(ts.URL + "/api/v1/events?q=Conference")
@@ -408,8 +426,8 @@ func TestCreateAllDayEvent(t *testing.T) {
 	ts := setupTestServer(t)
 	body := api.CreateEventRequest{
 		Title:     "Holiday",
-		StartTime: "2026-06-15",
-		AllDay:    api.NewOptBool(true),
+		AllDay:    true,
+		StartDate: api.NewOptDate(mustDate("2026-06-15")),
 	}
 	resp := postJSON(t, ts.URL+"/api/v1/events", body)
 	if resp.StatusCode != http.StatusCreated {
@@ -432,8 +450,9 @@ func TestRecurringEventExpansion(t *testing.T) {
 	// Create a weekly recurring event
 	body := api.CreateEventRequest{
 		Title:           "Weekly Standup",
-		StartTime:       "2026-03-02T09:00:00Z",
-		EndTime:         api.NewOptString("2026-03-02T09:30:00Z"),
+		AllDay:          false,
+		StartTime:       api.NewOptDateTime(mustTime("2026-03-02T09:00:00Z")),
+		EndTime:         api.NewOptDateTime(mustTime("2026-03-02T09:30:00Z")),
 		RecurrenceFreq:  api.NewOptCreateEventRequestRecurrenceFreq(api.CreateEventRequestRecurrenceFreqWEEKLY),
 		RecurrenceCount: api.NewOptInt(10),
 	}
@@ -464,8 +483,9 @@ func TestDeleteWithInstanceStart(t *testing.T) {
 
 	body := api.CreateEventRequest{
 		Title:           "Daily Standup",
-		StartTime:       "2026-03-01T09:00:00Z",
-		EndTime:         api.NewOptString("2026-03-01T09:30:00Z"),
+		AllDay:          false,
+		StartTime:       api.NewOptDateTime(mustTime("2026-03-01T09:00:00Z")),
+		EndTime:         api.NewOptDateTime(mustTime("2026-03-01T09:30:00Z")),
 		RecurrenceFreq:  api.NewOptCreateEventRequestRecurrenceFreq(api.CreateEventRequestRecurrenceFreqDAILY),
 		RecurrenceCount: api.NewOptInt(30),
 	}
@@ -570,8 +590,9 @@ func TestOverrideInstance(t *testing.T) {
 	// Create a weekly recurring event
 	body := api.CreateEventRequest{
 		Title:           "Weekly Standup",
-		StartTime:       "2026-03-02T09:00:00Z",
-		EndTime:         api.NewOptString("2026-03-02T09:30:00Z"),
+		AllDay:          false,
+		StartTime:       api.NewOptDateTime(mustTime("2026-03-02T09:00:00Z")),
+		EndTime:         api.NewOptDateTime(mustTime("2026-03-02T09:30:00Z")),
 		RecurrenceFreq:  api.NewOptCreateEventRequestRecurrenceFreq(api.CreateEventRequestRecurrenceFreqWEEKLY),
 		RecurrenceCount: api.NewOptInt(10),
 	}
@@ -608,7 +629,7 @@ func TestOverrideInstance(t *testing.T) {
 			found = true
 		}
 		// The original "Weekly Standup" at 2026-03-09 should be replaced
-		if e.Title == "Weekly Standup" && e.StartTime == "2026-03-09T09:00:00Z" {
+		if e.Title == "Weekly Standup" && e.StartTime.Value.Format(time.RFC3339) == "2026-03-09T09:00:00Z" {
 			t.Error("original instance at 2026-03-09 should have been replaced by override")
 		}
 	}
@@ -622,8 +643,9 @@ func TestDeleteParentDeletesOverrides(t *testing.T) {
 
 	body := api.CreateEventRequest{
 		Title:           "Series",
-		StartTime:       "2026-04-01T10:00:00Z",
-		EndTime:         api.NewOptString("2026-04-01T11:00:00Z"),
+		AllDay:          false,
+		StartTime:       api.NewOptDateTime(mustTime("2026-04-01T10:00:00Z")),
+		EndTime:         api.NewOptDateTime(mustTime("2026-04-01T11:00:00Z")),
 		RecurrenceFreq:  api.NewOptCreateEventRequestRecurrenceFreq(api.CreateEventRequestRecurrenceFreqDAILY),
 		RecurrenceCount: api.NewOptInt(5),
 	}
@@ -657,8 +679,9 @@ func TestDeleteInstanceWithOverride(t *testing.T) {
 
 	body := api.CreateEventRequest{
 		Title:           "Series",
-		StartTime:       "2026-04-01T10:00:00Z",
-		EndTime:         api.NewOptString("2026-04-01T11:00:00Z"),
+		AllDay:          false,
+		StartTime:       api.NewOptDateTime(mustTime("2026-04-01T10:00:00Z")),
+		EndTime:         api.NewOptDateTime(mustTime("2026-04-01T11:00:00Z")),
 		RecurrenceFreq:  api.NewOptCreateEventRequestRecurrenceFreq(api.CreateEventRequestRecurrenceFreqDAILY),
 		RecurrenceCount: api.NewOptInt(5),
 	}
@@ -693,7 +716,8 @@ func TestCreateEventWithDuration(t *testing.T) {
 	ts := setupTestServer(t)
 	body := api.CreateEventRequest{
 		Title:     "Quick Meeting",
-		StartTime: "2026-03-15T10:00:00Z",
+		AllDay:    false,
+		StartTime: api.NewOptDateTime(mustTime("2026-03-15T10:00:00Z")),
 		Duration:  api.NewOptString("PT1H30M"),
 	}
 	resp := postJSON(t, ts.URL+"/api/v1/events", body)
@@ -701,8 +725,9 @@ func TestCreateEventWithDuration(t *testing.T) {
 		t.Fatalf("got status %d, want %d", resp.StatusCode, http.StatusCreated)
 	}
 	event := decodeJSON[api.Event](t, resp)
-	if event.EndTime != "2026-03-15T11:30:00Z" {
-		t.Errorf("end_time = %q, want %q", event.EndTime, "2026-03-15T11:30:00Z")
+	wantEnd := mustTime("2026-03-15T11:30:00Z")
+	if !event.EndTime.Value.Equal(wantEnd) {
+		t.Errorf("end_time = %v, want %v", event.EndTime.Value, wantEnd)
 	}
 	if event.Duration.Value != "PT1H30M" {
 		t.Errorf("duration = %q, want %q", event.Duration.Value, "PT1H30M")
@@ -713,8 +738,9 @@ func TestCreateEventDurationAndEndTimeConflict(t *testing.T) {
 	ts := setupTestServer(t)
 	body := api.CreateEventRequest{
 		Title:     "Conflict",
-		StartTime: "2026-03-15T10:00:00Z",
-		EndTime:   api.NewOptString("2026-03-15T11:00:00Z"),
+		AllDay:    false,
+		StartTime: api.NewOptDateTime(mustTime("2026-03-15T10:00:00Z")),
+		EndTime:   api.NewOptDateTime(mustTime("2026-03-15T11:00:00Z")),
 		Duration:  api.NewOptString("PT1H"),
 	}
 	resp := postJSON(t, ts.URL+"/api/v1/events", body)
@@ -730,8 +756,9 @@ func TestCreateEventWithCategories(t *testing.T) {
 	ts := setupTestServer(t)
 	body := api.CreateEventRequest{
 		Title:      "Tagged Event",
-		StartTime:  "2026-03-15T10:00:00Z",
-		EndTime:    api.NewOptString("2026-03-15T11:00:00Z"),
+		AllDay:     false,
+		StartTime:  api.NewOptDateTime(mustTime("2026-03-15T10:00:00Z")),
+		EndTime:    api.NewOptDateTime(mustTime("2026-03-15T11:00:00Z")),
 		Categories: api.NewOptString("Work,Meeting"),
 	}
 	resp := postJSON(t, ts.URL+"/api/v1/events", body)
@@ -763,8 +790,9 @@ func TestCreateEventWithURL(t *testing.T) {
 	u, _ := url.Parse("https://example.com/meeting")
 	body := api.CreateEventRequest{
 		Title:     "Linked Event",
-		StartTime: "2026-03-15T10:00:00Z",
-		EndTime:   api.NewOptString("2026-03-15T11:00:00Z"),
+		AllDay:    false,
+		StartTime: api.NewOptDateTime(mustTime("2026-03-15T10:00:00Z")),
+		EndTime:   api.NewOptDateTime(mustTime("2026-03-15T11:00:00Z")),
 		URL:       api.NewOptURI(*u),
 	}
 	resp := postJSON(t, ts.URL+"/api/v1/events", body)
@@ -782,8 +810,9 @@ func TestCreateEventWithBadURL(t *testing.T) {
 	u, _ := url.Parse("ftp://example.com")
 	body := api.CreateEventRequest{
 		Title:     "Bad URL",
-		StartTime: "2026-03-15T10:00:00Z",
-		EndTime:   api.NewOptString("2026-03-15T11:00:00Z"),
+		AllDay:    false,
+		StartTime: api.NewOptDateTime(mustTime("2026-03-15T10:00:00Z")),
+		EndTime:   api.NewOptDateTime(mustTime("2026-03-15T11:00:00Z")),
 		URL:       api.NewOptURI(*u),
 	}
 	resp := postJSON(t, ts.URL+"/api/v1/events", body)

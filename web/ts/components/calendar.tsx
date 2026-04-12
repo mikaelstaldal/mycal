@@ -1,7 +1,7 @@
 import { h, Fragment } from 'preact';
 import type { VNode } from 'preact';
 import { useMemo } from 'preact/hooks';
-import { getCalendarDays, getWeekdays, isToday, formatTime, getISOWeekNumber, isPastEvent } from '../lib/date-utils.js';
+import { getCalendarDays, getWeekdays, isToday, formatTime, getISOWeekNumber, isPastEvent, eventStartStr } from '../lib/date-utils.js';
 import { eventColor, buildDayIndex, dayKey } from '../lib/event-utils.js';
 import type { CalendarEvent, AppConfig } from '../types/models.js';
 
@@ -59,12 +59,12 @@ export function Calendar({ currentDate, events, onDayClick, onEventClick, onWeek
                                     <span class="day-number">{date.getDate()}</span>
                                     <div class="day-events">
                                         {dayEvents.map(e => (
-                                            <div class={`event-chip${isPastEvent(e) ? ' past-event' : ''}${highlightEventId === e.id + '|' + e.start_time ? ' highlight-event' : ''}`}
+                                            <div class={`event-chip${isPastEvent(e) ? ' past-event' : ''}${highlightEventId === e.id + '|' + eventStartStr(e) ? ' highlight-event' : ''}`}
                                                  key={e.id}
                                                  title={e.title}
                                                  style={`background-color: ${eventColor(e, config)}`}
                                                  onClick={(ev: MouseEvent) => { ev.stopPropagation(); onEventClick(e); }}>
-                                                {e.all_day ? '' : formatTime(e.start_time) + ' '}{e.title}
+                                                {e.all_day ? '' : formatTime(e.start_time!) + ' '}{e.title}
                                             </div>
                                         ))}
                                     </div>
