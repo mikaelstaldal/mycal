@@ -33,6 +33,7 @@ test.describe('Event CRUD', () => {
     const today = todayDate();
     await createEventViaAPI(request, {
       title: 'Existing Event',
+      all_day: false,
       start_time: `${today}T10:00:00Z`,
       end_time: `${today}T11:00:00Z`,
     });
@@ -54,6 +55,7 @@ test.describe('Event CRUD', () => {
     const today = todayDate();
     await createEventViaAPI(request, {
       title: 'Original Title',
+      all_day: false,
       start_time: `${today}T10:00:00Z`,
       end_time: `${today}T11:00:00Z`,
     });
@@ -86,6 +88,7 @@ test.describe('Event CRUD', () => {
     const today = todayDate();
     await createEventViaAPI(request, {
       title: 'Delete Me',
+      all_day: false,
       start_time: `${today}T10:00:00Z`,
       end_time: `${today}T11:00:00Z`,
     });

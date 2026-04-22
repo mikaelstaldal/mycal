@@ -4,9 +4,11 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 
+	"github.com/mikaelstaldal/mycal/internal/api"
 	"github.com/mikaelstaldal/mycal/internal/model"
 	"github.com/mikaelstaldal/mycal/internal/repository"
 	"github.com/mikaelstaldal/mycal/internal/sanitize"
@@ -191,33 +193,42 @@ func (s *EventService) GetInstance(parentID int64, instanceStart string) (*model
 	return &inst, nil
 }
 
-func (s *EventService) Create(req *model.CreateEventRequest) (*model.Event, error) {
-	if err := req.Validate(); err != nil {
+func (s *EventService) Create(req *api.CreateEventRequest) (*model.Event, error) {
+	startTime, endTime, err := ValidateCreateEventRequest(req)
+	if err != nil {
 		return nil, fmt.Errorf("%w: %s", ErrValidation, err.Error())
 	}
 	e := &model.Event{
-		Title:                req.Title,
-		Description:          sanitize.HTML(req.Description),
-		StartTime:            req.StartTime,
-		EndTime:              req.EndTime,
+		Title:                sanitize.HTML(req.Title),
+		Description:          sanitize.HTML(req.Description.Or("")),
+		StartTime:            startTime,
+		EndTime:              endTime,
 		AllDay:               req.AllDay,
-		Color:                req.Color,
-		RecurrenceFreq:       req.RecurrenceFreq,
-		RecurrenceCount:      req.RecurrenceCount,
-		RecurrenceUntil:      req.RecurrenceUntil,
-		RecurrenceInterval:   req.RecurrenceInterval,
-		RecurrenceByDay:      req.RecurrenceByDay,
-		RecurrenceByMonthDay: req.RecurrenceByMonthDay,
-		RecurrenceByMonth:    req.RecurrenceByMonth,
-		ExDates:              req.ExDates,
-		RDates:               req.RDates,
-		Duration:             req.Duration,
-		Categories:           req.Categories,
-		URL:                  req.URL,
-		ReminderMinutes:      req.ReminderMinutes,
-		Location:             req.Location,
-		Latitude:             req.Latitude,
-		Longitude:            req.Longitude,
+		Color:                req.Color.Or(""),
+		RecurrenceFreq:       string(req.RecurrenceFreq.Value),
+		RecurrenceCount:      req.RecurrenceCount.Or(0),
+		RecurrenceUntil:      req.RecurrenceUntil.Or(""),
+		RecurrenceInterval:   req.RecurrenceInterval.Or(0),
+		RecurrenceByDay:      req.RecurrenceByDay.Or(""),
+		RecurrenceByMonthDay: req.RecurrenceByMonthday.Or(""),
+		RecurrenceByMonth:    req.RecurrenceByMonth.Or(""),
+		ExDates:              req.Exdates.Or(""),
+		RDates:               req.Rdates.Or(""),
+		Duration:             req.Duration.Or(""),
+		Categories:           req.Categories.Or(""),
+		ReminderMinutes:      req.ReminderMinutes.Or(0),
+		Location:             req.Location.Or(""),
+	}
+	if req.URL.Set {
+		e.URL = req.URL.Value.String()
+	}
+	if req.Latitude.Set && !req.Latitude.Null {
+		v := req.Latitude.Value
+		e.Latitude = &v
+	}
+	if req.Longitude.Set && !req.Longitude.Null {
+		v := req.Longitude.Value
+		e.Longitude = &v
 	}
 	if err := s.repo.Create(e); err != nil {
 		return nil, err
@@ -227,8 +238,8 @@ func (s *EventService) Create(req *model.CreateEventRequest) (*model.Event, erro
 
 const dateOnly = "2006-01-02"
 
-func (s *EventService) Update(id int64, req *model.UpdateEventRequest) (*model.Event, error) {
-	if err := req.Validate(); err != nil {
+func (s *EventService) Update(id int64, req *api.UpdateEventRequest) (*model.Event, error) {
+	if err := ValidateUpdateEventRequest(req); err != nil {
 		return nil, fmt.Errorf("%w: %s", ErrValidation, err.Error())
 	}
 	existing, err := s.repo.GetByID(id)
@@ -239,70 +250,72 @@ func (s *EventService) Update(id int64, req *model.UpdateEventRequest) (*model.E
 		return nil, ErrNotFound
 	}
 
-	if req.Title != nil {
-		existing.Title = *req.Title
+	if req.Title.Set {
+		existing.Title = req.Title.Value
 	}
-	if req.Description != nil {
-		existing.Description = sanitize.HTML(*req.Description)
+	if req.Description.Set {
+		existing.Description = sanitize.HTML(req.Description.Value)
 	}
-	if req.AllDay != nil {
-		existing.AllDay = *req.AllDay
+	if req.AllDay.Set {
+		existing.AllDay = req.AllDay.Value
 	}
-	if req.Color != nil {
-		existing.Color = *req.Color
+	if req.Color.Set {
+		existing.Color = req.Color.Value
 	}
-	if req.RecurrenceFreq != nil {
-		existing.RecurrenceFreq = *req.RecurrenceFreq
+	if req.RecurrenceFreq.Set {
+		existing.RecurrenceFreq = string(req.RecurrenceFreq.Value)
 	}
-	if req.RecurrenceCount != nil {
-		existing.RecurrenceCount = *req.RecurrenceCount
+	if req.RecurrenceCount.Set {
+		existing.RecurrenceCount = req.RecurrenceCount.Value
 	}
-	if req.RecurrenceUntil != nil {
-		existing.RecurrenceUntil = *req.RecurrenceUntil
+	if req.RecurrenceUntil.Set {
+		existing.RecurrenceUntil = req.RecurrenceUntil.Value
 	}
-	if req.RecurrenceInterval != nil {
-		existing.RecurrenceInterval = *req.RecurrenceInterval
+	if req.RecurrenceInterval.Set {
+		existing.RecurrenceInterval = req.RecurrenceInterval.Value
 	}
-	if req.RecurrenceByDay != nil {
-		existing.RecurrenceByDay = *req.RecurrenceByDay
+	if req.RecurrenceByDay.Set {
+		existing.RecurrenceByDay = req.RecurrenceByDay.Value
 	}
-	if req.RecurrenceByMonthDay != nil {
-		existing.RecurrenceByMonthDay = *req.RecurrenceByMonthDay
+	if req.RecurrenceByMonthday.Set {
+		existing.RecurrenceByMonthDay = req.RecurrenceByMonthday.Value
 	}
-	if req.RecurrenceByMonth != nil {
-		existing.RecurrenceByMonth = *req.RecurrenceByMonth
+	if req.RecurrenceByMonth.Set {
+		existing.RecurrenceByMonth = req.RecurrenceByMonth.Value
 	}
-	if req.ExDates != nil {
-		existing.ExDates = *req.ExDates
+	if req.Exdates.Set {
+		existing.ExDates = req.Exdates.Value
 	}
-	if req.RDates != nil {
-		existing.RDates = *req.RDates
+	if req.Rdates.Set {
+		existing.RDates = req.Rdates.Value
 	}
-	if req.Duration != nil {
-		existing.Duration = *req.Duration
+	if req.Duration.Set {
+		existing.Duration = req.Duration.Value
 	}
-	if req.Categories != nil {
-		existing.Categories = *req.Categories
+	if req.Categories.Set {
+		existing.Categories = req.Categories.Value
 	}
-	if req.URL != nil {
-		existing.URL = *req.URL
+	if req.URL.Set {
+		existing.URL = req.URL.Value.String()
 	}
-	if req.ReminderMinutes != nil {
-		existing.ReminderMinutes = *req.ReminderMinutes
+	if req.ReminderMinutes.Set {
+		existing.ReminderMinutes = req.ReminderMinutes.Value
 	}
-	if req.Location != nil {
-		existing.Location = *req.Location
+	if req.Location.Set {
+		existing.Location = req.Location.Value
 	}
-	if req.Latitude != nil {
-		existing.Latitude = req.Latitude
+	if req.Latitude.Set && !req.Latitude.Null {
+		v := req.Latitude.Value
+		existing.Latitude = &v
 	}
-	if req.Longitude != nil {
-		existing.Longitude = req.Longitude
+	if req.Longitude.Set && !req.Longitude.Null {
+		v := req.Longitude.Value
+		existing.Longitude = &v
 	}
 
 	// If Duration is set, recompute EndTime
-	if req.Duration != nil && *req.Duration != "" {
-		dur, err := model.ParseDuration(*req.Duration)
+	if req.Duration.Set && req.Duration.Value != "" {
+		dur, err := model.ParseDuration(req.Duration.Value)
 		if err != nil {
 			return nil, fmt.Errorf("%w: invalid duration: %s", ErrValidation, err.Error())
 		}
@@ -313,42 +326,34 @@ func (s *EventService) Update(id int64, req *model.UpdateEventRequest) (*model.E
 		existing.EndTime = start.Add(dur).Format(time.RFC3339)
 	}
 
-	if existing.AllDay {
-		// Handle all-day event updates
-		if req.StartTime != nil {
-			start, err := time.Parse(dateOnly, *req.StartTime)
-			if err != nil {
-				return nil, fmt.Errorf("%w: start_time must be YYYY-MM-DD for all-day events", ErrValidation)
-			}
-			existing.StartTime = start.UTC().Format(time.RFC3339)
+	// Apply start/end times
+	if req.StartDate.Set {
+		d := req.StartDate.Value
+		existing.StartTime = time.Date(d.Year(), d.Month(), d.Day(), 0, 0, 0, 0, time.UTC).Format(time.RFC3339)
+	}
+	if req.StartTime.Set {
+		existing.StartTime = req.StartTime.Value.UTC().Format(time.RFC3339)
+	}
+	if req.EndDate.Set {
+		d := req.EndDate.Value
+		endT := time.Date(d.Year(), d.Month(), d.Day(), 0, 0, 0, 0, time.UTC)
+		startParsed, _ := time.Parse(time.RFC3339, existing.StartTime)
+		if !endT.After(startParsed) {
+			endT = startParsed.AddDate(0, 0, 1)
 		}
-		if req.EndTime != nil {
-			end, err := time.Parse(dateOnly, *req.EndTime)
-			if err != nil {
-				return nil, fmt.Errorf("%w: end_time must be YYYY-MM-DD for all-day events", ErrValidation)
-			}
-			// The same date as start means single-day: advance end to next day
-			startParsed, _ := time.Parse(time.RFC3339, existing.StartTime)
-			if !end.After(startParsed) {
-				end = startParsed.AddDate(0, 0, 1)
-			}
-			existing.EndTime = end.UTC().Format(time.RFC3339)
-		}
-		// If toggling to all-day and no new times provided, normalize existing times
-		if req.AllDay != nil && *req.AllDay && req.StartTime == nil {
-			start, _ := time.Parse(time.RFC3339, existing.StartTime)
-			normalized := time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, time.UTC)
-			existing.StartTime = normalized.Format(time.RFC3339)
-			if req.EndTime == nil {
-				existing.EndTime = normalized.AddDate(0, 0, 1).Format(time.RFC3339)
-			}
-		}
-	} else {
-		if req.StartTime != nil {
-			existing.StartTime = *req.StartTime
-		}
-		if req.EndTime != nil {
-			existing.EndTime = *req.EndTime
+		existing.EndTime = endT.Format(time.RFC3339)
+	}
+	if req.EndTime.Set {
+		existing.EndTime = req.EndTime.Value.UTC().Format(time.RFC3339)
+	}
+
+	// If toggling to all-day and no new start time provided, normalize existing times
+	if req.AllDay.Set && req.AllDay.Value && !req.StartDate.Set && !req.StartTime.Set {
+		start, _ := time.Parse(time.RFC3339, existing.StartTime)
+		normalized := time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, time.UTC)
+		existing.StartTime = normalized.Format(time.RFC3339)
+		if !req.EndDate.Set && !req.EndTime.Set {
+			existing.EndTime = normalized.AddDate(0, 0, 1).Format(time.RFC3339)
 		}
 	}
 
@@ -365,11 +370,11 @@ func (s *EventService) Update(id int64, req *model.UpdateEventRequest) (*model.E
 	return existing, nil
 }
 
-func (s *EventService) CreateOrUpdateOverride(parentID int64, instanceStart string, req *model.UpdateEventRequest) (*model.Event, error) {
+func (s *EventService) CreateOrUpdateOverride(parentID int64, instanceStart string, req *api.UpdateEventRequest) (*model.Event, error) {
 	if _, err := time.Parse(time.RFC3339, instanceStart); err != nil {
 		return nil, fmt.Errorf("%w: instance_start must be RFC 3339 format", ErrValidation)
 	}
-	if err := req.Validate(); err != nil {
+	if err := ValidateUpdateEventRequest(req); err != nil {
 		return nil, fmt.Errorf("%w: %s", ErrValidation, err.Error())
 	}
 
@@ -422,28 +427,36 @@ func (s *EventService) CreateOrUpdateOverride(parentID int64, instanceStart stri
 	override.EndTime = instStart.Add(dur).Format(time.RFC3339)
 
 	// Apply updates
-	if req.Title != nil {
-		override.Title = *req.Title
+	if req.Title.Set {
+		override.Title = req.Title.Value
 	}
-	if req.Description != nil {
-		override.Description = sanitize.HTML(*req.Description)
+	if req.Description.Set {
+		override.Description = sanitize.HTML(req.Description.Value)
 	}
-	if req.StartTime != nil {
-		override.StartTime = *req.StartTime
+	if req.StartTime.Set {
+		override.StartTime = req.StartTime.Value.UTC().Format(time.RFC3339)
 	}
-	if req.EndTime != nil {
-		override.EndTime = *req.EndTime
+	if req.StartDate.Set {
+		d := req.StartDate.Value
+		override.StartTime = time.Date(d.Year(), d.Month(), d.Day(), 0, 0, 0, 0, time.UTC).Format(time.RFC3339)
 	}
-	if req.AllDay != nil {
-		override.AllDay = *req.AllDay
+	if req.EndTime.Set {
+		override.EndTime = req.EndTime.Value.UTC().Format(time.RFC3339)
 	}
-	if req.Color != nil {
-		override.Color = *req.Color
+	if req.EndDate.Set {
+		d := req.EndDate.Value
+		override.EndTime = time.Date(d.Year(), d.Month(), d.Day(), 0, 0, 0, 0, time.UTC).Format(time.RFC3339)
 	}
-	if req.Duration != nil {
-		override.Duration = *req.Duration
-		if *req.Duration != "" {
-			d, err := model.ParseDuration(*req.Duration)
+	if req.AllDay.Set {
+		override.AllDay = req.AllDay.Value
+	}
+	if req.Color.Set {
+		override.Color = req.Color.Value
+	}
+	if req.Duration.Set {
+		override.Duration = req.Duration.Value
+		if req.Duration.Value != "" {
+			d, err := model.ParseDuration(req.Duration.Value)
 			if err != nil {
 				return nil, fmt.Errorf("%w: invalid duration: %s", ErrValidation, err.Error())
 			}
@@ -451,23 +464,25 @@ func (s *EventService) CreateOrUpdateOverride(parentID int64, instanceStart stri
 			override.EndTime = s2.Add(d).Format(time.RFC3339)
 		}
 	}
-	if req.Categories != nil {
-		override.Categories = *req.Categories
+	if req.Categories.Set {
+		override.Categories = req.Categories.Value
 	}
-	if req.URL != nil {
-		override.URL = *req.URL
+	if req.URL.Set {
+		override.URL = req.URL.Value.String()
 	}
-	if req.ReminderMinutes != nil {
-		override.ReminderMinutes = *req.ReminderMinutes
+	if req.ReminderMinutes.Set {
+		override.ReminderMinutes = req.ReminderMinutes.Value
 	}
-	if req.Location != nil {
-		override.Location = *req.Location
+	if req.Location.Set {
+		override.Location = req.Location.Value
 	}
-	if req.Latitude != nil {
-		override.Latitude = req.Latitude
+	if req.Latitude.Set && !req.Latitude.Null {
+		v := req.Latitude.Value
+		override.Latitude = &v
 	}
-	if req.Longitude != nil {
-		override.Longitude = req.Longitude
+	if req.Longitude.Set && !req.Longitude.Null {
+		v := req.Longitude.Value
+		override.Longitude = &v
 	}
 
 	if err := s.repo.Create(override); err != nil {
@@ -478,50 +493,93 @@ func (s *EventService) CreateOrUpdateOverride(parentID int64, instanceStart stri
 
 // buildEventForImport validates a parsed event and returns a model.Event ready to persist.
 func buildEventForImport(e model.Event) (*model.Event, error) {
-	startTime := e.StartTime
-	endTime := e.EndTime
+	req := &api.CreateEventRequest{
+		Title:  e.Title,
+		AllDay: e.AllDay,
+	}
 	if e.AllDay {
-		if t, err := time.Parse(time.RFC3339, startTime); err == nil {
-			startTime = t.Format(dateOnly)
+		if t, err := time.Parse(time.RFC3339, e.StartTime); err == nil {
+			req.StartDate = api.NewOptDate(t)
+		} else if t, err := time.Parse(dateOnly, e.StartTime); err == nil {
+			req.StartDate = api.NewOptDate(t)
 		}
-		if t, err := time.Parse(time.RFC3339, endTime); err == nil {
-			endTime = t.Format(dateOnly)
+		if t, err := time.Parse(time.RFC3339, e.EndTime); err == nil {
+			req.EndDate = api.NewOptDate(t)
+		} else if t, err := time.Parse(dateOnly, e.EndTime); err == nil {
+			req.EndDate = api.NewOptDate(t)
+		}
+	} else {
+		if t, err := time.Parse(time.RFC3339, e.StartTime); err == nil {
+			req.StartTime = api.NewOptDateTime(t)
+		}
+		if t, err := time.Parse(time.RFC3339, e.EndTime); err == nil {
+			req.EndTime = api.NewOptDateTime(t)
 		}
 	}
-	// Don't pass Duration to CreateEventRequest when EndTime is already computed
-	// (iCal decoder computes EndTime from DURATION). Pass EndTime for validation
-	// and store Duration on the Event directly.
-	req := &model.CreateEventRequest{
-		Title:                e.Title,
-		Description:          e.Description,
-		StartTime:            startTime,
-		EndTime:              endTime,
-		AllDay:               e.AllDay,
-		Color:                e.Color,
-		RecurrenceFreq:       e.RecurrenceFreq,
-		RecurrenceCount:      e.RecurrenceCount,
-		RecurrenceUntil:      e.RecurrenceUntil,
-		RecurrenceInterval:   e.RecurrenceInterval,
-		RecurrenceByDay:      e.RecurrenceByDay,
-		RecurrenceByMonthDay: e.RecurrenceByMonthDay,
-		RecurrenceByMonth:    e.RecurrenceByMonth,
-		ExDates:              e.ExDates,
-		RDates:               e.RDates,
-		Categories:           e.Categories,
-		URL:                  e.URL,
-		ReminderMinutes:      e.ReminderMinutes,
-		Location:             e.Location,
-		Latitude:             e.Latitude,
-		Longitude:            e.Longitude,
+	// Don't pass Duration — EndTime is already computed by the iCal decoder.
+	if e.Description != "" {
+		req.Description = api.NewOptString(e.Description)
 	}
-	if err := req.Validate(); err != nil {
+	if e.Color != "" {
+		req.Color = api.NewOptString(e.Color)
+	}
+	if e.RecurrenceFreq != "" {
+		req.RecurrenceFreq = api.NewOptCreateEventRequestRecurrenceFreq(api.CreateEventRequestRecurrenceFreq(e.RecurrenceFreq))
+	}
+	if e.RecurrenceCount != 0 {
+		req.RecurrenceCount = api.NewOptInt(e.RecurrenceCount)
+	}
+	if e.RecurrenceUntil != "" {
+		req.RecurrenceUntil = api.NewOptString(e.RecurrenceUntil)
+	}
+	if e.RecurrenceInterval != 0 {
+		req.RecurrenceInterval = api.NewOptInt(e.RecurrenceInterval)
+	}
+	if e.RecurrenceByDay != "" {
+		req.RecurrenceByDay = api.NewOptString(e.RecurrenceByDay)
+	}
+	if e.RecurrenceByMonthDay != "" {
+		req.RecurrenceByMonthday = api.NewOptString(e.RecurrenceByMonthDay)
+	}
+	if e.RecurrenceByMonth != "" {
+		req.RecurrenceByMonth = api.NewOptString(e.RecurrenceByMonth)
+	}
+	if e.ExDates != "" {
+		req.Exdates = api.NewOptString(e.ExDates)
+	}
+	if e.RDates != "" {
+		req.Rdates = api.NewOptString(e.RDates)
+	}
+	if e.Categories != "" {
+		req.Categories = api.NewOptString(e.Categories)
+	}
+	if e.URL != "" {
+		if u, err := url.Parse(e.URL); err == nil {
+			req.URL = api.NewOptURI(*u)
+		}
+	}
+	if e.ReminderMinutes != 0 {
+		req.ReminderMinutes = api.NewOptInt(e.ReminderMinutes)
+	}
+	if e.Location != "" {
+		req.Location = api.NewOptString(e.Location)
+	}
+	if e.Latitude != nil {
+		req.Latitude = api.NewOptNilFloat64(*e.Latitude)
+	}
+	if e.Longitude != nil {
+		req.Longitude = api.NewOptNilFloat64(*e.Longitude)
+	}
+
+	startTime, endTime, err := ValidateCreateEventRequest(req)
+	if err != nil {
 		return nil, fmt.Errorf("%w: %s", ErrValidation, err.Error())
 	}
 	return &model.Event{
 		Title:                e.Title,
 		Description:          e.Description,
-		StartTime:            req.StartTime,
-		EndTime:              req.EndTime,
+		StartTime:            startTime,
+		EndTime:              endTime,
 		AllDay:               e.AllDay,
 		Color:                e.Color,
 		RecurrenceFreq:       e.RecurrenceFreq,

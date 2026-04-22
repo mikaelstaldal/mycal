@@ -4,7 +4,7 @@ export interface EventData {
   title: string;
   start_time: string;
   end_time: string;
-  all_day?: boolean;
+  all_day: boolean;
   description?: string;
   location?: string;
   color?: string;

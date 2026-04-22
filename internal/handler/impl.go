@@ -187,208 +187,6 @@ func modelFeedToAPI(f *model.Feed) *api.Feed {
 	return af
 }
 
-func apiCreateEventToModel(req *api.CreateEventRequest) *model.CreateEventRequest {
-	m := &model.CreateEventRequest{
-		Title:  req.Title,
-		AllDay: req.AllDay,
-	}
-	if req.AllDay {
-		if req.StartDate.Set {
-			m.StartTime = req.StartDate.Value.Format("2006-01-02")
-		}
-		if req.EndDate.Set {
-			m.EndTime = req.EndDate.Value.Format("2006-01-02")
-		}
-	} else {
-		if req.StartTime.Set {
-			m.StartTime = req.StartTime.Value.Format(time.RFC3339)
-		}
-		if req.EndTime.Set {
-			m.EndTime = req.EndTime.Value.Format(time.RFC3339)
-		}
-	}
-	if req.Description.Set {
-		m.Description = req.Description.Value
-	}
-	if req.Color.Set {
-		m.Color = req.Color.Value
-	}
-	if req.RecurrenceFreq.Set {
-		m.RecurrenceFreq = string(req.RecurrenceFreq.Value)
-	}
-	if req.RecurrenceCount.Set {
-		m.RecurrenceCount = req.RecurrenceCount.Value
-	}
-	if req.RecurrenceUntil.Set {
-		m.RecurrenceUntil = req.RecurrenceUntil.Value
-	}
-	if req.RecurrenceInterval.Set {
-		m.RecurrenceInterval = req.RecurrenceInterval.Value
-	}
-	if req.RecurrenceByDay.Set {
-		m.RecurrenceByDay = req.RecurrenceByDay.Value
-	}
-	if req.RecurrenceByMonthday.Set {
-		m.RecurrenceByMonthDay = req.RecurrenceByMonthday.Value
-	}
-	if req.RecurrenceByMonth.Set {
-		m.RecurrenceByMonth = req.RecurrenceByMonth.Value
-	}
-	if req.Exdates.Set {
-		m.ExDates = req.Exdates.Value
-	}
-	if req.Rdates.Set {
-		m.RDates = req.Rdates.Value
-	}
-	if req.Duration.Set {
-		m.Duration = req.Duration.Value
-	}
-	if req.Categories.Set {
-		m.Categories = req.Categories.Value
-	}
-	if req.URL.Set {
-		m.URL = req.URL.Value.String()
-	}
-	if req.ReminderMinutes.Set {
-		m.ReminderMinutes = req.ReminderMinutes.Value
-	}
-	if req.Location.Set {
-		m.Location = req.Location.Value
-	}
-	if req.Latitude.Set && !req.Latitude.Null {
-		v := req.Latitude.Value
-		m.Latitude = &v
-	}
-	if req.Longitude.Set && !req.Longitude.Null {
-		v := req.Longitude.Value
-		m.Longitude = &v
-	}
-	return m
-}
-
-func apiUpdateEventToModel(req *api.UpdateEventRequest) *model.UpdateEventRequest {
-	m := &model.UpdateEventRequest{}
-	if req.Title.Set {
-		m.Title = &req.Title.Value
-	}
-	if req.Description.Set {
-		m.Description = &req.Description.Value
-	}
-	if req.StartDate.Set {
-		v := req.StartDate.Value.Format("2006-01-02")
-		m.StartTime = &v
-	}
-	if req.EndDate.Set {
-		v := req.EndDate.Value.Format("2006-01-02")
-		m.EndTime = &v
-	}
-	if req.StartTime.Set {
-		v := req.StartTime.Value.Format(time.RFC3339)
-		m.StartTime = &v
-	}
-	if req.EndTime.Set {
-		v := req.EndTime.Value.Format(time.RFC3339)
-		m.EndTime = &v
-	}
-	if req.AllDay.Set {
-		m.AllDay = &req.AllDay.Value
-	}
-	if req.Color.Set {
-		m.Color = &req.Color.Value
-	}
-	if req.RecurrenceFreq.Set {
-		v := string(req.RecurrenceFreq.Value)
-		m.RecurrenceFreq = &v
-	}
-	if req.RecurrenceCount.Set {
-		m.RecurrenceCount = &req.RecurrenceCount.Value
-	}
-	if req.RecurrenceUntil.Set {
-		m.RecurrenceUntil = &req.RecurrenceUntil.Value
-	}
-	if req.RecurrenceInterval.Set {
-		m.RecurrenceInterval = &req.RecurrenceInterval.Value
-	}
-	if req.RecurrenceByDay.Set {
-		m.RecurrenceByDay = &req.RecurrenceByDay.Value
-	}
-	if req.RecurrenceByMonthday.Set {
-		m.RecurrenceByMonthDay = &req.RecurrenceByMonthday.Value
-	}
-	if req.RecurrenceByMonth.Set {
-		m.RecurrenceByMonth = &req.RecurrenceByMonth.Value
-	}
-	if req.Exdates.Set {
-		m.ExDates = &req.Exdates.Value
-	}
-	if req.Rdates.Set {
-		m.RDates = &req.Rdates.Value
-	}
-	if req.Duration.Set {
-		m.Duration = &req.Duration.Value
-	}
-	if req.Categories.Set {
-		m.Categories = &req.Categories.Value
-	}
-	if req.URL.Set {
-		v := req.URL.Value.String()
-		m.URL = &v
-	}
-	if req.ReminderMinutes.Set {
-		m.ReminderMinutes = &req.ReminderMinutes.Value
-	}
-	if req.Location.Set {
-		m.Location = &req.Location.Value
-	}
-	if req.Latitude.Set {
-		if !req.Latitude.Null {
-			v := req.Latitude.Value
-			m.Latitude = &v
-		}
-	}
-	if req.Longitude.Set {
-		if !req.Longitude.Null {
-			v := req.Longitude.Value
-			m.Longitude = &v
-		}
-	}
-	return m
-}
-
-func apiCreateFeedToModel(req *api.CreateFeedRequest) *model.CreateFeedRequest {
-	m := &model.CreateFeedRequest{
-		URL: req.URL.String(),
-	}
-	if req.CalendarName.Set {
-		m.CalendarName = req.CalendarName.Value
-	}
-	if req.CalendarColor.Set {
-		m.CalendarColor = req.CalendarColor.Value
-	}
-	if req.RefreshIntervalMinutes.Set {
-		m.RefreshIntervalMinutes = req.RefreshIntervalMinutes.Value
-	}
-	return m
-}
-
-func apiUpdateFeedToModel(req *api.UpdateFeedRequest) *model.UpdateFeedRequest {
-	m := &model.UpdateFeedRequest{}
-	if req.URL.Set {
-		v := req.URL.Value.String()
-		m.URL = &v
-	}
-	if req.CalendarName.Set {
-		m.CalendarName = &req.CalendarName.Value
-	}
-	if req.RefreshIntervalMinutes.Set {
-		m.RefreshIntervalMinutes = &req.RefreshIntervalMinutes.Value
-	}
-	if req.Enabled.Set {
-		m.Enabled = &req.Enabled.Value
-	}
-	return m
-}
-
 func parseCalendarIDsFromParams(calendarIDs []int, calendarNames []string, calSvc *service.CalendarService) []int64 {
 	if len(calendarIDs) == 0 && len(calendarNames) == 0 {
 		return nil // nil = all calendars
@@ -533,7 +331,7 @@ func eventsToAPI(events []model.Event) []api.Event {
 }
 
 func (h *handlerImpl) APIV1EventsPost(ctx context.Context, req *api.CreateEventRequest) (*api.Event, error) {
-	event, err := h.svc.Create(apiCreateEventToModel(req))
+	event, err := h.svc.Create(req)
 	if err != nil {
 		return nil, err
 	}
@@ -564,12 +362,11 @@ func (h *handlerImpl) APIV1EventsIDPatch(ctx context.Context, req *api.UpdateEve
 	if err != nil {
 		return nil, badRequest("invalid id")
 	}
-	modelReq := apiUpdateEventToModel(req)
 	var event *model.Event
 	if instanceStart != "" {
-		event, err = h.svc.CreateOrUpdateOverride(dbID, instanceStart, modelReq)
+		event, err = h.svc.CreateOrUpdateOverride(dbID, instanceStart, req)
 	} else {
-		event, err = h.svc.Update(dbID, modelReq)
+		event, err = h.svc.Update(dbID, req)
 	}
 	if err != nil {
 		return nil, err
@@ -691,7 +488,7 @@ func (h *handlerImpl) APIV1FeedsGet(ctx context.Context) ([]api.Feed, error) {
 }
 
 func (h *handlerImpl) APIV1FeedsPost(ctx context.Context, req *api.CreateFeedRequest) (*api.Feed, error) {
-	feed, err := h.feedSvc.Create(apiCreateFeedToModel(req))
+	feed, err := h.feedSvc.Create(req)
 	if err != nil {
 		return nil, err
 	}
@@ -707,7 +504,7 @@ func (h *handlerImpl) APIV1FeedsIDGet(ctx context.Context, params api.APIV1Feeds
 }
 
 func (h *handlerImpl) APIV1FeedsIDPut(ctx context.Context, req *api.UpdateFeedRequest, params api.APIV1FeedsIDPutParams) (*api.Feed, error) {
-	feed, err := h.feedSvc.Update(params.ID, apiUpdateFeedToModel(req))
+	feed, err := h.feedSvc.Update(params.ID, req)
 	if err != nil {
 		return nil, err
 	}

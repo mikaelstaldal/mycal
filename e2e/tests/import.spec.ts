@@ -40,9 +40,9 @@ test.describe('Import', () => {
       const yearNum = parseInt(parts[1]);
       const isAfterTarget = yearNum > 2026 || (yearNum === 2026 && monthIdx > 2);
       if (isAfterTarget) {
-        await page.locator('nav.nav').getByRole('button', { name: '◀' }).click();
+        await page.locator('nav.nav').getByRole('button', { name: 'Previous' }).click();
       } else {
-        await page.locator('nav.nav').getByRole('button', { name: '▶' }).click();
+        await page.locator('nav.nav').getByRole('button', { name: 'Next' }).click();
       }
       await page.waitForTimeout(100);
     }

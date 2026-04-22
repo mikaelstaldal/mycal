@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mikaelstaldal/mycal/internal/api"
 	"github.com/mikaelstaldal/mycal/internal/ical"
 	"github.com/mikaelstaldal/mycal/internal/model"
 	"github.com/mikaelstaldal/mycal/internal/repository"
@@ -28,23 +29,27 @@ func NewFeedService(feedRepo repository.FeedRepository, eventRepo repository.Eve
 	return &FeedService{feedRepo: feedRepo, eventRepo: eventRepo, calRepo: calRepo}
 }
 
-func (s *FeedService) Create(req *model.CreateFeedRequest) (*model.Feed, error) {
-	if err := req.Validate(); err != nil {
+func (s *FeedService) Create(req *api.CreateFeedRequest) (*model.Feed, error) {
+	refreshInterval, err := ValidateCreateFeedRequest(req)
+	if err != nil {
 		return nil, fmt.Errorf("%w: %s", ErrValidation, err.Error())
 	}
-	if err := ValidateExternalURL(req.URL); err != nil {
+	rawURL := req.URL.String()
+	if err := ValidateExternalURL(rawURL); err != nil {
 		return nil, fmt.Errorf("%w: %s", ErrValidation, err.Error())
 	}
 
-	calendarID, err := s.resolveCalendarName(req.CalendarName, req.CalendarColor)
+	calendarName := req.CalendarName.Or("")
+	calendarColor := req.CalendarColor.Or("")
+	calendarID, err := s.resolveCalendarName(calendarName, calendarColor)
 	if err != nil {
 		return nil, err
 	}
 
 	feed := &model.Feed{
-		URL:                    req.URL,
+		URL:                    rawURL,
 		CalendarID:             calendarID,
-		RefreshIntervalMinutes: req.RefreshIntervalMinutes,
+		RefreshIntervalMinutes: refreshInterval,
 		Enabled:                true,
 	}
 	if err := s.feedRepo.CreateFeed(feed); err != nil {
@@ -75,8 +80,8 @@ func (s *FeedService) List() ([]model.Feed, error) {
 	return feeds, nil
 }
 
-func (s *FeedService) Update(id int64, req *model.UpdateFeedRequest) (*model.Feed, error) {
-	if err := req.Validate(); err != nil {
+func (s *FeedService) Update(id int64, req *api.UpdateFeedRequest) (*model.Feed, error) {
+	if err := ValidateUpdateFeedRequest(req); err != nil {
 		return nil, fmt.Errorf("%w: %s", ErrValidation, err.Error())
 	}
 	existing, err := s.feedRepo.GetFeedByID(id)
@@ -86,24 +91,25 @@ func (s *FeedService) Update(id int64, req *model.UpdateFeedRequest) (*model.Fee
 	if existing == nil {
 		return nil, ErrNotFound
 	}
-	if req.URL != nil {
-		if err := ValidateExternalURL(*req.URL); err != nil {
+	if req.URL.Set {
+		rawURL := req.URL.Value.String()
+		if err := ValidateExternalURL(rawURL); err != nil {
 			return nil, fmt.Errorf("%w: %s", ErrValidation, err.Error())
 		}
-		existing.URL = *req.URL
+		existing.URL = rawURL
 	}
-	if req.CalendarName != nil {
-		calID, err := s.resolveCalendarName(*req.CalendarName, "")
+	if req.CalendarName.Set {
+		calID, err := s.resolveCalendarName(req.CalendarName.Value, "")
 		if err != nil {
 			return nil, err
 		}
 		existing.CalendarID = calID
 	}
-	if req.RefreshIntervalMinutes != nil {
-		existing.RefreshIntervalMinutes = *req.RefreshIntervalMinutes
+	if req.RefreshIntervalMinutes.Set {
+		existing.RefreshIntervalMinutes = req.RefreshIntervalMinutes.Value
 	}
-	if req.Enabled != nil {
-		existing.Enabled = *req.Enabled
+	if req.Enabled.Set {
+		existing.Enabled = req.Enabled.Value
 	}
 	if err := s.feedRepo.UpdateFeed(existing); err != nil {
 		return nil, err

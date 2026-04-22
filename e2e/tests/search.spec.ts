@@ -9,11 +9,13 @@ test.describe('Search', () => {
   test('search finds matching events', async ({ page, request }) => {
     await createEventViaAPI(request, {
       title: 'Team Standup',
+      all_day: false,
       start_time: '2026-03-01T09:00:00Z',
       end_time: '2026-03-01T09:30:00Z',
     });
     await createEventViaAPI(request, {
       title: 'Lunch Break',
+      all_day: false,
       start_time: '2026-03-01T12:00:00Z',
       end_time: '2026-03-01T13:00:00Z',
     });
@@ -32,6 +34,7 @@ test.describe('Search', () => {
   test('search with no matches shows empty message', async ({ page, request }) => {
     await createEventViaAPI(request, {
       title: 'Some Event',
+      all_day: false,
       start_time: '2026-03-01T09:00:00Z',
       end_time: '2026-03-01T10:00:00Z',
     });
@@ -47,6 +50,7 @@ test.describe('Search', () => {
   test('click search result opens event dialog', async ({ page, request }) => {
     await createEventViaAPI(request, {
       title: 'Clickable Event',
+      all_day: false,
       start_time: '2026-03-01T14:00:00Z',
       end_time: '2026-03-01T15:00:00Z',
     });
@@ -67,6 +71,7 @@ test.describe('Search', () => {
   test('clear search returns to calendar view', async ({ page, request }) => {
     await createEventViaAPI(request, {
       title: 'Test Event',
+      all_day: false,
       start_time: '2026-03-01T09:00:00Z',
       end_time: '2026-03-01T10:00:00Z',
     });

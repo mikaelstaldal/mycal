@@ -22,10 +22,10 @@ test.describe('Calendar Views', () => {
     const nav = page.getByRole('navigation');
     const initialText = await heading.textContent();
 
-    await nav.getByRole('button', { name: '▶' }).click();
+    await nav.getByRole('button', { name: 'Next' }).click();
     await expect(heading).not.toHaveText(initialText!);
 
-    await nav.getByRole('button', { name: '◀' }).click();
+    await nav.getByRole('button', { name: 'Previous' }).click();
     await expect(heading).toHaveText(initialText!);
   });
 
@@ -35,8 +35,8 @@ test.describe('Calendar Views', () => {
     const initialText = await heading.textContent();
 
     // Navigate away
-    await nav.getByRole('button', { name: '▶' }).click();
-    await nav.getByRole('button', { name: '▶' }).click();
+    await nav.getByRole('button', { name: 'Next' }).click();
+    await nav.getByRole('button', { name: 'Next' }).click();
     await expect(heading).not.toHaveText(initialText!);
 
     // Click Today

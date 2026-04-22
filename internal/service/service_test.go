@@ -3,8 +3,11 @@ package service
 import (
 	"database/sql"
 	"errors"
+	"net/url"
 	"testing"
+	"time"
 
+	"github.com/mikaelstaldal/mycal/internal/api"
 	"github.com/mikaelstaldal/mycal/internal/model"
 )
 
@@ -131,10 +134,27 @@ func (m *mockRepo) DeleteByParentID(parentID int64) error {
 }
 
 // helpers
-func strPtr(s string) *string       { return &s }
-func intPtr(i int) *int             { return &i }
-func boolPtr(b bool) *bool          { return &b }
 func float64Ptr(f float64) *float64 { return &f }
+
+func optString(s string) api.OptString   { return api.NewOptString(s) }
+func optInt(i int) api.OptInt            { return api.NewOptInt(i) }
+func optBool(b bool) api.OptBool         { return api.NewOptBool(b) }
+func optFloat(f float64) api.OptNilFloat64 { return api.NewOptNilFloat64(f) }
+func optDateTime(s string) api.OptDateTime {
+	t, _ := time.Parse(time.RFC3339, s)
+	return api.NewOptDateTime(t)
+}
+func optDate(s string) api.OptDate {
+	t, _ := time.Parse("2006-01-02", s)
+	return api.NewOptDate(t)
+}
+func optURL(s string) api.OptURI {
+	u, _ := url.Parse(s)
+	return api.NewOptURI(*u)
+}
+func optFreqUpdate(s string) api.OptUpdateEventRequestRecurrenceFreq {
+	return api.NewOptUpdateEventRequestRecurrenceFreq(api.UpdateEventRequestRecurrenceFreq(s))
+}
 
 var errRepo = errors.New("repo error")
 
@@ -441,10 +461,10 @@ func TestCreate_Valid(t *testing.T) {
 		},
 	}
 	svc := NewEventService(repo, &mockCalRepo{})
-	req := &model.CreateEventRequest{
+	req := &api.CreateEventRequest{
 		Title:     "New Event",
-		StartTime: "2026-02-15T10:00:00Z",
-		EndTime:   "2026-02-15T11:00:00Z",
+		StartTime: optDateTime("2026-02-15T10:00:00Z"),
+		EndTime:   optDateTime("2026-02-15T11:00:00Z"),
 	}
 	e, err := svc.Create(req)
 	if err != nil {
@@ -461,7 +481,7 @@ func TestCreate_Valid(t *testing.T) {
 func TestCreate_ValidationFailure(t *testing.T) {
 	repo := &mockRepo{}
 	svc := NewEventService(repo, &mockCalRepo{})
-	req := &model.CreateEventRequest{
+	req := &api.CreateEventRequest{
 		Title: "", // required
 	}
 	_, err := svc.Create(req)
@@ -477,10 +497,10 @@ func TestCreate_RepoError(t *testing.T) {
 		},
 	}
 	svc := NewEventService(repo, &mockCalRepo{})
-	req := &model.CreateEventRequest{
+	req := &api.CreateEventRequest{
 		Title:     "Test",
-		StartTime: "2026-02-15T10:00:00Z",
-		EndTime:   "2026-02-15T11:00:00Z",
+		StartTime: optDateTime("2026-02-15T10:00:00Z"),
+		EndTime:   optDateTime("2026-02-15T11:00:00Z"),
 	}
 	_, err := svc.Create(req)
 	if !errors.Is(err, errRepo) {
@@ -497,11 +517,11 @@ func TestCreate_HTMLSanitization(t *testing.T) {
 		},
 	}
 	svc := NewEventService(repo, &mockCalRepo{})
-	req := &model.CreateEventRequest{
+	req := &api.CreateEventRequest{
 		Title:       "Test",
-		Description: `<b>bold</b><script>alert('xss')</script>`,
-		StartTime:   "2026-02-15T10:00:00Z",
-		EndTime:     "2026-02-15T11:00:00Z",
+		Description: optString(`<b>bold</b><script>alert('xss')</script>`),
+		StartTime:   optDateTime("2026-02-15T10:00:00Z"),
+		EndTime:     optDateTime("2026-02-15T11:00:00Z"),
 	}
 	_, err := svc.Create(req)
 	if err != nil {
@@ -529,8 +549,8 @@ func TestUpdate_PartialUpdate(t *testing.T) {
 		},
 	}
 	svc := NewEventService(repo, &mockCalRepo{})
-	req := &model.UpdateEventRequest{
-		Title: strPtr("Updated"),
+	req := &api.UpdateEventRequest{
+		Title: optString("Updated"),
 	}
 	e, err := svc.Update(1, req)
 	if err != nil {
@@ -552,7 +572,7 @@ func TestUpdate_NotFound(t *testing.T) {
 		},
 	}
 	svc := NewEventService(repo, &mockCalRepo{})
-	req := &model.UpdateEventRequest{Title: strPtr("X")}
+	req := &api.UpdateEventRequest{Title: optString("X")}
 	_, err := svc.Update(1, req)
 	if !errors.Is(err, ErrNotFound) {
 		t.Fatalf("expected ErrNotFound, got: %v", err)
@@ -562,7 +582,7 @@ func TestUpdate_NotFound(t *testing.T) {
 func TestUpdate_ValidationFailure(t *testing.T) {
 	repo := &mockRepo{}
 	svc := NewEventService(repo, &mockCalRepo{})
-	req := &model.UpdateEventRequest{Title: strPtr("")} // an empty title isn't allowed
+	req := &api.UpdateEventRequest{Title: optString("")} // an empty title isn't allowed
 	_, err := svc.Update(1, req)
 	if !errors.Is(err, ErrValidation) {
 		t.Fatalf("expected ErrValidation, got: %v", err)
@@ -581,8 +601,8 @@ func TestUpdate_EndBeforeStart(t *testing.T) {
 		},
 	}
 	svc := NewEventService(repo, &mockCalRepo{})
-	req := &model.UpdateEventRequest{
-		EndTime: strPtr("2026-02-15T09:00:00Z"),
+	req := &api.UpdateEventRequest{
+		EndTime: optDateTime("2026-02-15T09:00:00Z"),
 	}
 	_, err := svc.Update(1, req)
 	if !errors.Is(err, ErrValidation) {
@@ -605,8 +625,8 @@ func TestUpdate_DurationRecomputesEndTime(t *testing.T) {
 		},
 	}
 	svc := NewEventService(repo, &mockCalRepo{})
-	req := &model.UpdateEventRequest{
-		Duration: strPtr("PT2H"),
+	req := &api.UpdateEventRequest{
+		Duration: optString("PT2H"),
 	}
 	e, err := svc.Update(1, req)
 	if err != nil {
@@ -633,9 +653,9 @@ func TestUpdate_AllDayDateHandling(t *testing.T) {
 		},
 	}
 	svc := NewEventService(repo, &mockCalRepo{})
-	req := &model.UpdateEventRequest{
-		StartTime: strPtr("2026-02-20"),
-		EndTime:   strPtr("2026-02-22"),
+	req := &api.UpdateEventRequest{
+		StartDate: optDate("2026-02-20"),
+		EndDate:   optDate("2026-02-22"),
 	}
 	e, err := svc.Update(1, req)
 	if err != nil {
@@ -665,8 +685,8 @@ func TestUpdate_ToggleToAllDay(t *testing.T) {
 		},
 	}
 	svc := NewEventService(repo, &mockCalRepo{})
-	req := &model.UpdateEventRequest{
-		AllDay: boolPtr(true),
+	req := &api.UpdateEventRequest{
+		AllDay: optBool(true),
 	}
 	e, err := svc.Update(1, req)
 	if err != nil {
@@ -696,23 +716,23 @@ func TestUpdate_AllFieldUpdates(t *testing.T) {
 		},
 	}
 	svc := NewEventService(repo, &mockCalRepo{})
-	req := &model.UpdateEventRequest{
-		Color:                strPtr("blue"),
-		RecurrenceFreq:       strPtr("WEEKLY"),
-		RecurrenceCount:      intPtr(10),
-		RecurrenceUntil:      strPtr("2026-12-31T00:00:00Z"),
-		RecurrenceInterval:   intPtr(2),
-		RecurrenceByDay:      strPtr("MO,WE"),
-		RecurrenceByMonthDay: strPtr("1,15"),
-		RecurrenceByMonth:    strPtr("1,6"),
-		ExDates:              strPtr("2026-02-22T10:00:00Z"),
-		RDates:               strPtr("2026-03-01T10:00:00Z"),
-		Categories:           strPtr("work"),
-		URL:                  strPtr("https://example.com"),
-		ReminderMinutes:      intPtr(30),
-		Location:             strPtr("Room A"),
-		Latitude:             float64Ptr(59.33),
-		Longitude:            float64Ptr(18.07),
+	req := &api.UpdateEventRequest{
+		Color:                optString("blue"),
+		RecurrenceFreq:       optFreqUpdate("WEEKLY"),
+		RecurrenceCount:      optInt(10),
+		RecurrenceUntil:      optString("2026-12-31T00:00:00Z"),
+		RecurrenceInterval:   optInt(2),
+		RecurrenceByDay:      optString("MO,WE"),
+		RecurrenceByMonthday: optString("1,15"),
+		RecurrenceByMonth:    optString("1,6"),
+		Exdates:              optString("2026-02-22T10:00:00Z"),
+		Rdates:               optString("2026-03-01T10:00:00Z"),
+		Categories:           optString("work"),
+		URL:                  optURL("https://example.com"),
+		ReminderMinutes:      optInt(30),
+		Location:             optString("Room A"),
+		Latitude:             optFloat(59.33),
+		Longitude:            optFloat(18.07),
 	}
 	e, err := svc.Update(1, req)
 	if err != nil {
@@ -765,8 +785,8 @@ func TestUpdate_HTMLSanitization(t *testing.T) {
 		},
 	}
 	svc := NewEventService(repo, &mockCalRepo{})
-	req := &model.UpdateEventRequest{
-		Description: strPtr(`<em>hi</em><script>bad</script>`),
+	req := &api.UpdateEventRequest{
+		Description: optString(`<em>hi</em><script>bad</script>`),
 	}
 	e, err := svc.Update(1, req)
 	if err != nil {
@@ -792,7 +812,7 @@ func TestUpdate_RepoError(t *testing.T) {
 		},
 	}
 	svc := NewEventService(repo, &mockCalRepo{})
-	req := &model.UpdateEventRequest{Title: strPtr("New")}
+	req := &api.UpdateEventRequest{Title: optString("New")}
 	_, err := svc.Update(1, req)
 	if !errors.Is(err, errRepo) {
 		t.Fatalf("expected repo error, got: %v", err)
@@ -822,7 +842,7 @@ func TestCreateOrUpdateOverride_NewOverride(t *testing.T) {
 		},
 	}
 	svc := NewEventService(repo, &mockCalRepo{})
-	req := &model.UpdateEventRequest{Title: strPtr("Modified Instance")}
+	req := &api.UpdateEventRequest{Title: optString("Modified Instance")}
 	e, err := svc.CreateOrUpdateOverride(parentID, "2026-02-08T09:00:00Z", req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -881,7 +901,7 @@ func TestCreateOrUpdateOverride_ExistingOverride(t *testing.T) {
 		},
 	}
 	svc := NewEventService(repo, &mockCalRepo{})
-	req := &model.UpdateEventRequest{Title: strPtr("Updated Override")}
+	req := &api.UpdateEventRequest{Title: optString("Updated Override")}
 	e, err := svc.CreateOrUpdateOverride(parentID, "2026-02-08T09:00:00Z", req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -898,7 +918,7 @@ func TestCreateOrUpdateOverride_ParentNotFound(t *testing.T) {
 		},
 	}
 	svc := NewEventService(repo, &mockCalRepo{})
-	req := &model.UpdateEventRequest{Title: strPtr("X")}
+	req := &api.UpdateEventRequest{Title: optString("X")}
 	_, err := svc.CreateOrUpdateOverride(999, "2026-02-08T09:00:00Z", req)
 	if !errors.Is(err, ErrNotFound) {
 		t.Fatalf("expected ErrNotFound, got: %v", err)
@@ -918,7 +938,7 @@ func TestCreateOrUpdateOverride_ParentNotRecurring(t *testing.T) {
 		},
 	}
 	svc := NewEventService(repo, &mockCalRepo{})
-	req := &model.UpdateEventRequest{Title: strPtr("X")}
+	req := &api.UpdateEventRequest{Title: optString("X")}
 	_, err := svc.CreateOrUpdateOverride(1, "2026-02-08T09:00:00Z", req)
 	if !errors.Is(err, ErrValidation) {
 		t.Fatalf("expected ErrValidation, got: %v", err)
@@ -928,7 +948,7 @@ func TestCreateOrUpdateOverride_ParentNotRecurring(t *testing.T) {
 func TestCreateOrUpdateOverride_InvalidInstanceStart(t *testing.T) {
 	repo := &mockRepo{}
 	svc := NewEventService(repo, &mockCalRepo{})
-	req := &model.UpdateEventRequest{Title: strPtr("X")}
+	req := &api.UpdateEventRequest{Title: optString("X")}
 	_, err := svc.CreateOrUpdateOverride(1, "not-a-date", req)
 	if !errors.Is(err, ErrValidation) {
 		t.Fatalf("expected ErrValidation, got: %v", err)
@@ -963,20 +983,20 @@ func TestCreateOrUpdateOverride_NewOverrideWithAllFields(t *testing.T) {
 		},
 	}
 	svc := NewEventService(repo, &mockCalRepo{})
-	req := &model.UpdateEventRequest{
-		Title:           strPtr("New Title"),
-		Description:     strPtr("<b>bold</b><script>bad</script>"),
-		StartTime:       strPtr("2026-02-08T10:00:00Z"),
-		EndTime:         strPtr("2026-02-08T12:00:00Z"),
-		AllDay:          boolPtr(false),
-		Color:           strPtr("red"),
-		Duration:        strPtr("PT3H"),
-		Categories:      strPtr("meeting"),
-		URL:             strPtr("https://new.example.com"),
-		ReminderMinutes: intPtr(30),
-		Location:        strPtr("Home"),
-		Latitude:        float64Ptr(60.0),
-		Longitude:       float64Ptr(19.0),
+	req := &api.UpdateEventRequest{
+		Title:           optString("New Title"),
+		Description:     optString("<b>bold</b><script>bad</script>"),
+		StartTime:       optDateTime("2026-02-08T10:00:00Z"),
+		EndTime:         optDateTime("2026-02-08T12:00:00Z"),
+		AllDay:          optBool(false),
+		Color:           optString("red"),
+		Duration:        optString("PT3H"),
+		Categories:      optString("meeting"),
+		URL:             optURL("https://new.example.com"),
+		ReminderMinutes: optInt(30),
+		Location:        optString("Home"),
+		Latitude:        optFloat(60.0),
+		Longitude:       optFloat(19.0),
 	}
 	e, err := svc.CreateOrUpdateOverride(parentID, "2026-02-08T09:00:00Z", req)
 	if err != nil {
@@ -1038,7 +1058,7 @@ func TestCreateOrUpdateOverride_GetOverrideError(t *testing.T) {
 		},
 	}
 	svc := NewEventService(repo, &mockCalRepo{})
-	req := &model.UpdateEventRequest{Title: strPtr("X")}
+	req := &api.UpdateEventRequest{Title: optString("X")}
 	_, err := svc.CreateOrUpdateOverride(parentID, "2026-02-08T09:00:00Z", req)
 	if !errors.Is(err, errRepo) {
 		t.Fatalf("expected repo error, got: %v", err)
@@ -1048,7 +1068,7 @@ func TestCreateOrUpdateOverride_GetOverrideError(t *testing.T) {
 func TestCreateOrUpdateOverride_ValidationFailure(t *testing.T) {
 	repo := &mockRepo{}
 	svc := NewEventService(repo, &mockCalRepo{})
-	req := &model.UpdateEventRequest{Title: strPtr("")} // an empty title isn't allowed
+	req := &api.UpdateEventRequest{Title: optString("")} // an empty title isn't allowed
 	_, err := svc.CreateOrUpdateOverride(1, "2026-02-08T09:00:00Z", req)
 	if !errors.Is(err, ErrValidation) {
 		t.Fatalf("expected ErrValidation, got: %v", err)
