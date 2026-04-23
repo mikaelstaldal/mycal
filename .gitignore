@@ -11,6 +11,7 @@ e2e/playwright-report/
 TODO.md
 DOING.md
 DONE.md
+tasks.json
 *_gen.go
 *.gen.go
 web/static/app.js

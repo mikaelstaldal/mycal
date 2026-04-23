@@ -153,6 +153,9 @@ func modelEventToAPI(e *model.Event) *api.Event {
 	if e.Latitude != nil {
 		ae.Latitude = api.NewOptNilFloat64(*e.Latitude)
 	}
+	if e.Longitude != nil {
+		ae.Longitude = api.NewOptNilFloat64(*e.Longitude)
+	}
 	ae.CalendarID = api.NewOptInt64(e.CalendarID)
 	if e.CalendarName != "" {
 		ae.CalendarName = api.NewOptString(e.CalendarName)
