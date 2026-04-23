@@ -700,3 +700,294 @@ func TestListEvents_MissingRangeParams(t *testing.T) {
 		}
 	}
 }
+
+// ---- Recurring event tests ----
+
+func TestRecurring_DailyExpansion(t *testing.T) {
+	ts := setupTestServer(t)
+
+	created := createJSONEvent(t, ts, map[string]any{
+		"title":            "Daily Standup",
+		"all_day":          false,
+		"start_time":       "2026-05-04T09:00:00Z",
+		"end_time":         "2026-05-04T09:30:00Z",
+		"recurrence_freq":  "DAILY",
+		"recurrence_count": 5,
+	})
+
+	if created.RecurrenceFreq != "DAILY" {
+		t.Errorf("recurrence_freq = %q, want DAILY", created.RecurrenceFreq)
+	}
+
+	resp, err := http.Get(ts.URL + "/api/v1/events?from=2026-05-04T00:00:00Z&to=2026-05-09T00:00:00Z")
+	if err != nil {
+		t.Fatal(err)
+	}
+	events := decodeEvents(t, readBody(t, resp))
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("list: got %d, want 200", resp.StatusCode)
+	}
+	if len(events) != 5 {
+		t.Fatalf("got %d events, want 5 daily instances", len(events))
+	}
+	if events[0].StartTime != "2026-05-04T09:00:00Z" {
+		t.Errorf("first instance start = %q, want 2026-05-04T09:00:00Z", events[0].StartTime)
+	}
+	if events[4].StartTime != "2026-05-08T09:00:00Z" {
+		t.Errorf("last instance start = %q, want 2026-05-08T09:00:00Z", events[4].StartTime)
+	}
+	// All instances share the same parent ID
+	for _, e := range events {
+		if e.CalendarID != created.CalendarID {
+			t.Errorf("instance calendar_id = %d, want %d", e.CalendarID, created.CalendarID)
+		}
+	}
+}
+
+func TestRecurring_WeeklyExpansion(t *testing.T) {
+	ts := setupTestServer(t)
+
+	createJSONEvent(t, ts, map[string]any{
+		"title":           "Weekly Review",
+		"all_day":         false,
+		"start_time":      "2026-05-04T10:00:00Z", // Monday
+		"end_time":        "2026-05-04T11:00:00Z",
+		"recurrence_freq": "WEEKLY",
+	})
+
+	resp, err := http.Get(ts.URL + "/api/v1/events?from=2026-05-04T00:00:00Z&to=2026-05-25T00:00:00Z")
+	if err != nil {
+		t.Fatal(err)
+	}
+	events := decodeEvents(t, readBody(t, resp))
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("list: got %d, want 200", resp.StatusCode)
+	}
+	if len(events) != 3 {
+		t.Fatalf("got %d events, want 3 weekly instances", len(events))
+	}
+	wantStarts := []string{"2026-05-04T10:00:00Z", "2026-05-11T10:00:00Z", "2026-05-18T10:00:00Z"}
+	for i, want := range wantStarts {
+		if events[i].StartTime != want {
+			t.Errorf("instance %d start = %q, want %q", i, events[i].StartTime, want)
+		}
+	}
+}
+
+func TestRecurring_CountLimitsExpansion(t *testing.T) {
+	ts := setupTestServer(t)
+
+	createJSONEvent(t, ts, map[string]any{
+		"title":            "Limited Recurring",
+		"all_day":          false,
+		"start_time":       "2026-06-01T08:00:00Z",
+		"end_time":         "2026-06-01T09:00:00Z",
+		"recurrence_freq":  "DAILY",
+		"recurrence_count": 3,
+	})
+
+	// Query a wide window — count=3 should cap at 3 regardless
+	resp, err := http.Get(ts.URL + "/api/v1/events?from=2026-06-01T00:00:00Z&to=2026-12-31T00:00:00Z")
+	if err != nil {
+		t.Fatal(err)
+	}
+	events := decodeEvents(t, readBody(t, resp))
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("list: got %d, want 200", resp.StatusCode)
+	}
+	if len(events) != 3 {
+		t.Fatalf("got %d events, want exactly 3 (count limit)", len(events))
+	}
+}
+
+func TestRecurring_UntilLimitsExpansion(t *testing.T) {
+	ts := setupTestServer(t)
+
+	createJSONEvent(t, ts, map[string]any{
+		"title":              "Until Recurring",
+		"all_day":            false,
+		"start_time":         "2026-07-01T08:00:00Z",
+		"end_time":           "2026-07-01T09:00:00Z",
+		"recurrence_freq":    "DAILY",
+		"recurrence_until":   "2026-07-03T23:59:59Z",
+	})
+
+	resp, err := http.Get(ts.URL + "/api/v1/events?from=2026-07-01T00:00:00Z&to=2026-12-31T00:00:00Z")
+	if err != nil {
+		t.Fatal(err)
+	}
+	events := decodeEvents(t, readBody(t, resp))
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("list: got %d, want 200", resp.StatusCode)
+	}
+	if len(events) != 3 {
+		t.Fatalf("got %d events (Jul 1-3), want 3", len(events))
+	}
+}
+
+func TestRecurring_ExDateExcludesInstance(t *testing.T) {
+	ts := setupTestServer(t)
+
+	created := createJSONEvent(t, ts, map[string]any{
+		"title":            "Daily with exception",
+		"all_day":          false,
+		"start_time":       "2026-08-03T10:00:00Z",
+		"end_time":         "2026-08-03T11:00:00Z",
+		"recurrence_freq":  "DAILY",
+		"recurrence_count": 5,
+	})
+
+	// Delete the second instance (Aug 4) — the API adds it to exdates
+	instanceID := fmt.Sprintf("%s_2026-08-04T10:00:00Z", created.ID)
+	// Deleting a recurring instance adds it to exdates and returns 200 with the updated parent
+	req, _ := http.NewRequest(http.MethodDelete, ts.URL+"/api/v1/events/"+instanceID, nil)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("delete instance: got %d, want 200", resp.StatusCode)
+	}
+
+	// List — should now have 4 instances (Aug 3, 5, 6, 7) with Aug 4 excluded
+	listResp, err := http.Get(ts.URL + "/api/v1/events?from=2026-08-03T00:00:00Z&to=2026-08-08T00:00:00Z")
+	if err != nil {
+		t.Fatal(err)
+	}
+	events := decodeEvents(t, readBody(t, listResp))
+	if listResp.StatusCode != http.StatusOK {
+		t.Fatalf("list: got %d, want 200", listResp.StatusCode)
+	}
+	if len(events) != 4 {
+		t.Fatalf("got %d events after excluding one, want 4", len(events))
+	}
+	for _, e := range events {
+		if e.StartTime == "2026-08-04T10:00:00Z" {
+			t.Error("excluded instance (Aug 4) should not appear in listing")
+		}
+	}
+}
+
+func TestRecurring_InstanceOverride(t *testing.T) {
+	ts := setupTestServer(t)
+
+	created := createJSONEvent(t, ts, map[string]any{
+		"title":            "Weekly Sync",
+		"all_day":          false,
+		"start_time":       "2026-09-07T14:00:00Z", // Monday
+		"end_time":         "2026-09-07T15:00:00Z",
+		"recurrence_freq":  "WEEKLY",
+		"recurrence_count": 4,
+	})
+
+	// Override the second instance (Sep 14) with a different title
+	instanceID := fmt.Sprintf("%s_2026-09-14T14:00:00Z", created.ID)
+	resp := patchJSONMap(t, ts.URL+"/api/v1/events/"+instanceID, map[string]any{
+		"title": "Weekly Sync (rescheduled)",
+	})
+	b := readBody(t, resp)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("patch instance: got %d, want 200\nbody: %s", resp.StatusCode, b)
+	}
+
+	// Fetch the overridden instance directly
+	getResp, err := http.Get(ts.URL + "/api/v1/events/" + instanceID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	overridden := decodeEvent(t, readBody(t, getResp))
+	if getResp.StatusCode != http.StatusOK {
+		t.Fatalf("get instance: got %d, want 200", getResp.StatusCode)
+	}
+	if overridden.Title != "Weekly Sync (rescheduled)" {
+		t.Errorf("overridden title = %q, want %q", overridden.Title, "Weekly Sync (rescheduled)")
+	}
+
+	// In the list, the override should appear with the new title while others keep the original
+	listResp, err := http.Get(ts.URL + "/api/v1/events?from=2026-09-07T00:00:00Z&to=2026-10-05T00:00:00Z")
+	if err != nil {
+		t.Fatal(err)
+	}
+	events := decodeEvents(t, readBody(t, listResp))
+	if listResp.StatusCode != http.StatusOK {
+		t.Fatalf("list: got %d, want 200", listResp.StatusCode)
+	}
+	if len(events) != 4 {
+		t.Fatalf("got %d events, want 4", len(events))
+	}
+	var foundOverride bool
+	for _, e := range events {
+		if e.StartTime == "2026-09-14T14:00:00Z" {
+			foundOverride = true
+			if e.Title != "Weekly Sync (rescheduled)" {
+				t.Errorf("Sep 14 title = %q, want %q", e.Title, "Weekly Sync (rescheduled)")
+			}
+		}
+	}
+	if !foundOverride {
+		t.Error("overridden instance not found in list")
+	}
+}
+
+func TestRecurring_MonthlyByDay(t *testing.T) {
+	ts := setupTestServer(t)
+
+	createJSONEvent(t, ts, map[string]any{
+		"title":                 "Monthly Board",
+		"all_day":               false,
+		"start_time":            "2026-05-11T09:00:00Z", // 2nd Monday of May
+		"end_time":              "2026-05-11T10:00:00Z",
+		"recurrence_freq":       "MONTHLY",
+		"recurrence_by_day":     "2MO",
+		"recurrence_count":      3,
+	})
+
+	resp, err := http.Get(ts.URL + "/api/v1/events?from=2026-05-01T00:00:00Z&to=2026-08-01T00:00:00Z")
+	if err != nil {
+		t.Fatal(err)
+	}
+	events := decodeEvents(t, readBody(t, resp))
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("list: got %d, want 200", resp.StatusCode)
+	}
+	if len(events) != 3 {
+		t.Fatalf("got %d events, want 3 monthly instances", len(events))
+	}
+	// 2nd Monday: May 11, Jun 8, Jul 13
+	wantStarts := []string{"2026-05-11T09:00:00Z", "2026-06-08T09:00:00Z", "2026-07-13T09:00:00Z"}
+	for i, want := range wantStarts {
+		if events[i].StartTime != want {
+			t.Errorf("instance %d start = %q, want %q", i, events[i].StartTime, want)
+		}
+	}
+}
+
+func TestRecurring_GetParentEvent(t *testing.T) {
+	ts := setupTestServer(t)
+
+	created := createJSONEvent(t, ts, map[string]any{
+		"title":            "Recurring Event",
+		"all_day":          false,
+		"start_time":       "2026-10-01T08:00:00Z",
+		"end_time":         "2026-10-01T09:00:00Z",
+		"recurrence_freq":  "WEEKLY",
+		"recurrence_count": 4,
+	})
+
+	// GET the parent by its plain numeric ID should return the event with recurrence info
+	resp, err := http.Get(ts.URL + "/api/v1/events/" + created.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := decodeEvent(t, readBody(t, resp))
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("get: got %d, want 200", resp.StatusCode)
+	}
+	if got.RecurrenceFreq != "WEEKLY" {
+		t.Errorf("recurrence_freq = %q, want WEEKLY", got.RecurrenceFreq)
+	}
+	if got.RecurrenceCount == nil || *got.RecurrenceCount != 4 {
+		t.Errorf("recurrence_count = %v, want 4", got.RecurrenceCount)
+	}
+}
