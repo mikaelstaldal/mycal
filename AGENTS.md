@@ -2,6 +2,12 @@
 
 This file provides guidance to AI coding agents when working with code in this repository.
 
+## Project Overview
+
+This is a calendar application with a Go backend, REST API and an embedded TypeScript web frontend. 
+The codebase includes OpenAPI specs, SQLite storage, and multiple calendar view components (day, week, month, year, schedule).
+There is also an Android (Kotlin/Compose) app using the same REST API in another repository.
+
 ## Build & Run
 
 ```bash
