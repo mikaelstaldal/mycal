@@ -2,6 +2,7 @@ ignored/
 mycal
 data/
 .claude
+.junie
 .playwright
 .playwright-mcp
 .playwright-cli
