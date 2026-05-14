@@ -4,6 +4,9 @@ import (
 	"database/sql"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/mikaelstaldal/mycal/internal/model"
 	_ "modernc.org/sqlite"
 )
@@ -11,14 +14,10 @@ import (
 func setupTestRepo(t *testing.T) *SQLiteRepository {
 	t.Helper()
 	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	t.Cleanup(func() { db.Close() })
 	repo, err := NewSQLiteRepository(db)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	return repo
 }
 
@@ -30,9 +29,8 @@ func createTestEvent(t *testing.T, repo *SQLiteRepository, title, desc, start, e
 		StartTime:   start,
 		EndTime:     end,
 	}
-	if err := repo.Create(e); err != nil {
-		t.Fatal(err)
-	}
+	err := repo.Create(e)
+	require.NoError(t, err)
 	return e
 }
 
@@ -42,15 +40,9 @@ func TestSearchByTitle(t *testing.T) {
 	createTestEvent(t, repo, "Lunch Break", "Cafeteria", "2026-02-18T12:00:00Z", "2026-02-18T13:00:00Z")
 
 	results, err := repo.Search("meeting", "", "", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(results) != 1 {
-		t.Fatalf("expected 1 result, got %d", len(results))
-	}
-	if results[0].Title != "Team Meeting" {
-		t.Errorf("expected 'Team Meeting', got %q", results[0].Title)
-	}
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+	assert.Equal(t, "Team Meeting", results[0].Title)
 }
 
 func TestSearchByDescription(t *testing.T) {
@@ -59,15 +51,9 @@ func TestSearchByDescription(t *testing.T) {
 	createTestEvent(t, repo, "Event B", "Casual chat", "2026-02-18T12:00:00Z", "2026-02-18T13:00:00Z")
 
 	results, err := repo.Search("budgets", "", "", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(results) != 1 {
-		t.Fatalf("expected 1 result, got %d", len(results))
-	}
-	if results[0].Title != "Event A" {
-		t.Errorf("expected 'Event A', got %q", results[0].Title)
-	}
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+	assert.Equal(t, "Event A", results[0].Title)
 }
 
 func TestSearchWithTimeRange(t *testing.T) {
@@ -76,15 +62,9 @@ func TestSearchWithTimeRange(t *testing.T) {
 	createTestEvent(t, repo, "Afternoon Meeting", "Review", "2026-02-18T15:00:00Z", "2026-02-18T16:00:00Z")
 
 	results, err := repo.Search("meeting", "2026-02-18T14:00:00Z", "2026-02-18T17:00:00Z", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(results) != 1 {
-		t.Fatalf("expected 1 result, got %d", len(results))
-	}
-	if results[0].Title != "Afternoon Meeting" {
-		t.Errorf("expected 'Afternoon Meeting', got %q", results[0].Title)
-	}
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+	assert.Equal(t, "Afternoon Meeting", results[0].Title)
 }
 
 func TestSearchAfterUpdate(t *testing.T) {
@@ -92,42 +72,28 @@ func TestSearchAfterUpdate(t *testing.T) {
 	e := createTestEvent(t, repo, "Old Title", "Description", "2026-02-18T10:00:00Z", "2026-02-18T11:00:00Z")
 
 	e.Title = "New Title"
-	if err := repo.Update(e); err != nil {
-		t.Fatal(err)
-	}
+	err := repo.Update(e)
+	require.NoError(t, err)
 
 	results, err := repo.Search("Old", "", "", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(results) != 0 {
-		t.Fatalf("expected 0 results for old title, got %d", len(results))
-	}
+	require.NoError(t, err)
+	assert.Empty(t, results)
 
 	results, err = repo.Search("New", "", "", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(results) != 1 {
-		t.Fatalf("expected 1 result for new title, got %d", len(results))
-	}
+	require.NoError(t, err)
+	assert.Len(t, results, 1)
 }
 
 func TestSearchAfterDelete(t *testing.T) {
 	repo := setupTestRepo(t)
 	e := createTestEvent(t, repo, "Deletable Event", "Will be removed", "2026-02-18T10:00:00Z", "2026-02-18T11:00:00Z")
 
-	if err := repo.Delete(e.ID); err != nil {
-		t.Fatal(err)
-	}
+	err := repo.Delete(e.ID)
+	require.NoError(t, err)
 
 	results, err := repo.Search("Deletable", "", "", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(results) != 0 {
-		t.Fatalf("expected 0 results after delete, got %d", len(results))
-	}
+	require.NoError(t, err)
+	assert.Empty(t, results)
 }
 
 func TestSearchSpecialCharacters(t *testing.T) {
@@ -135,18 +101,12 @@ func TestSearchSpecialCharacters(t *testing.T) {
 	createTestEvent(t, repo, `Event with "quotes"`, "Has special chars: AND OR NOT", "2026-02-18T10:00:00Z", "2026-02-18T11:00:00Z")
 
 	results, err := repo.Search(`"quotes"`, "", "", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(results) != 1 {
-		t.Fatalf("expected 1 result, got %d", len(results))
-	}
+	require.NoError(t, err)
+	assert.Len(t, results, 1)
 
 	// FTS5 operators should be safely quoted
 	results, err = repo.Search("AND OR NOT", "", "", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	// Should not error even with FTS5 operator-like terms
 }
 
@@ -155,10 +115,6 @@ func TestSearchEmptyQuery(t *testing.T) {
 	createTestEvent(t, repo, "Some Event", "Description", "2026-02-18T10:00:00Z", "2026-02-18T11:00:00Z")
 
 	results, err := repo.Search("", "", "", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if results != nil {
-		t.Fatalf("expected nil results for empty query, got %d", len(results))
-	}
+	require.NoError(t, err)
+	assert.Nil(t, results)
 }

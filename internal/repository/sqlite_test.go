@@ -4,20 +4,19 @@ import (
 	"database/sql"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/mikaelstaldal/mycal/internal/model"
 )
 
 func newTestRepo(t *testing.T) *SQLiteRepository {
 	t.Helper()
 	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	t.Cleanup(func() { db.Close() })
 	repo, err := NewSQLiteRepository(db)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	return repo
 }
 
@@ -28,34 +27,21 @@ func TestCreateAndGetByID(t *testing.T) {
 		StartTime: "2026-03-15T10:00:00Z",
 		EndTime:   "2026-03-15T11:00:00Z",
 	}
-	if err := repo.Create(e); err != nil {
-		t.Fatal(err)
-	}
-	if e.ID == 0 {
-		t.Fatal("expected non-zero ID")
-	}
-	if e.CreatedAt == "" {
-		t.Fatal("expected created_at to be set")
-	}
+	err := repo.Create(e)
+	require.NoError(t, err)
+	assert.NotZero(t, e.ID)
+	assert.NotEmpty(t, e.CreatedAt)
 
 	got, err := repo.GetByID(e.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got.Title != "Test Event" {
-		t.Fatalf("got title %q, want %q", got.Title, "Test Event")
-	}
+	require.NoError(t, err)
+	assert.Equal(t, "Test Event", got.Title)
 }
 
 func TestGetByIDNotFound(t *testing.T) {
 	repo := newTestRepo(t)
 	got, err := repo.GetByID(999)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got != nil {
-		t.Fatal("expected nil for missing event")
-	}
+	require.NoError(t, err)
+	assert.Nil(t, got)
 }
 
 func TestList(t *testing.T) {
@@ -66,21 +52,14 @@ func TestList(t *testing.T) {
 		{Title: "Mar Event", StartTime: "2026-03-20T10:00:00Z", EndTime: "2026-03-20T11:00:00Z"},
 	}
 	for i := range events {
-		if err := repo.Create(&events[i]); err != nil {
-			t.Fatal(err)
-		}
+		err := repo.Create(&events[i])
+		require.NoError(t, err)
 	}
 
 	got, err := repo.List("2026-02-01T00:00:00Z", "2026-03-01T00:00:00Z", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(got) != 1 {
-		t.Fatalf("got %d events, want 1", len(got))
-	}
-	if got[0].Title != "Feb Event" {
-		t.Fatalf("got title %q, want %q", got[0].Title, "Feb Event")
-	}
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	assert.Equal(t, "Feb Event", got[0].Title)
 }
 
 func TestUpdate(t *testing.T) {
@@ -90,17 +69,13 @@ func TestUpdate(t *testing.T) {
 		StartTime: "2026-03-15T10:00:00Z",
 		EndTime:   "2026-03-15T11:00:00Z",
 	}
-	if err := repo.Create(e); err != nil {
-		t.Fatal(err)
-	}
+	err := repo.Create(e)
+	require.NoError(t, err)
 	e.Title = "Updated"
-	if err := repo.Update(e); err != nil {
-		t.Fatal(err)
-	}
+	err = repo.Update(e)
+	require.NoError(t, err)
 	got, _ := repo.GetByID(e.ID)
-	if got.Title != "Updated" {
-		t.Fatalf("got title %q, want %q", got.Title, "Updated")
-	}
+	assert.Equal(t, "Updated", got.Title)
 }
 
 func TestDelete(t *testing.T) {
@@ -110,24 +85,18 @@ func TestDelete(t *testing.T) {
 		StartTime: "2026-03-15T10:00:00Z",
 		EndTime:   "2026-03-15T11:00:00Z",
 	}
-	if err := repo.Create(e); err != nil {
-		t.Fatal(err)
-	}
-	if err := repo.Delete(e.ID); err != nil {
-		t.Fatal(err)
-	}
+	err := repo.Create(e)
+	require.NoError(t, err)
+	err = repo.Delete(e.ID)
+	require.NoError(t, err)
 	got, _ := repo.GetByID(e.ID)
-	if got != nil {
-		t.Fatal("expected nil after delete")
-	}
+	assert.Nil(t, got)
 }
 
 func TestDeleteNotFound(t *testing.T) {
 	repo := newTestRepo(t)
 	err := repo.Delete(999)
-	if err == nil {
-		t.Fatal("expected error for missing event")
-	}
+	assert.Error(t, err)
 }
 
 func TestCreateAndGetWithLocation(t *testing.T) {
@@ -142,101 +111,68 @@ func TestCreateAndGetWithLocation(t *testing.T) {
 		Latitude:  &lat,
 		Longitude: &lon,
 	}
-	if err := repo.Create(e); err != nil {
-		t.Fatal(err)
-	}
+	err := repo.Create(e)
+	require.NoError(t, err)
 
 	got, err := repo.GetByID(e.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got.Location != "Stockholm Office" {
-		t.Fatalf("got location %q, want %q", got.Location, "Stockholm Office")
-	}
-	if got.Latitude == nil || *got.Latitude != 59.3293 {
-		t.Fatalf("got latitude %v, want 59.3293", got.Latitude)
-	}
-	if got.Longitude == nil || *got.Longitude != 18.0686 {
-		t.Fatalf("got longitude %v, want 18.0686", got.Longitude)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, "Stockholm Office", got.Location)
+	require.NotNil(t, got.Latitude)
+	assert.Equal(t, 59.3293, *got.Latitude)
+	require.NotNil(t, got.Longitude)
+	assert.Equal(t, 18.0686, *got.Longitude)
 }
 
 // --- Preferences tests ---
 
 func TestSetAndGetPreference(t *testing.T) {
 	repo := newTestRepo(t)
-	if err := repo.SetPreference("defaultEventColor", "red"); err != nil {
-		t.Fatal(err)
-	}
+	err := repo.SetPreference("defaultEventColor", "red")
+	require.NoError(t, err)
 	val, ok, err := repo.GetPreference("defaultEventColor")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !ok {
-		t.Fatal("expected preference to exist")
-	}
-	if val != "red" {
-		t.Fatalf("got %q, want %q", val, "red")
-	}
+	require.NoError(t, err)
+	assert.True(t, ok)
+	assert.Equal(t, "red", val)
 }
 
 func TestGetPreferenceNotFound(t *testing.T) {
 	repo := newTestRepo(t)
 	_, ok, err := repo.GetPreference("nonexistent")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if ok {
-		t.Fatal("expected preference not to exist")
-	}
+	require.NoError(t, err)
+	assert.False(t, ok)
 }
 
 func TestGetAllPreferences(t *testing.T) {
 	repo := newTestRepo(t)
-	if err := repo.SetPreference("a", "1"); err != nil {
-		t.Fatal(err)
-	}
-	if err := repo.SetPreference("b", "2"); err != nil {
-		t.Fatal(err)
-	}
+	err := repo.SetPreference("a", "1")
+	require.NoError(t, err)
+	err = repo.SetPreference("b", "2")
+	require.NoError(t, err)
 	prefs, err := repo.GetAllPreferences()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(prefs) != 2 {
-		t.Fatalf("got %d prefs, want 2", len(prefs))
-	}
-	if prefs["a"] != "1" || prefs["b"] != "2" {
-		t.Fatalf("unexpected prefs: %v", prefs)
-	}
+	require.NoError(t, err)
+	assert.Len(t, prefs, 2)
+	assert.Equal(t, "1", prefs["a"])
+	assert.Equal(t, "2", prefs["b"])
 }
 
 func TestUpsertPreference(t *testing.T) {
 	repo := newTestRepo(t)
-	if err := repo.SetPreference("key", "v1"); err != nil {
-		t.Fatal(err)
-	}
-	if err := repo.SetPreference("key", "v2"); err != nil {
-		t.Fatal(err)
-	}
+	err := repo.SetPreference("key", "v1")
+	require.NoError(t, err)
+	err = repo.SetPreference("key", "v2")
+	require.NoError(t, err)
 	val, _, _ := repo.GetPreference("key")
-	if val != "v2" {
-		t.Fatalf("got %q, want %q", val, "v2")
-	}
+	assert.Equal(t, "v2", val)
 }
 
 func TestDeletePreference(t *testing.T) {
 	repo := newTestRepo(t)
-	if err := repo.SetPreference("key", "val"); err != nil {
-		t.Fatal(err)
-	}
-	if err := repo.DeletePreference("key"); err != nil {
-		t.Fatal(err)
-	}
+	err := repo.SetPreference("key", "val")
+	require.NoError(t, err)
+	err = repo.DeletePreference("key")
+	require.NoError(t, err)
 	_, ok, _ := repo.GetPreference("key")
-	if ok {
-		t.Fatal("expected preference to be deleted")
-	}
+	assert.False(t, ok)
 }
 
 func TestCreateWithoutCoordinates(t *testing.T) {
@@ -247,21 +183,12 @@ func TestCreateWithoutCoordinates(t *testing.T) {
 		EndTime:   "2026-03-15T11:00:00Z",
 		Location:  "Somewhere",
 	}
-	if err := repo.Create(e); err != nil {
-		t.Fatal(err)
-	}
+	err := repo.Create(e)
+	require.NoError(t, err)
 
 	got, err := repo.GetByID(e.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got.Location != "Somewhere" {
-		t.Fatalf("got location %q, want %q", got.Location, "Somewhere")
-	}
-	if got.Latitude != nil {
-		t.Fatalf("expected nil latitude, got %v", *got.Latitude)
-	}
-	if got.Longitude != nil {
-		t.Fatalf("expected nil longitude, got %v", *got.Longitude)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, "Somewhere", got.Location)
+	assert.Nil(t, got.Latitude)
+	assert.Nil(t, got.Longitude)
 }

@@ -1,19 +1,19 @@
 package model
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
 
 func TestValidateColor(t *testing.T) {
 	valid := []string{"", "red", "dodgerblue", "gold", "mediumturquoise", "rebeccapurple"}
 	for _, c := range valid {
-		if err := ValidateColor(c); err != nil {
-			t.Errorf("ValidateColor(%q) = %v, want nil", c, err)
-		}
+		assert.NoError(t, ValidateColor(c), "ValidateColor(%q)", c)
 	}
 
 	invalid := []string{"notacolor", "RED", "DodgerBlue", "#ff0000", "rgb(0,0,0)", "123"}
 	for _, c := range invalid {
-		if err := ValidateColor(c); err == nil {
-			t.Errorf("ValidateColor(%q) = nil, want error", c)
-		}
+		assert.Error(t, ValidateColor(c), "ValidateColor(%q)", c)
 	}
 }

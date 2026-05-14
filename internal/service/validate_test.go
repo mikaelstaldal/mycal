@@ -1,9 +1,10 @@
 package service
 
 import (
-	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/mikaelstaldal/mycal/internal/api"
 )
@@ -22,19 +23,16 @@ func TestValidateRecurrenceInterval(t *testing.T) {
 	r := validCreateReq()
 	r.RecurrenceFreq = api.NewOptCreateEventRequestRecurrenceFreq(api.CreateEventRequestRecurrenceFreqDAILY)
 	r.RecurrenceInterval = api.NewOptInt(-1)
-	if _, _, err := ValidateCreateEventRequest(r); err == nil || !strings.Contains(err.Error(), "recurrence_interval must be >= 0") {
-		t.Fatalf("expected interval >= 0 error, got: %v", err)
-	}
+	_, _, err := ValidateCreateEventRequest(r)
+	assert.ErrorContains(t, err, "recurrence_interval must be >= 0")
 
 	r.RecurrenceInterval = api.NewOptInt(1000)
-	if _, _, err := ValidateCreateEventRequest(r); err == nil || !strings.Contains(err.Error(), "recurrence_interval must be at most") {
-		t.Fatalf("expected interval max error, got: %v", err)
-	}
+	_, _, err = ValidateCreateEventRequest(r)
+	assert.ErrorContains(t, err, "recurrence_interval must be at most")
 
 	r.RecurrenceInterval = api.NewOptInt(2)
-	if _, _, err := ValidateCreateEventRequest(r); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	_, _, err = ValidateCreateEventRequest(r)
+	assert.NoError(t, err)
 }
 
 func TestValidateByDay(t *testing.T) {
@@ -59,13 +57,9 @@ func TestValidateByDay(t *testing.T) {
 			r.RecurrenceByDay = api.NewOptString(tt.byDay)
 			_, _, err := ValidateCreateEventRequest(r)
 			if tt.wantErr == "" {
-				if err != nil {
-					t.Fatalf("unexpected error: %v", err)
-				}
+				assert.NoError(t, err)
 			} else {
-				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
-					t.Fatalf("expected error containing %q, got: %v", tt.wantErr, err)
-				}
+				assert.ErrorContains(t, err, tt.wantErr)
 			}
 		})
 	}
@@ -91,13 +85,9 @@ func TestValidateByMonthDay(t *testing.T) {
 			r.RecurrenceByMonthday = api.NewOptString(tt.value)
 			_, _, err := ValidateCreateEventRequest(r)
 			if tt.wantErr == "" {
-				if err != nil {
-					t.Fatalf("unexpected error: %v", err)
-				}
+				assert.NoError(t, err)
 			} else {
-				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
-					t.Fatalf("expected error containing %q, got: %v", tt.wantErr, err)
-				}
+				assert.ErrorContains(t, err, tt.wantErr)
 			}
 		})
 	}
@@ -122,13 +112,9 @@ func TestValidateByMonth(t *testing.T) {
 			r.RecurrenceByMonth = api.NewOptString(tt.value)
 			_, _, err := ValidateCreateEventRequest(r)
 			if tt.wantErr == "" {
-				if err != nil {
-					t.Fatalf("unexpected error: %v", err)
-				}
+				assert.NoError(t, err)
 			} else {
-				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
-					t.Fatalf("expected error containing %q, got: %v", tt.wantErr, err)
-				}
+				assert.ErrorContains(t, err, tt.wantErr)
 			}
 		})
 	}
@@ -138,28 +124,24 @@ func TestValidateExDates(t *testing.T) {
 	r := validCreateReq()
 	r.RecurrenceFreq = api.NewOptCreateEventRequestRecurrenceFreq(api.CreateEventRequestRecurrenceFreqDAILY)
 	r.Exdates = api.NewOptString("2025-06-01T10:00:00Z,2025-06-02T10:00:00Z")
-	if _, _, err := ValidateCreateEventRequest(r); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	_, _, err := ValidateCreateEventRequest(r)
+	assert.NoError(t, err)
 
 	r.Exdates = api.NewOptString("not-a-date")
-	if _, _, err := ValidateCreateEventRequest(r); err == nil || !strings.Contains(err.Error(), "invalid RFC 3339") {
-		t.Fatalf("expected RFC 3339 error, got: %v", err)
-	}
+	_, _, err = ValidateCreateEventRequest(r)
+	assert.ErrorContains(t, err, "invalid RFC 3339")
 }
 
 func TestValidateRDates(t *testing.T) {
 	r := validCreateReq()
 	r.RecurrenceFreq = api.NewOptCreateEventRequestRecurrenceFreq(api.CreateEventRequestRecurrenceFreqDAILY)
 	r.Rdates = api.NewOptString("2025-06-01T10:00:00Z")
-	if _, _, err := ValidateCreateEventRequest(r); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	_, _, err := ValidateCreateEventRequest(r)
+	assert.NoError(t, err)
 
 	r.Rdates = api.NewOptString("bad")
-	if _, _, err := ValidateCreateEventRequest(r); err == nil || !strings.Contains(err.Error(), "invalid RFC 3339") {
-		t.Fatalf("expected RFC 3339 error, got: %v", err)
-	}
+	_, _, err = ValidateCreateEventRequest(r)
+	assert.ErrorContains(t, err, "invalid RFC 3339")
 }
 
 func TestValidateCountUntilMutuallyExclusive(t *testing.T) {
@@ -167,81 +149,63 @@ func TestValidateCountUntilMutuallyExclusive(t *testing.T) {
 	r.RecurrenceFreq = api.NewOptCreateEventRequestRecurrenceFreq(api.CreateEventRequestRecurrenceFreqDAILY)
 	r.RecurrenceCount = api.NewOptInt(5)
 	r.RecurrenceUntil = api.NewOptString("2025-12-31T00:00:00Z")
-	if _, _, err := ValidateCreateEventRequest(r); err == nil || !strings.Contains(err.Error(), "mutually exclusive") {
-		t.Fatalf("expected mutually exclusive error, got: %v", err)
-	}
+	_, _, err := ValidateCreateEventRequest(r)
+	assert.ErrorContains(t, err, "mutually exclusive")
 }
 
 func TestValidateRecurrenceFieldsWithoutFreq(t *testing.T) {
 	r := validCreateReq()
 	r.RecurrenceByDay = api.NewOptString("MO")
-	if _, _, err := ValidateCreateEventRequest(r); err == nil || !strings.Contains(err.Error(), "require recurrence_freq") {
-		t.Fatalf("expected require freq error, got: %v", err)
-	}
+	_, _, err := ValidateCreateEventRequest(r)
+	assert.ErrorContains(t, err, "require recurrence_freq")
 
 	r2 := validCreateReq()
 	r2.RecurrenceInterval = api.NewOptInt(2)
-	if _, _, err := ValidateCreateEventRequest(r2); err == nil || !strings.Contains(err.Error(), "require recurrence_freq") {
-		t.Fatalf("expected require freq error, got: %v", err)
-	}
+	_, _, err = ValidateCreateEventRequest(r2)
+	assert.ErrorContains(t, err, "require recurrence_freq")
 }
 
 func TestValidateUpdateRecurrenceFields(t *testing.T) {
 	// RecurrenceUntil validation in update
 	r := &api.UpdateEventRequest{RecurrenceUntil: api.NewOptString("not-a-date")}
-	if err := ValidateUpdateEventRequest(r); err == nil || !strings.Contains(err.Error(), "recurrence_until must be RFC 3339") {
-		t.Fatalf("expected until format error, got: %v", err)
-	}
+	assert.ErrorContains(t, ValidateUpdateEventRequest(r), "recurrence_until must be RFC 3339")
 
 	// RecurrenceInterval validation in update
 	r2 := &api.UpdateEventRequest{RecurrenceInterval: api.NewOptInt(-1)}
-	if err := ValidateUpdateEventRequest(r2); err == nil || !strings.Contains(err.Error(), "recurrence_interval must be >= 0") {
-		t.Fatalf("expected interval error, got: %v", err)
-	}
+	assert.ErrorContains(t, ValidateUpdateEventRequest(r2), "recurrence_interval must be >= 0")
 
 	// ByDay validation in update
 	r3 := &api.UpdateEventRequest{RecurrenceByDay: api.NewOptString("XX")}
-	if err := ValidateUpdateEventRequest(r3); err == nil || !strings.Contains(err.Error(), "invalid weekday") {
-		t.Fatalf("expected weekday error, got: %v", err)
-	}
+	assert.ErrorContains(t, ValidateUpdateEventRequest(r3), "invalid weekday")
 
 	// ByMonthDay validation in update
 	r4 := &api.UpdateEventRequest{RecurrenceByMonthday: api.NewOptString("0")}
-	if err := ValidateUpdateEventRequest(r4); err == nil || !strings.Contains(err.Error(), "not zero") {
-		t.Fatalf("expected monthday error, got: %v", err)
-	}
+	assert.ErrorContains(t, ValidateUpdateEventRequest(r4), "not zero")
 
 	// ByMonth validation in update
 	r5 := &api.UpdateEventRequest{RecurrenceByMonth: api.NewOptString("13")}
-	if err := ValidateUpdateEventRequest(r5); err == nil || !strings.Contains(err.Error(), "between 1 and 12") {
-		t.Fatalf("expected month error, got: %v", err)
-	}
+	assert.ErrorContains(t, ValidateUpdateEventRequest(r5), "between 1 and 12")
 
 	// ExDates validation in update
 	r6 := &api.UpdateEventRequest{Exdates: api.NewOptString("not-a-date")}
-	if err := ValidateUpdateEventRequest(r6); err == nil || !strings.Contains(err.Error(), "invalid RFC 3339") {
-		t.Fatalf("expected exdates error, got: %v", err)
-	}
+	assert.ErrorContains(t, ValidateUpdateEventRequest(r6), "invalid RFC 3339")
 
 	// RDates validation in update
 	r7 := &api.UpdateEventRequest{Rdates: api.NewOptString("not-a-date")}
-	if err := ValidateUpdateEventRequest(r7); err == nil || !strings.Contains(err.Error(), "invalid RFC 3339") {
-		t.Fatalf("expected rdates error, got: %v", err)
-	}
+	assert.ErrorContains(t, ValidateUpdateEventRequest(r7), "invalid RFC 3339")
 }
 
 func TestValidateAllDayRecurrenceFields(t *testing.T) {
 	start := time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC)
 	r := &api.CreateEventRequest{
-		Title:     "All Day Test",
-		AllDay:    true,
-		StartDate: api.NewOptDate(start),
-		RecurrenceFreq: api.NewOptCreateEventRequestRecurrenceFreq(api.CreateEventRequestRecurrenceFreqWEEKLY),
+		Title:           "All Day Test",
+		AllDay:          true,
+		StartDate:       api.NewOptDate(start),
+		RecurrenceFreq:  api.NewOptCreateEventRequestRecurrenceFreq(api.CreateEventRequestRecurrenceFreqWEEKLY),
 		RecurrenceByDay: api.NewOptString("MO,XX"),
 	}
-	if _, _, err := ValidateCreateEventRequest(r); err == nil || !strings.Contains(err.Error(), "invalid weekday") {
-		t.Fatalf("expected weekday error for all-day event, got: %v", err)
-	}
+	_, _, err := ValidateCreateEventRequest(r)
+	assert.ErrorContains(t, err, "invalid weekday")
 }
 
 func TestValidateLatitude(t *testing.T) {
@@ -264,13 +228,9 @@ func TestValidateLatitude(t *testing.T) {
 			r.Latitude = api.NewOptNilFloat64(tt.lat)
 			_, _, err := ValidateCreateEventRequest(r)
 			if tt.wantErr == "" {
-				if err != nil {
-					t.Fatalf("unexpected error: %v", err)
-				}
+				assert.NoError(t, err)
 			} else {
-				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
-					t.Fatalf("expected error containing %q, got: %v", tt.wantErr, err)
-				}
+				assert.ErrorContains(t, err, tt.wantErr)
 			}
 		})
 	}
@@ -296,13 +256,9 @@ func TestValidateLongitude(t *testing.T) {
 			r.Longitude = api.NewOptNilFloat64(tt.lon)
 			_, _, err := ValidateCreateEventRequest(r)
 			if tt.wantErr == "" {
-				if err != nil {
-					t.Fatalf("unexpected error: %v", err)
-				}
+				assert.NoError(t, err)
 			} else {
-				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
-					t.Fatalf("expected error containing %q, got: %v", tt.wantErr, err)
-				}
+				assert.ErrorContains(t, err, tt.wantErr)
 			}
 		})
 	}
@@ -310,20 +266,14 @@ func TestValidateLongitude(t *testing.T) {
 
 func TestValidateUpdateCoordinates(t *testing.T) {
 	r := &api.UpdateEventRequest{Latitude: api.NewOptNilFloat64(91.0)}
-	if err := ValidateUpdateEventRequest(r); err == nil || !strings.Contains(err.Error(), "between -90 and 90") {
-		t.Fatalf("expected latitude error, got: %v", err)
-	}
+	assert.ErrorContains(t, ValidateUpdateEventRequest(r), "between -90 and 90")
 
 	r2 := &api.UpdateEventRequest{Longitude: api.NewOptNilFloat64(181.0)}
-	if err := ValidateUpdateEventRequest(r2); err == nil || !strings.Contains(err.Error(), "between -180 and 180") {
-		t.Fatalf("expected longitude error, got: %v", err)
-	}
+	assert.ErrorContains(t, ValidateUpdateEventRequest(r2), "between -180 and 180")
 
 	r3 := &api.UpdateEventRequest{
 		Latitude:  api.NewOptNilFloat64(45.5),
 		Longitude: api.NewOptNilFloat64(120.5),
 	}
-	if err := ValidateUpdateEventRequest(r3); err != nil {
-		t.Fatalf("unexpected error for valid coordinates: %v", err)
-	}
+	assert.NoError(t, ValidateUpdateEventRequest(r3))
 }

@@ -13,6 +13,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/mikaelstaldal/mycal/internal/handler"
 	"github.com/mikaelstaldal/mycal/internal/repository"
 	"github.com/mikaelstaldal/mycal/internal/service"
@@ -58,13 +61,9 @@ type jsonError struct {
 func setupTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
 	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("open db: %v", err)
-	}
+	require.NoError(t, err)
 	repo, err := repository.NewSQLiteRepository(db)
-	if err != nil {
-		t.Fatalf("init repo: %v", err)
-	}
+	require.NoError(t, err)
 	calSvc := service.NewCalendarService(repo)
 	svc := service.NewEventService(repo, repo)
 	prefSvc := service.NewPreferencesService(repo)
@@ -82,67 +81,52 @@ func readBody(t *testing.T, resp *http.Response) []byte {
 	t.Helper()
 	defer resp.Body.Close()
 	b, err := io.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatalf("read body: %v", err)
-	}
+	require.NoError(t, err)
 	return b
 }
 
 func postJSONMap(t *testing.T, url string, body map[string]any) *http.Response {
 	t.Helper()
 	data, err := json.Marshal(body)
-	if err != nil {
-		t.Fatalf("marshal: %v", err)
-	}
+	require.NoError(t, err)
 	resp, err := http.Post(url, "application/json", strings.NewReader(string(data)))
-	if err != nil {
-		t.Fatalf("post: %v", err)
-	}
+	require.NoError(t, err)
 	return resp
 }
 
 func patchJSONMap(t *testing.T, rawURL string, body map[string]any) *http.Response {
 	t.Helper()
 	data, err := json.Marshal(body)
-	if err != nil {
-		t.Fatalf("marshal: %v", err)
-	}
+	require.NoError(t, err)
 	req, err := http.NewRequest(http.MethodPatch, rawURL, strings.NewReader(string(data)))
-	if err != nil {
-		t.Fatalf("new request: %v", err)
-	}
+	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatalf("patch: %v", err)
-	}
+	require.NoError(t, err)
 	return resp
 }
 
 func decodeEvent(t *testing.T, b []byte) jsonEvent {
 	t.Helper()
 	var e jsonEvent
-	if err := json.Unmarshal(b, &e); err != nil {
-		t.Fatalf("decode event: %v\nbody: %s", err, b)
-	}
+	err := json.Unmarshal(b, &e)
+	require.NoError(t, err, "body: %s", b)
 	return e
 }
 
 func decodeEvents(t *testing.T, b []byte) []jsonEvent {
 	t.Helper()
 	var events []jsonEvent
-	if err := json.Unmarshal(b, &events); err != nil {
-		t.Fatalf("decode events: %v\nbody: %s", err, b)
-	}
+	err := json.Unmarshal(b, &events)
+	require.NoError(t, err, "body: %s", b)
 	return events
 }
 
 func decodeCalendars(t *testing.T, b []byte) []jsonCalendar {
 	t.Helper()
 	var cals []jsonCalendar
-	if err := json.Unmarshal(b, &cals); err != nil {
-		t.Fatalf("decode calendars: %v\nbody: %s", err, b)
-	}
+	err := json.Unmarshal(b, &cals)
+	require.NoError(t, err, "body: %s", b)
 	return cals
 }
 
@@ -151,9 +135,7 @@ func createJSONEvent(t *testing.T, ts *httptest.Server, body map[string]any) jso
 	t.Helper()
 	resp := postJSONMap(t, ts.URL+"/api/v1/events", body)
 	b := readBody(t, resp)
-	if resp.StatusCode != http.StatusCreated {
-		t.Fatalf("create event: got %d, want 201\nbody: %s", resp.StatusCode, b)
-	}
+	require.Equal(t, http.StatusCreated, resp.StatusCode, "body: %s", b)
 	return decodeEvent(t, b)
 }
 
@@ -163,25 +145,17 @@ func TestCalendars_DefaultCalendarExists(t *testing.T) {
 	ts := setupTestServer(t)
 
 	resp, err := http.Get(ts.URL + "/api/v1/calendars")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	cals := decodeCalendars(t, readBody(t, resp))
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("got %d, want 200", resp.StatusCode)
-	}
-	if len(cals) == 0 {
-		t.Fatal("expected at least one calendar (the default)")
-	}
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.NotEmpty(t, cals, "expected at least one calendar (the default)")
 	var hasDefault bool
 	for _, c := range cals {
 		if c.ID == 0 {
 			hasDefault = true
 		}
 	}
-	if !hasDefault {
-		t.Error("expected default calendar with id=0")
-	}
+	assert.True(t, hasDefault, "expected default calendar with id=0")
 }
 
 func TestCalendars_UpdateNameAndColor(t *testing.T) {
@@ -192,19 +166,12 @@ func TestCalendars_UpdateNameAndColor(t *testing.T) {
 		"color": "dodgerblue",
 	})
 	b := readBody(t, resp)
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("update calendar: got %d, want 200\nbody: %s", resp.StatusCode, b)
-	}
+	assert.Equal(t, http.StatusOK, resp.StatusCode, "body: %s", b)
 	var cal jsonCalendar
-	if err := json.Unmarshal(b, &cal); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-	if cal.Name != "My Calendar" {
-		t.Errorf("name = %q, want %q", cal.Name, "My Calendar")
-	}
-	if cal.Color != "dodgerblue" {
-		t.Errorf("color = %q, want %q", cal.Color, "dodgerblue")
-	}
+	err := json.Unmarshal(b, &cal)
+	require.NoError(t, err)
+	assert.Equal(t, "My Calendar", cal.Name)
+	assert.Equal(t, "dodgerblue", cal.Color)
 }
 
 func TestCalendars_CreatedByImport(t *testing.T) {
@@ -221,18 +188,12 @@ END:VEVENT
 END:VCALENDAR`
 
 	resp, err := http.Post(ts.URL+"/api/v1/import?calendar=Work", "text/calendar", strings.NewReader(ics))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	readBody(t, resp) // drain
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("import: got %d, want 200", resp.StatusCode)
-	}
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	calsResp, err := http.Get(ts.URL + "/api/v1/calendars")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	cals := decodeCalendars(t, readBody(t, calsResp))
 
 	var found bool
@@ -241,9 +202,7 @@ END:VCALENDAR`
 			found = true
 		}
 	}
-	if !found {
-		t.Errorf("expected a calendar named 'Work' after import, got %+v", cals)
-	}
+	assert.True(t, found, "expected a calendar named 'Work' after import, got %+v", cals)
 }
 
 // ---- Event tests with plain JSON ----
@@ -259,24 +218,14 @@ func TestCreateAndGetEvent(t *testing.T) {
 		"description": "Quarterly review",
 	})
 
-	if created.ID == "" {
-		t.Fatal("expected non-empty id")
-	}
-	if created.Title != "Team Meeting" {
-		t.Errorf("title = %q, want %q", created.Title, "Team Meeting")
-	}
+	assert.NotEmpty(t, created.ID)
+	assert.Equal(t, "Team Meeting", created.Title)
 
 	resp, err := http.Get(ts.URL + "/api/v1/events/" + created.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	got := decodeEvent(t, readBody(t, resp))
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("get: got %d, want 200", resp.StatusCode)
-	}
-	if got.Title != "Team Meeting" {
-		t.Errorf("title = %q, want %q", got.Title, "Team Meeting")
-	}
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "Team Meeting", got.Title)
 }
 
 func TestUpdateEvent(t *testing.T) {
@@ -294,20 +243,12 @@ func TestUpdateEvent(t *testing.T) {
 		"location": "Room 1",
 	})
 	b := readBody(t, resp)
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("update: got %d, want 200\nbody: %s", resp.StatusCode, b)
-	}
+	assert.Equal(t, http.StatusOK, resp.StatusCode, "body: %s", b)
 	updated := decodeEvent(t, b)
-	if updated.Title != "Daily Stand-up" {
-		t.Errorf("title = %q, want %q", updated.Title, "Daily Stand-up")
-	}
-	if updated.Location != "Room 1" {
-		t.Errorf("location = %q, want %q", updated.Location, "Room 1")
-	}
+	assert.Equal(t, "Daily Stand-up", updated.Title)
+	assert.Equal(t, "Room 1", updated.Location)
 	// start_time unchanged
-	if updated.StartTime != "2026-05-12T09:00:00Z" {
-		t.Errorf("start_time = %q, want unchanged", updated.StartTime)
-	}
+	assert.Equal(t, "2026-05-12T09:00:00Z", updated.StartTime)
 }
 
 func TestDeleteEvent(t *testing.T) {
@@ -322,19 +263,13 @@ func TestDeleteEvent(t *testing.T) {
 
 	req, _ := http.NewRequest(http.MethodDelete, ts.URL+"/api/v1/events/"+created.ID, nil)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	resp.Body.Close()
-	if resp.StatusCode != http.StatusNoContent {
-		t.Fatalf("delete: got %d, want 204", resp.StatusCode)
-	}
+	assert.Equal(t, http.StatusNoContent, resp.StatusCode)
 
 	resp2, _ := http.Get(ts.URL + "/api/v1/events/" + created.ID)
 	resp2.Body.Close()
-	if resp2.StatusCode != http.StatusNotFound {
-		t.Errorf("after delete: got %d, want 404", resp2.StatusCode)
-	}
+	assert.Equal(t, http.StatusNotFound, resp2.StatusCode)
 }
 
 func TestListEvents_TimeRange(t *testing.T) {
@@ -350,19 +285,11 @@ func TestListEvents_TimeRange(t *testing.T) {
 	}
 
 	resp, err := http.Get(ts.URL + "/api/v1/events?from=2026-06-14T00:00:00Z&to=2026-06-16T00:00:00Z")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	events := decodeEvents(t, readBody(t, resp))
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("list: got %d, want 200", resp.StatusCode)
-	}
-	if len(events) != 1 {
-		t.Fatalf("got %d events, want 1", len(events))
-	}
-	if events[0].Title != "Event 2026-06-15T10:00:00Z" {
-		t.Errorf("wrong event returned: %q", events[0].Title)
-	}
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Len(t, events, 1)
+	assert.Equal(t, "Event 2026-06-15T10:00:00Z", events[0].Title)
 }
 
 func TestSearchEvents(t *testing.T) {
@@ -382,19 +309,11 @@ func TestSearchEvents(t *testing.T) {
 	})
 
 	resp, err := http.Get(ts.URL + "/api/v1/events?q=Board")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	events := decodeEvents(t, readBody(t, resp))
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("search: got %d, want 200", resp.StatusCode)
-	}
-	if len(events) != 1 {
-		t.Fatalf("got %d events, want 1", len(events))
-	}
-	if events[0].Title != "Board Meeting" {
-		t.Errorf("title = %q, want %q", events[0].Title, "Board Meeting")
-	}
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Len(t, events, 1)
+	assert.Equal(t, "Board Meeting", events[0].Title)
 }
 
 func TestAllDayEvent(t *testing.T) {
@@ -406,12 +325,8 @@ func TestAllDayEvent(t *testing.T) {
 		"start_date": "2026-08-01",
 	})
 
-	if !created.AllDay {
-		t.Error("expected all_day = true")
-	}
-	if created.StartDate != "2026-08-01" {
-		t.Errorf("start_date = %q, want %q", created.StartDate, "2026-08-01")
-	}
+	assert.True(t, created.AllDay)
+	assert.Equal(t, "2026-08-01", created.StartDate)
 }
 
 // ---- Location and reminder ----
@@ -430,19 +345,13 @@ func TestEventWithLocationAndCoordinates(t *testing.T) {
 		"longitude":  lon,
 	})
 	b := readBody(t, resp)
-	if resp.StatusCode != http.StatusCreated {
-		t.Fatalf("create: got %d, want 201\nbody: %s", resp.StatusCode, b)
-	}
+	assert.Equal(t, http.StatusCreated, resp.StatusCode, "body: %s", b)
 	event := decodeEvent(t, b)
-	if event.Location != "Stockholm, Sweden" {
-		t.Errorf("location = %q, want %q", event.Location, "Stockholm, Sweden")
-	}
-	if event.Latitude == nil || *event.Latitude != lat {
-		t.Errorf("latitude = %v, want %v", event.Latitude, lat)
-	}
-	if event.Longitude == nil || *event.Longitude != lon {
-		t.Errorf("longitude = %v, want %v", event.Longitude, lon)
-	}
+	assert.Equal(t, "Stockholm, Sweden", event.Location)
+	require.NotNil(t, event.Latitude)
+	assert.Equal(t, lat, *event.Latitude)
+	require.NotNil(t, event.Longitude)
+	assert.Equal(t, lon, *event.Longitude)
 }
 
 func TestEventWithReminderMinutes(t *testing.T) {
@@ -457,13 +366,10 @@ func TestEventWithReminderMinutes(t *testing.T) {
 		"reminder_minutes": mins,
 	})
 	b := readBody(t, resp)
-	if resp.StatusCode != http.StatusCreated {
-		t.Fatalf("create: got %d, want 201\nbody: %s", resp.StatusCode, b)
-	}
+	assert.Equal(t, http.StatusCreated, resp.StatusCode, "body: %s", b)
 	event := decodeEvent(t, b)
-	if event.ReminderMinutes == nil || *event.ReminderMinutes != mins {
-		t.Errorf("reminder_minutes = %v, want %d", event.ReminderMinutes, mins)
-	}
+	require.NotNil(t, event.ReminderMinutes)
+	assert.Equal(t, mins, *event.ReminderMinutes)
 }
 
 // ---- Calendar filtering ----
@@ -482,9 +388,7 @@ SUMMARY:Work Event
 END:VEVENT
 END:VCALENDAR`
 	importResp, err := http.Post(ts.URL+"/api/v1/import?calendar=Work", "text/calendar", strings.NewReader(ics))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	readBody(t, importResp)
 
 	// Also create a default-calendar event in the same range
@@ -496,7 +400,8 @@ END:VCALENDAR`
 	})
 
 	// Get the Work calendar's ID
-	calsResp, _ := http.Get(ts.URL + "/api/v1/calendars")
+	calsResp, err := http.Get(ts.URL + "/api/v1/calendars")
+	require.NoError(t, err)
 	cals := decodeCalendars(t, readBody(t, calsResp))
 	var workCalID int64 = -1
 	for _, c := range cals {
@@ -504,26 +409,16 @@ END:VCALENDAR`
 			workCalID = c.ID
 		}
 	}
-	if workCalID < 0 {
-		t.Fatal("Work calendar not found")
-	}
+	require.GreaterOrEqual(t, workCalID, int64(0), "Work calendar not found")
 
 	// List filtered to Work calendar
 	url := fmt.Sprintf("%s/api/v1/events?from=2026-10-01T00:00:00Z&to=2026-10-02T00:00:00Z&calendar_id=%d", ts.URL, workCalID)
 	resp, err := http.Get(url)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	events := decodeEvents(t, readBody(t, resp))
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("list: got %d, want 200", resp.StatusCode)
-	}
-	if len(events) != 1 {
-		t.Fatalf("got %d events, want 1 (only Work calendar)", len(events))
-	}
-	if events[0].Title != "Work Event" {
-		t.Errorf("title = %q, want %q", events[0].Title, "Work Event")
-	}
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Len(t, events, 1, "only Work calendar")
+	assert.Equal(t, "Work Event", events[0].Title)
 }
 
 func TestFilterByCalendarName(t *testing.T) {
@@ -539,9 +434,7 @@ SUMMARY:Sports Event
 END:VEVENT
 END:VCALENDAR`
 	importResp, err := http.Post(ts.URL+"/api/v1/import?calendar=Sports", "text/calendar", strings.NewReader(ics))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	readBody(t, importResp)
 
 	createJSONEvent(t, ts, map[string]any{
@@ -552,19 +445,11 @@ END:VCALENDAR`
 	})
 
 	resp, err := http.Get(ts.URL + "/api/v1/events?from=2026-11-01T00:00:00Z&to=2026-11-02T00:00:00Z&calendar=Sports")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	events := decodeEvents(t, readBody(t, resp))
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("list: got %d, want 200", resp.StatusCode)
-	}
-	if len(events) != 1 {
-		t.Fatalf("got %d events, want 1 (only Sports calendar)", len(events))
-	}
-	if events[0].Title != "Sports Event" {
-		t.Errorf("title = %q, want %q", events[0].Title, "Sports Event")
-	}
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Len(t, events, 1, "only Sports calendar")
+	assert.Equal(t, "Sports Event", events[0].Title)
 }
 
 // ---- iCal feed ----
@@ -580,20 +465,11 @@ func TestCalendarICSConvenienceURL(t *testing.T) {
 	})
 
 	resp, err := http.Get(ts.URL + "/calendar.ics")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	b := readBody(t, resp)
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("got %d, want 200", resp.StatusCode)
-	}
-	ct := resp.Header.Get("Content-Type")
-	if !strings.HasPrefix(ct, "text/calendar") {
-		t.Errorf("Content-Type = %q, want text/calendar", ct)
-	}
-	if !strings.Contains(string(b), "SUMMARY:ICS Feed Test") {
-		t.Error("expected SUMMARY:ICS Feed Test in calendar.ics output")
-	}
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.True(t, strings.HasPrefix(resp.Header.Get("Content-Type"), "text/calendar"))
+	assert.Contains(t, string(b), "SUMMARY:ICS Feed Test")
 }
 
 func TestICSFeedFilteredByCalendar(t *testing.T) {
@@ -609,9 +485,7 @@ SUMMARY:Private Event
 END:VEVENT
 END:VCALENDAR`
 	importResp, err := http.Post(ts.URL+"/api/v1/import?calendar=Private", "text/calendar", strings.NewReader(ics))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	readBody(t, importResp)
 
 	createJSONEvent(t, ts, map[string]any{
@@ -622,20 +496,12 @@ END:VCALENDAR`
 	})
 
 	resp, err := http.Get(ts.URL + "/api/v1/events.ics?calendar=Private")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	b := readBody(t, resp)
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("got %d, want 200", resp.StatusCode)
-	}
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	icsStr := string(b)
-	if !strings.Contains(icsStr, "SUMMARY:Private Event") {
-		t.Error("expected Private Event in filtered ics feed")
-	}
-	if strings.Contains(icsStr, "SUMMARY:Public Event") {
-		t.Error("Public Event should not appear in Private calendar feed")
-	}
+	assert.Contains(t, icsStr, "SUMMARY:Private Event")
+	assert.NotContains(t, icsStr, "SUMMARY:Public Event")
 }
 
 // ---- Error cases ----
@@ -644,20 +510,13 @@ func TestGetNonExistentEvent(t *testing.T) {
 	ts := setupTestServer(t)
 
 	resp, err := http.Get(ts.URL + "/api/v1/events/99999")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	b := readBody(t, resp)
-	if resp.StatusCode != http.StatusNotFound {
-		t.Fatalf("got %d, want 404", resp.StatusCode)
-	}
+	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
 	var errBody jsonError
-	if err := json.Unmarshal(b, &errBody); err != nil {
-		t.Fatalf("error response should be valid JSON: %v", err)
-	}
-	if errBody.Error == "" {
-		t.Error("expected non-empty error field in response")
-	}
+	err = json.Unmarshal(b, &errBody)
+	require.NoError(t, err)
+	assert.NotEmpty(t, errBody.Error)
 }
 
 func TestCreateEvent_MissingTitle(t *testing.T) {
@@ -670,16 +529,11 @@ func TestCreateEvent_MissingTitle(t *testing.T) {
 		"end_time":   "2026-03-15T11:00:00Z",
 	})
 	b := readBody(t, resp)
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Fatalf("got %d, want 400\nbody: %s", resp.StatusCode, b)
-	}
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode, "body: %s", b)
 	var errBody jsonError
-	if err := json.Unmarshal(b, &errBody); err != nil {
-		t.Fatalf("error response should be valid JSON: %v", err)
-	}
-	if errBody.Error == "" {
-		t.Error("expected non-empty error field")
-	}
+	err := json.Unmarshal(b, &errBody)
+	require.NoError(t, err)
+	assert.NotEmpty(t, errBody.Error)
 }
 
 func TestListEvents_MissingRangeParams(t *testing.T) {
@@ -691,13 +545,9 @@ func TestListEvents_MissingRangeParams(t *testing.T) {
 		"/api/v1/events?to=2026-03-31T00:00:00Z",
 	} {
 		resp, err := http.Get(ts.URL + path)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		resp.Body.Close()
-		if resp.StatusCode != http.StatusBadRequest {
-			t.Errorf("GET %s: got %d, want 400", path, resp.StatusCode)
-		}
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode, "GET %s", path)
 	}
 }
 
@@ -715,32 +565,18 @@ func TestRecurring_DailyExpansion(t *testing.T) {
 		"recurrence_count": 5,
 	})
 
-	if created.RecurrenceFreq != "DAILY" {
-		t.Errorf("recurrence_freq = %q, want DAILY", created.RecurrenceFreq)
-	}
+	assert.Equal(t, "DAILY", created.RecurrenceFreq)
 
 	resp, err := http.Get(ts.URL + "/api/v1/events?from=2026-05-04T00:00:00Z&to=2026-05-09T00:00:00Z")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	events := decodeEvents(t, readBody(t, resp))
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("list: got %d, want 200", resp.StatusCode)
-	}
-	if len(events) != 5 {
-		t.Fatalf("got %d events, want 5 daily instances", len(events))
-	}
-	if events[0].StartTime != "2026-05-04T09:00:00Z" {
-		t.Errorf("first instance start = %q, want 2026-05-04T09:00:00Z", events[0].StartTime)
-	}
-	if events[4].StartTime != "2026-05-08T09:00:00Z" {
-		t.Errorf("last instance start = %q, want 2026-05-08T09:00:00Z", events[4].StartTime)
-	}
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Len(t, events, 5, "5 daily instances")
+	assert.Equal(t, "2026-05-04T09:00:00Z", events[0].StartTime)
+	assert.Equal(t, "2026-05-08T09:00:00Z", events[4].StartTime)
 	// All instances share the same parent ID
 	for _, e := range events {
-		if e.CalendarID != created.CalendarID {
-			t.Errorf("instance calendar_id = %d, want %d", e.CalendarID, created.CalendarID)
-		}
+		assert.Equal(t, created.CalendarID, e.CalendarID)
 	}
 }
 
@@ -756,21 +592,13 @@ func TestRecurring_WeeklyExpansion(t *testing.T) {
 	})
 
 	resp, err := http.Get(ts.URL + "/api/v1/events?from=2026-05-04T00:00:00Z&to=2026-05-25T00:00:00Z")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	events := decodeEvents(t, readBody(t, resp))
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("list: got %d, want 200", resp.StatusCode)
-	}
-	if len(events) != 3 {
-		t.Fatalf("got %d events, want 3 weekly instances", len(events))
-	}
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Len(t, events, 3, "3 weekly instances")
 	wantStarts := []string{"2026-05-04T10:00:00Z", "2026-05-11T10:00:00Z", "2026-05-18T10:00:00Z"}
 	for i, want := range wantStarts {
-		if events[i].StartTime != want {
-			t.Errorf("instance %d start = %q, want %q", i, events[i].StartTime, want)
-		}
+		assert.Equal(t, want, events[i].StartTime, "instance %d start", i)
 	}
 }
 
@@ -788,41 +616,29 @@ func TestRecurring_CountLimitsExpansion(t *testing.T) {
 
 	// Query a wide window — count=3 should cap at 3 regardless
 	resp, err := http.Get(ts.URL + "/api/v1/events?from=2026-06-01T00:00:00Z&to=2026-12-31T00:00:00Z")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	events := decodeEvents(t, readBody(t, resp))
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("list: got %d, want 200", resp.StatusCode)
-	}
-	if len(events) != 3 {
-		t.Fatalf("got %d events, want exactly 3 (count limit)", len(events))
-	}
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Len(t, events, 3, "count limit")
 }
 
 func TestRecurring_UntilLimitsExpansion(t *testing.T) {
 	ts := setupTestServer(t)
 
 	createJSONEvent(t, ts, map[string]any{
-		"title":              "Until Recurring",
-		"all_day":            false,
-		"start_time":         "2026-07-01T08:00:00Z",
-		"end_time":           "2026-07-01T09:00:00Z",
-		"recurrence_freq":    "DAILY",
-		"recurrence_until":   "2026-07-03T23:59:59Z",
+		"title":            "Until Recurring",
+		"all_day":          false,
+		"start_time":       "2026-07-01T08:00:00Z",
+		"end_time":         "2026-07-01T09:00:00Z",
+		"recurrence_freq":  "DAILY",
+		"recurrence_until": "2026-07-03T23:59:59Z",
 	})
 
 	resp, err := http.Get(ts.URL + "/api/v1/events?from=2026-07-01T00:00:00Z&to=2026-12-31T00:00:00Z")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	events := decodeEvents(t, readBody(t, resp))
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("list: got %d, want 200", resp.StatusCode)
-	}
-	if len(events) != 3 {
-		t.Fatalf("got %d events (Jul 1-3), want 3", len(events))
-	}
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Len(t, events, 3, "Jul 1-3")
 }
 
 func TestRecurring_ExDateExcludesInstance(t *testing.T) {
@@ -842,30 +658,18 @@ func TestRecurring_ExDateExcludesInstance(t *testing.T) {
 	// Deleting a recurring instance adds it to exdates and returns 200 with the updated parent
 	req, _ := http.NewRequest(http.MethodDelete, ts.URL+"/api/v1/events/"+instanceID, nil)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("delete instance: got %d, want 200", resp.StatusCode)
-	}
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	// List — should now have 4 instances (Aug 3, 5, 6, 7) with Aug 4 excluded
 	listResp, err := http.Get(ts.URL + "/api/v1/events?from=2026-08-03T00:00:00Z&to=2026-08-08T00:00:00Z")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	events := decodeEvents(t, readBody(t, listResp))
-	if listResp.StatusCode != http.StatusOK {
-		t.Fatalf("list: got %d, want 200", listResp.StatusCode)
-	}
-	if len(events) != 4 {
-		t.Fatalf("got %d events after excluding one, want 4", len(events))
-	}
+	assert.Equal(t, http.StatusOK, listResp.StatusCode)
+	assert.Len(t, events, 4, "after excluding one")
 	for _, e := range events {
-		if e.StartTime == "2026-08-04T10:00:00Z" {
-			t.Error("excluded instance (Aug 4) should not appear in listing")
-		}
+		assert.NotEqual(t, "2026-08-04T10:00:00Z", e.StartTime, "excluded instance (Aug 4) should not appear in listing")
 	}
 }
 
@@ -887,79 +691,53 @@ func TestRecurring_InstanceOverride(t *testing.T) {
 		"title": "Weekly Sync (rescheduled)",
 	})
 	b := readBody(t, resp)
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("patch instance: got %d, want 200\nbody: %s", resp.StatusCode, b)
-	}
+	assert.Equal(t, http.StatusOK, resp.StatusCode, "body: %s", b)
 
 	// Fetch the overridden instance directly
 	getResp, err := http.Get(ts.URL + "/api/v1/events/" + instanceID)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	overridden := decodeEvent(t, readBody(t, getResp))
-	if getResp.StatusCode != http.StatusOK {
-		t.Fatalf("get instance: got %d, want 200", getResp.StatusCode)
-	}
-	if overridden.Title != "Weekly Sync (rescheduled)" {
-		t.Errorf("overridden title = %q, want %q", overridden.Title, "Weekly Sync (rescheduled)")
-	}
+	assert.Equal(t, http.StatusOK, getResp.StatusCode)
+	assert.Equal(t, "Weekly Sync (rescheduled)", overridden.Title)
 
 	// In the list, the override should appear with the new title while others keep the original
 	listResp, err := http.Get(ts.URL + "/api/v1/events?from=2026-09-07T00:00:00Z&to=2026-10-05T00:00:00Z")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	events := decodeEvents(t, readBody(t, listResp))
-	if listResp.StatusCode != http.StatusOK {
-		t.Fatalf("list: got %d, want 200", listResp.StatusCode)
-	}
-	if len(events) != 4 {
-		t.Fatalf("got %d events, want 4", len(events))
-	}
+	assert.Equal(t, http.StatusOK, listResp.StatusCode)
+	assert.Len(t, events, 4)
 	var foundOverride bool
 	for _, e := range events {
 		if e.StartTime == "2026-09-14T14:00:00Z" {
 			foundOverride = true
-			if e.Title != "Weekly Sync (rescheduled)" {
-				t.Errorf("Sep 14 title = %q, want %q", e.Title, "Weekly Sync (rescheduled)")
-			}
+			assert.Equal(t, "Weekly Sync (rescheduled)", e.Title, "Sep 14 title")
 		}
 	}
-	if !foundOverride {
-		t.Error("overridden instance not found in list")
-	}
+	assert.True(t, foundOverride, "overridden instance not found in list")
 }
 
 func TestRecurring_MonthlyByDay(t *testing.T) {
 	ts := setupTestServer(t)
 
 	createJSONEvent(t, ts, map[string]any{
-		"title":                 "Monthly Board",
-		"all_day":               false,
-		"start_time":            "2026-05-11T09:00:00Z", // 2nd Monday of May
-		"end_time":              "2026-05-11T10:00:00Z",
-		"recurrence_freq":       "MONTHLY",
-		"recurrence_by_day":     "2MO",
-		"recurrence_count":      3,
+		"title":             "Monthly Board",
+		"all_day":           false,
+		"start_time":        "2026-05-11T09:00:00Z", // 2nd Monday of May
+		"end_time":          "2026-05-11T10:00:00Z",
+		"recurrence_freq":   "MONTHLY",
+		"recurrence_by_day": "2MO",
+		"recurrence_count":  3,
 	})
 
 	resp, err := http.Get(ts.URL + "/api/v1/events?from=2026-05-01T00:00:00Z&to=2026-08-01T00:00:00Z")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	events := decodeEvents(t, readBody(t, resp))
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("list: got %d, want 200", resp.StatusCode)
-	}
-	if len(events) != 3 {
-		t.Fatalf("got %d events, want 3 monthly instances", len(events))
-	}
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Len(t, events, 3, "3 monthly instances")
 	// 2nd Monday: May 11, Jun 8, Jul 13
 	wantStarts := []string{"2026-05-11T09:00:00Z", "2026-06-08T09:00:00Z", "2026-07-13T09:00:00Z"}
 	for i, want := range wantStarts {
-		if events[i].StartTime != want {
-			t.Errorf("instance %d start = %q, want %q", i, events[i].StartTime, want)
-		}
+		assert.Equal(t, want, events[i].StartTime, "instance %d start", i)
 	}
 }
 
@@ -977,17 +755,10 @@ func TestRecurring_GetParentEvent(t *testing.T) {
 
 	// GET the parent by its plain numeric ID should return the event with recurrence info
 	resp, err := http.Get(ts.URL + "/api/v1/events/" + created.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	got := decodeEvent(t, readBody(t, resp))
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("get: got %d, want 200", resp.StatusCode)
-	}
-	if got.RecurrenceFreq != "WEEKLY" {
-		t.Errorf("recurrence_freq = %q, want WEEKLY", got.RecurrenceFreq)
-	}
-	if got.RecurrenceCount == nil || *got.RecurrenceCount != 4 {
-		t.Errorf("recurrence_count = %v, want 4", got.RecurrenceCount)
-	}
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "WEEKLY", got.RecurrenceFreq)
+	require.NotNil(t, got.RecurrenceCount)
+	assert.Equal(t, 4, *got.RecurrenceCount)
 }

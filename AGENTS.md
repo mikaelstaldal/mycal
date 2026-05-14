@@ -35,6 +35,9 @@ Two code generation steps run automatically in `build.sh`:
 
 ## Tests
 
+Go tests should use the `github.com/stretchr/testify` library for assertions. 
+Use `require` for critical checks (like error handling) to stop test execution early, and `assert` for other checks.
+
 ```bash
 go test ./...                           # all tests
 go test ./internal/repository/ -v       # repository tests only

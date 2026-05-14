@@ -13,6 +13,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/mikaelstaldal/mycal/internal/api"
 	"github.com/mikaelstaldal/mycal/internal/handler"
 	"github.com/mikaelstaldal/mycal/internal/repository"
@@ -39,13 +42,9 @@ func mustDate(s string) time.Time {
 func setupTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
 	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("open db: %v", err)
-	}
+	require.NoError(t, err, "open db")
 	repo, err := repository.NewSQLiteRepository(db)
-	if err != nil {
-		t.Fatalf("init repo: %v", err)
-	}
+	require.NoError(t, err, "init repo")
 	calSvc := service.NewCalendarService(repo)
 	svc := service.NewEventService(repo, repo)
 	prefSvc := service.NewPreferencesService(repo)
@@ -73,53 +72,37 @@ func marshalBody(body any) ([]byte, error) {
 func postJSON(t *testing.T, url string, body any) *http.Response {
 	t.Helper()
 	data, err := marshalBody(body)
-	if err != nil {
-		t.Fatalf("marshal: %v", err)
-	}
+	require.NoError(t, err, "marshal")
 	resp, err := http.Post(url, "application/json", bytes.NewReader(data))
-	if err != nil {
-		t.Fatalf("post: %v", err)
-	}
+	require.NoError(t, err, "post")
 	return resp
 }
 
 func postICS(t *testing.T, url string, icsContent string) *http.Response {
 	t.Helper()
 	resp, err := http.Post(url, "text/calendar", strings.NewReader(icsContent))
-	if err != nil {
-		t.Fatalf("post: %v", err)
-	}
+	require.NoError(t, err, "post")
 	return resp
 }
 
 func patchJSON(t *testing.T, url string, body any) *http.Response {
 	t.Helper()
 	data, err := marshalBody(body)
-	if err != nil {
-		t.Fatalf("marshal: %v", err)
-	}
+	require.NoError(t, err, "marshal")
 	req, err := http.NewRequest(http.MethodPatch, url, bytes.NewReader(data))
-	if err != nil {
-		t.Fatalf("new request: %v", err)
-	}
+	require.NoError(t, err, "new request")
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatalf("put: %v", err)
-	}
+	require.NoError(t, err, "put")
 	return resp
 }
 
 func doDelete(t *testing.T, url string) *http.Response {
 	t.Helper()
 	req, err := http.NewRequest(http.MethodDelete, url, nil)
-	if err != nil {
-		t.Fatalf("new request: %v", err)
-	}
+	require.NoError(t, err, "new request")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatalf("delete: %v", err)
-	}
+	require.NoError(t, err, "delete")
 	return resp
 }
 
@@ -127,9 +110,8 @@ func decodeJSON[T any](t *testing.T, resp *http.Response) T {
 	t.Helper()
 	defer resp.Body.Close()
 	var v T
-	if err := json.NewDecoder(resp.Body).Decode(&v); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
+	err := json.NewDecoder(resp.Body).Decode(&v)
+	require.NoError(t, err, "decode")
 	return v
 }
 
@@ -142,9 +124,7 @@ func createTestEvent(t *testing.T, ts *httptest.Server) api.Event {
 		EndTime:   api.NewOptDateTime(mustTime("2026-03-15T11:00:00Z")),
 	}
 	resp := postJSON(t, ts.URL+"/api/v1/events", body)
-	if resp.StatusCode != http.StatusCreated {
-		t.Fatalf("create event: got status %d, want %d", resp.StatusCode, http.StatusCreated)
-	}
+	require.Equal(t, http.StatusCreated, resp.StatusCode, "create event")
 	return decodeJSON[api.Event](t, resp)
 }
 
@@ -161,28 +141,14 @@ func TestCreateEvent(t *testing.T) {
 		Location:    api.NewOptString("Room 42"),
 	}
 	resp := postJSON(t, ts.URL+"/api/v1/events", body)
-	if resp.StatusCode != http.StatusCreated {
-		t.Fatalf("got status %d, want %d", resp.StatusCode, http.StatusCreated)
-	}
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
 	event := decodeJSON[api.Event](t, resp)
-	if event.ID == "" {
-		t.Error("expected non-empty string ID")
-	}
-	if event.Title != "Meeting" {
-		t.Errorf("title = %q, want %q", event.Title, "Meeting")
-	}
-	if event.Description.Value != "Team sync" {
-		t.Errorf("description = %q, want %q", event.Description.Value, "Team sync")
-	}
-	if event.Location.Value != "Room 42" {
-		t.Errorf("location = %q, want %q", event.Location.Value, "Room 42")
-	}
-	if !event.CreatedAt.Set {
-		t.Error("expected non-empty created_at")
-	}
-	if !event.UpdatedAt.Set {
-		t.Error("expected non-empty updated_at")
-	}
+	assert.NotEmpty(t, event.ID)
+	assert.Equal(t, "Meeting", event.Title)
+	assert.Equal(t, "Team sync", event.Description.Value)
+	assert.Equal(t, "Room 42", event.Location.Value)
+	assert.True(t, event.CreatedAt.Set, "expected non-empty created_at")
+	assert.True(t, event.UpdatedAt.Set, "expected non-empty updated_at")
 }
 
 func TestCreateEvent_ValidationErrors(t *testing.T) {
@@ -223,9 +189,7 @@ func TestCreateEvent_ValidationErrors(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			resp := postJSON(t, ts.URL+"/api/v1/events", tc.body)
 			defer resp.Body.Close()
-			if resp.StatusCode != http.StatusBadRequest {
-				t.Errorf("got status %d, want %d", resp.StatusCode, http.StatusBadRequest)
-			}
+			assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 		})
 	}
 }
@@ -235,43 +199,27 @@ func TestGetEvent(t *testing.T) {
 	created := createTestEvent(t, ts)
 
 	resp, err := http.Get(ts.URL + "/api/v1/events/" + created.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("got status %d, want %d", resp.StatusCode, http.StatusOK)
-	}
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 	event := decodeJSON[api.Event](t, resp)
-	if event.ID != created.ID {
-		t.Errorf("id = %q, want %q", event.ID, created.ID)
-	}
-	if event.Title != "Test Event" {
-		t.Errorf("title = %q, want %q", event.Title, "Test Event")
-	}
+	assert.Equal(t, created.ID, event.ID)
+	assert.Equal(t, "Test Event", event.Title)
 }
 
 func TestGetEvent_NotFound(t *testing.T) {
 	ts := setupTestServer(t)
 	resp, err := http.Get(ts.URL + "/api/v1/events/99999")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusNotFound {
-		t.Errorf("got status %d, want %d", resp.StatusCode, http.StatusNotFound)
-	}
+	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
 }
 
 func TestGetEvent_InvalidID(t *testing.T) {
 	ts := setupTestServer(t)
 	resp, err := http.Get(ts.URL + "/api/v1/events/abc")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Errorf("got status %d, want %d", resp.StatusCode, http.StatusBadRequest)
-	}
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 }
 
 func TestUpdateEvent(t *testing.T) {
@@ -281,17 +229,11 @@ func TestUpdateEvent(t *testing.T) {
 	resp := patchJSON(t, ts.URL+"/api/v1/events/"+created.ID, api.UpdateEventRequest{
 		Title: api.NewOptString("Updated Title"),
 	})
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("got status %d, want %d", resp.StatusCode, http.StatusOK)
-	}
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 	updated := decodeJSON[api.Event](t, resp)
-	if updated.Title != "Updated Title" {
-		t.Errorf("title = %q, want %q", updated.Title, "Updated Title")
-	}
+	assert.Equal(t, "Updated Title", updated.Title)
 	// Unchanged fields should be preserved
-	if !updated.StartTime.Value.Equal(created.StartTime.Value) {
-		t.Errorf("start_time = %v, want %v", updated.StartTime.Value, created.StartTime.Value)
-	}
+	assert.True(t, updated.StartTime.Value.Equal(created.StartTime.Value))
 }
 
 func TestUpdateEvent_NotFound(t *testing.T) {
@@ -300,9 +242,7 @@ func TestUpdateEvent_NotFound(t *testing.T) {
 		Title: api.NewOptString("X"),
 	})
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusNotFound {
-		t.Errorf("got status %d, want %d", resp.StatusCode, http.StatusNotFound)
-	}
+	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
 }
 
 func TestDeleteEvent(t *testing.T) {
@@ -311,28 +251,20 @@ func TestDeleteEvent(t *testing.T) {
 
 	resp := doDelete(t, ts.URL+"/api/v1/events/"+created.ID)
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusNoContent {
-		t.Fatalf("delete: got status %d, want %d", resp.StatusCode, http.StatusNoContent)
-	}
+	require.Equal(t, http.StatusNoContent, resp.StatusCode)
 
 	// Confirm it's gone
 	resp2, err := http.Get(ts.URL + "/api/v1/events/" + created.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer resp2.Body.Close()
-	if resp2.StatusCode != http.StatusNotFound {
-		t.Errorf("after delete: got status %d, want %d", resp2.StatusCode, http.StatusNotFound)
-	}
+	assert.Equal(t, http.StatusNotFound, resp2.StatusCode)
 }
 
 func TestDeleteEvent_NotFound(t *testing.T) {
 	ts := setupTestServer(t)
 	resp := doDelete(t, ts.URL+"/api/v1/events/99999")
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusNotFound {
-		t.Errorf("got status %d, want %d", resp.StatusCode, http.StatusNotFound)
-	}
+	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
 }
 
 // --- List and search tests ---
@@ -353,19 +285,11 @@ func TestListEvents(t *testing.T) {
 
 	// Query a range that includes only the middle event
 	resp, err := http.Get(ts.URL + "/api/v1/events?from=2026-03-14T00:00:00Z&to=2026-03-16T00:00:00Z")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("got status %d, want %d", resp.StatusCode, http.StatusOK)
-	}
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 	events := decodeJSON[[]api.Event](t, resp)
-	if len(events) != 1 {
-		t.Fatalf("got %d events, want 1", len(events))
-	}
-	if events[0].Title != "Event at 2026-03-15T10:00:00Z" {
-		t.Errorf("title = %q", events[0].Title)
-	}
+	assert.Len(t, events, 1)
+	assert.Equal(t, "Event at 2026-03-15T10:00:00Z", events[0].Title)
 }
 
 func TestListEvents_MissingParams(t *testing.T) {
@@ -378,13 +302,9 @@ func TestListEvents_MissingParams(t *testing.T) {
 	}
 	for _, path := range tests {
 		resp, err := http.Get(ts.URL + path)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		defer resp.Body.Close()
-		if resp.StatusCode != http.StatusBadRequest {
-			t.Errorf("GET %s: got status %d, want %d", path, resp.StatusCode, http.StatusBadRequest)
-		}
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode, "GET %s", path)
 	}
 }
 
@@ -405,19 +325,11 @@ func TestSearchEvents(t *testing.T) {
 	}).Body.Close()
 
 	resp, err := http.Get(ts.URL + "/api/v1/events?q=Conference")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("got status %d, want %d", resp.StatusCode, http.StatusOK)
-	}
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 	events := decodeJSON[[]api.Event](t, resp)
-	if len(events) != 1 {
-		t.Fatalf("got %d events, want 1", len(events))
-	}
-	if events[0].Title != "Go Conference" {
-		t.Errorf("title = %q, want %q", events[0].Title, "Go Conference")
-	}
+	assert.Len(t, events, 1)
+	assert.Equal(t, "Go Conference", events[0].Title)
 }
 
 // --- All-day events ---
@@ -430,16 +342,10 @@ func TestCreateAllDayEvent(t *testing.T) {
 		StartDate: api.NewOptDate(mustDate("2026-06-15")),
 	}
 	resp := postJSON(t, ts.URL+"/api/v1/events", body)
-	if resp.StatusCode != http.StatusCreated {
-		t.Fatalf("got status %d, want %d", resp.StatusCode, http.StatusCreated)
-	}
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
 	event := decodeJSON[api.Event](t, resp)
-	if !event.AllDay.Value {
-		t.Error("expected all_day to be true")
-	}
-	if event.Title != "Holiday" {
-		t.Errorf("title = %q, want %q", event.Title, "Holiday")
-	}
+	assert.True(t, event.AllDay.Value, "expected all_day to be true")
+	assert.Equal(t, "Holiday", event.Title)
 }
 
 // --- Recurring events ---
@@ -457,23 +363,15 @@ func TestRecurringEventExpansion(t *testing.T) {
 		RecurrenceCount: api.NewOptInt(10),
 	}
 	resp := postJSON(t, ts.URL+"/api/v1/events", body)
-	if resp.StatusCode != http.StatusCreated {
-		t.Fatalf("create: got status %d, want %d", resp.StatusCode, http.StatusCreated)
-	}
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
 	resp.Body.Close()
 
 	// List over a 3-week range — should get 3 instances
 	listResp, err := http.Get(ts.URL + "/api/v1/events?from=2026-03-01T00:00:00Z&to=2026-03-22T00:00:00Z")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if listResp.StatusCode != http.StatusOK {
-		t.Fatalf("list: got status %d, want %d", listResp.StatusCode, http.StatusOK)
-	}
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, listResp.StatusCode)
 	events := decodeJSON[[]api.Event](t, listResp)
-	if len(events) < 3 {
-		t.Errorf("got %d events, want at least 3 recurring instances", len(events))
-	}
+	assert.GreaterOrEqual(t, len(events), 3, "got %d events, want at least 3 recurring instances", len(events))
 }
 
 // --- Delete with EXDATE ---
@@ -490,21 +388,15 @@ func TestDeleteWithInstanceStart(t *testing.T) {
 		RecurrenceCount: api.NewOptInt(30),
 	}
 	resp := postJSON(t, ts.URL+"/api/v1/events", body)
-	if resp.StatusCode != http.StatusCreated {
-		t.Fatalf("create: got status %d", resp.StatusCode)
-	}
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
 	created := decodeJSON[api.Event](t, resp)
 
 	// Delete a single instance via composite ID
 	compositeID := created.ID + "_2026-03-05T09:00:00Z"
 	delResp := doDelete(t, ts.URL+"/api/v1/events/"+url.PathEscape(compositeID))
-	if delResp.StatusCode != http.StatusOK {
-		t.Fatalf("delete instance: got status %d, want %d", delResp.StatusCode, http.StatusOK)
-	}
+	require.Equal(t, http.StatusOK, delResp.StatusCode)
 	updated := decodeJSON[api.Event](t, delResp)
-	if !strings.Contains(updated.Exdates.Value, "2026-03-05T09:00:00Z") {
-		t.Errorf("exdates = %q, want it to contain the excluded date", updated.Exdates.Value)
-	}
+	assert.Contains(t, updated.Exdates.Value, "2026-03-05T09:00:00Z")
 }
 
 // --- iCal export ---
@@ -514,17 +406,11 @@ func TestExportICal(t *testing.T) {
 	createTestEvent(t, ts)
 
 	resp, err := http.Get(ts.URL + "/api/v1/events.ics")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("got status %d, want %d", resp.StatusCode, http.StatusOK)
-	}
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 	ct := resp.Header.Get("Content-Type")
-	if !strings.HasPrefix(ct, "text/calendar") {
-		t.Errorf("content-type = %q, want text/calendar", ct)
-	}
+	assert.True(t, strings.HasPrefix(ct, "text/calendar"), "content-type = %q", ct)
 }
 
 // --- iCal import ---
@@ -547,13 +433,9 @@ END:VEVENT
 END:VCALENDAR`
 
 	resp := postICS(t, ts.URL+"/api/v1/import", ics)
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("got status %d, want %d", resp.StatusCode, http.StatusOK)
-	}
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 	result := decodeJSON[map[string]int](t, resp)
-	if result["imported"] != 2 {
-		t.Errorf("imported = %d, want 2", result["imported"])
-	}
+	assert.Equal(t, 2, result["imported"])
 }
 
 func TestImportSingleEvent(t *testing.T) {
@@ -570,16 +452,10 @@ END:VEVENT
 END:VCALENDAR`
 
 	resp := postICS(t, ts.URL+"/api/v1/import-single", ics)
-	if resp.StatusCode != http.StatusCreated {
-		t.Fatalf("got status %d, want %d", resp.StatusCode, http.StatusCreated)
-	}
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
 	event := decodeJSON[api.Event](t, resp)
-	if event.Title != "Single Import" {
-		t.Errorf("title = %q, want %q", event.Title, "Single Import")
-	}
-	if event.Location.Value != "Office" {
-		t.Errorf("location = %q, want %q", event.Location.Value, "Office")
-	}
+	assert.Equal(t, "Single Import", event.Title)
+	assert.Equal(t, "Office", event.Location.Value)
 }
 
 // --- RECURRENCE-ID override tests ---
@@ -597,31 +473,21 @@ func TestOverrideInstance(t *testing.T) {
 		RecurrenceCount: api.NewOptInt(10),
 	}
 	resp := postJSON(t, ts.URL+"/api/v1/events", body)
-	if resp.StatusCode != http.StatusCreated {
-		t.Fatalf("create: got status %d", resp.StatusCode)
-	}
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
 	created := decodeJSON[api.Event](t, resp)
 
 	// Override the 2nd instance (2026-03-09) using composite ID
 	compositeID := created.ID + "_2026-03-09T09:00:00Z"
 	resp = patchJSON(t, ts.URL+"/api/v1/events/"+url.PathEscape(compositeID),
 		api.UpdateEventRequest{Title: api.NewOptString("Modified Standup")})
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("override: got status %d, want %d", resp.StatusCode, http.StatusOK)
-	}
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 	override := decodeJSON[api.Event](t, resp)
-	if override.Title != "Modified Standup" {
-		t.Errorf("override title = %q, want %q", override.Title, "Modified Standup")
-	}
-	if !override.RecurrenceParentID.Set {
-		t.Error("expected non-nil recurrence_parent_id on override")
-	}
+	assert.Equal(t, "Modified Standup", override.Title)
+	assert.True(t, override.RecurrenceParentID.Set, "expected non-nil recurrence_parent_id on override")
 
 	// List events and verify the override replaces the original instance
 	listResp, err := http.Get(ts.URL + "/api/v1/events?from=2026-03-01T00:00:00Z&to=2026-03-22T00:00:00Z")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	events := decodeJSON[[]api.Event](t, listResp)
 	found := false
 	for _, e := range events {
@@ -633,9 +499,7 @@ func TestOverrideInstance(t *testing.T) {
 			t.Error("original instance at 2026-03-09 should have been replaced by override")
 		}
 	}
-	if !found {
-		t.Error("expected to find 'Modified Standup' in list")
-	}
+	assert.True(t, found, "expected to find 'Modified Standup' in list")
 }
 
 func TestDeleteParentDeletesOverrides(t *testing.T) {
@@ -659,18 +523,14 @@ func TestDeleteParentDeletesOverrides(t *testing.T) {
 
 	// Delete the parent
 	delResp := doDelete(t, ts.URL+"/api/v1/events/"+created.ID)
-	if delResp.StatusCode != http.StatusNoContent {
-		t.Fatalf("delete parent: got status %d", delResp.StatusCode)
-	}
+	require.Equal(t, http.StatusNoContent, delResp.StatusCode)
 	delResp.Body.Close()
 
 	// Verify override is also gone
 	listResp, _ := http.Get(ts.URL + "/api/v1/events?from=2026-04-01T00:00:00Z&to=2026-04-10T00:00:00Z")
 	events := decodeJSON[[]api.Event](t, listResp)
 	for _, e := range events {
-		if e.Title == "Override" {
-			t.Error("override should have been deleted with parent")
-		}
+		assert.NotEqual(t, "Override", e.Title, "override should have been deleted with parent")
 	}
 }
 
@@ -695,18 +555,14 @@ func TestDeleteInstanceWithOverride(t *testing.T) {
 
 	// Delete that instance via composite ID
 	delResp := doDelete(t, ts.URL+"/api/v1/events/"+url.PathEscape(compositeID))
-	if delResp.StatusCode != http.StatusOK {
-		t.Fatalf("delete instance: got status %d", delResp.StatusCode)
-	}
+	require.Equal(t, http.StatusOK, delResp.StatusCode)
 	delResp.Body.Close()
 
 	// Verify override is gone and instance is excluded
 	listResp, _ := http.Get(ts.URL + "/api/v1/events?from=2026-04-01T00:00:00Z&to=2026-04-10T00:00:00Z")
 	events := decodeJSON[[]api.Event](t, listResp)
 	for _, e := range events {
-		if e.Title == "Override" {
-			t.Error("override should have been deleted when instance was excluded")
-		}
+		assert.NotEqual(t, "Override", e.Title, "override should have been deleted when instance was excluded")
 	}
 }
 
@@ -721,17 +577,11 @@ func TestCreateEventWithDuration(t *testing.T) {
 		Duration:  api.NewOptString("PT1H30M"),
 	}
 	resp := postJSON(t, ts.URL+"/api/v1/events", body)
-	if resp.StatusCode != http.StatusCreated {
-		t.Fatalf("got status %d, want %d", resp.StatusCode, http.StatusCreated)
-	}
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
 	event := decodeJSON[api.Event](t, resp)
 	wantEnd := mustTime("2026-03-15T11:30:00Z")
-	if !event.EndTime.Value.Equal(wantEnd) {
-		t.Errorf("end_time = %v, want %v", event.EndTime.Value, wantEnd)
-	}
-	if event.Duration.Value != "PT1H30M" {
-		t.Errorf("duration = %q, want %q", event.Duration.Value, "PT1H30M")
-	}
+	assert.True(t, event.EndTime.Value.Equal(wantEnd))
+	assert.Equal(t, "PT1H30M", event.Duration.Value)
 }
 
 func TestCreateEventDurationAndEndTimeConflict(t *testing.T) {
@@ -745,9 +595,7 @@ func TestCreateEventDurationAndEndTimeConflict(t *testing.T) {
 	}
 	resp := postJSON(t, ts.URL+"/api/v1/events", body)
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Errorf("got status %d, want %d", resp.StatusCode, http.StatusBadRequest)
-	}
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 }
 
 // --- Categories tests ---
@@ -762,25 +610,17 @@ func TestCreateEventWithCategories(t *testing.T) {
 		Categories: api.NewOptString("Work,Meeting"),
 	}
 	resp := postJSON(t, ts.URL+"/api/v1/events", body)
-	if resp.StatusCode != http.StatusCreated {
-		t.Fatalf("got status %d, want %d", resp.StatusCode, http.StatusCreated)
-	}
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
 	event := decodeJSON[api.Event](t, resp)
-	if event.Categories.Value != "Work,Meeting" {
-		t.Errorf("categories = %q, want %q", event.Categories.Value, "Work,Meeting")
-	}
+	assert.Equal(t, "Work,Meeting", event.Categories.Value)
 
 	// Update categories
 	resp = patchJSON(t, ts.URL+"/api/v1/events/"+event.ID, api.UpdateEventRequest{
 		Categories: api.NewOptString("Personal"),
 	})
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("update: got status %d", resp.StatusCode)
-	}
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 	updated := decodeJSON[api.Event](t, resp)
-	if updated.Categories.Value != "Personal" {
-		t.Errorf("updated categories = %q, want %q", updated.Categories.Value, "Personal")
-	}
+	assert.Equal(t, "Personal", updated.Categories.Value)
 }
 
 // --- URL tests ---
@@ -796,13 +636,9 @@ func TestCreateEventWithURL(t *testing.T) {
 		URL:       api.NewOptURI(*u),
 	}
 	resp := postJSON(t, ts.URL+"/api/v1/events", body)
-	if resp.StatusCode != http.StatusCreated {
-		t.Fatalf("got status %d, want %d", resp.StatusCode, http.StatusCreated)
-	}
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
 	event := decodeJSON[api.Event](t, resp)
-	if event.URL.Value.String() != "https://example.com/meeting" {
-		t.Errorf("url = %q, want %q", event.URL.Value.String(), "https://example.com/meeting")
-	}
+	assert.Equal(t, "https://example.com/meeting", event.URL.Value.String())
 }
 
 func TestCreateEventWithBadURL(t *testing.T) {
@@ -817,9 +653,7 @@ func TestCreateEventWithBadURL(t *testing.T) {
 	}
 	resp := postJSON(t, ts.URL+"/api/v1/events", body)
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Errorf("got status %d, want %d", resp.StatusCode, http.StatusBadRequest)
-	}
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 }
 
 // --- iCal import/export with new properties ---
@@ -846,25 +680,17 @@ END:VEVENT
 END:VCALENDAR`
 
 	resp := postICS(t, ts.URL+"/api/v1/import", ics)
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("import: got status %d", resp.StatusCode)
-	}
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 	result := decodeJSON[map[string]int](t, resp)
-	if result["imported"] != 2 {
-		t.Errorf("imported = %d, want 2", result["imported"])
-	}
+	assert.Equal(t, 2, result["imported"])
 
 	// Export and verify RECURRENCE-ID in output
 	exportResp, err := http.Get(ts.URL + "/api/v1/events.ics")
-	if err != nil {
-		t.Fatalf("Unable to get %v", err)
-	}
+	require.NoError(t, err)
 	defer exportResp.Body.Close()
 	body, _ := io.ReadAll(exportResp.Body)
 	icsStr := string(body)
-	if !strings.Contains(icsStr, "RECURRENCE-ID:") {
-		t.Error("expected RECURRENCE-ID in exported iCal")
-	}
+	assert.Contains(t, icsStr, "RECURRENCE-ID:")
 }
 
 func TestImportExportDuration(t *testing.T) {
@@ -879,25 +705,17 @@ END:VEVENT
 END:VCALENDAR`
 
 	resp := postICS(t, ts.URL+"/api/v1/import", ics)
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("import: got status %d", resp.StatusCode)
-	}
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 	result := decodeJSON[map[string]int](t, resp)
-	if result["imported"] != 1 {
-		t.Errorf("imported = %d, want 1", result["imported"])
-	}
+	assert.Equal(t, 1, result["imported"])
 
 	// Export and verify DURATION in output
 	exportResp, err := http.Get(ts.URL + "/api/v1/events.ics")
-	if err != nil {
-		t.Fatalf("Unable to get %v", err)
-	}
+	require.NoError(t, err)
 	defer exportResp.Body.Close()
 	body, _ := io.ReadAll(exportResp.Body)
 	icsStr := string(body)
-	if !strings.Contains(icsStr, "DURATION:PT2H") {
-		t.Error("expected DURATION:PT2H in exported iCal")
-	}
+	assert.Contains(t, icsStr, "DURATION:PT2H")
 }
 
 func TestImportExportCategories(t *testing.T) {
@@ -913,21 +731,15 @@ END:VEVENT
 END:VCALENDAR`
 
 	resp := postICS(t, ts.URL+"/api/v1/import", ics)
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("import: got status %d", resp.StatusCode)
-	}
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 
 	// Export and verify CATEGORIES in output
 	exportResp, err := http.Get(ts.URL + "/api/v1/events.ics")
-	if err != nil {
-		t.Fatalf("Unable to get %v", err)
-	}
+	require.NoError(t, err)
 	defer exportResp.Body.Close()
 	body, _ := io.ReadAll(exportResp.Body)
 	icsStr := string(body)
-	if !strings.Contains(icsStr, "CATEGORIES:") {
-		t.Error("expected CATEGORIES in exported iCal")
-	}
+	assert.Contains(t, icsStr, "CATEGORIES:")
 }
 
 func TestImportExportURL(t *testing.T) {
@@ -943,21 +755,15 @@ END:VEVENT
 END:VCALENDAR`
 
 	resp := postICS(t, ts.URL+"/api/v1/import", ics)
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("import: got status %d", resp.StatusCode)
-	}
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 
 	// Export and verify URL in output
 	exportResp, err := http.Get(ts.URL + "/api/v1/events.ics")
-	if err != nil {
-		t.Fatalf("Unable to get %v", err)
-	}
+	require.NoError(t, err)
 	defer exportResp.Body.Close()
 	body, _ := io.ReadAll(exportResp.Body)
 	icsStr := string(body)
-	if !strings.Contains(icsStr, "URL:https://example.com/event") {
-		t.Error("expected URL in exported iCal")
-	}
+	assert.Contains(t, icsStr, "URL:https://example.com/event")
 }
 
 // --- Preferences tests ---
@@ -965,17 +771,11 @@ END:VCALENDAR`
 func TestGetPreferencesDefaults(t *testing.T) {
 	ts := setupTestServer(t)
 	resp, err := http.Get(ts.URL + "/api/v1/preferences")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("got status %d, want %d", resp.StatusCode, http.StatusOK)
-	}
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 	prefs := decodeJSON[map[string]string](t, resp)
 	// Preferences should be empty (defaultEventColor moved to calendars)
-	if len(prefs) != 0 {
-		t.Errorf("expected empty preferences, got %v", prefs)
-	}
+	assert.Empty(t, prefs)
 }
 
 func TestUpdatePreferencesNoAllowedKeys(t *testing.T) {
@@ -986,13 +786,9 @@ func TestUpdatePreferencesNoAllowedKeys(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodPatch, ts.URL+"/api/v1/preferences", bytes.NewReader(data))
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Errorf("got status %d, want %d", resp.StatusCode, http.StatusBadRequest)
-	}
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 }
 
 func TestUpdatePreferencesUnknownKey(t *testing.T) {
@@ -1001,11 +797,7 @@ func TestUpdatePreferencesUnknownKey(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodPatch, ts.URL+"/api/v1/preferences", bytes.NewReader(data))
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Errorf("got status %d, want %d", resp.StatusCode, http.StatusBadRequest)
-	}
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 }

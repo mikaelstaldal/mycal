@@ -3,6 +3,9 @@ package ical
 import (
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDecodeBasicEvent(t *testing.T) {
@@ -17,25 +20,13 @@ func TestDecodeBasicEvent(t *testing.T) {
 		"END:VCALENDAR\r\n"
 
 	events, err := Decode(strings.NewReader(input))
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(events) != 1 {
-		t.Fatalf("expected 1 event, got %d", len(events))
-	}
+	require.NoError(t, err)
+	require.Len(t, events, 1)
 	e := events[0]
-	if e.Title != "Team Meeting" {
-		t.Errorf("title = %q, want %q", e.Title, "Team Meeting")
-	}
-	if e.Description != "Weekly sync" {
-		t.Errorf("description = %q, want %q", e.Description, "Weekly sync")
-	}
-	if e.StartTime != "2025-03-15T10:00:00Z" {
-		t.Errorf("start = %q, want %q", e.StartTime, "2025-03-15T10:00:00Z")
-	}
-	if e.EndTime != "2025-03-15T11:00:00Z" {
-		t.Errorf("end = %q, want %q", e.EndTime, "2025-03-15T11:00:00Z")
-	}
+	assert.Equal(t, "Team Meeting", e.Title)
+	assert.Equal(t, "Weekly sync", e.Description)
+	assert.Equal(t, "2025-03-15T10:00:00Z", e.StartTime)
+	assert.Equal(t, "2025-03-15T11:00:00Z", e.EndTime)
 }
 
 func TestDecodeMultipleEvents(t *testing.T) {
@@ -53,18 +44,10 @@ func TestDecodeMultipleEvents(t *testing.T) {
 		"END:VCALENDAR\r\n"
 
 	events, err := Decode(strings.NewReader(input))
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(events) != 2 {
-		t.Fatalf("expected 2 events, got %d", len(events))
-	}
-	if events[0].Title != "Event One" {
-		t.Errorf("event 0 title = %q", events[0].Title)
-	}
-	if events[1].Title != "Event Two" {
-		t.Errorf("event 1 title = %q", events[1].Title)
-	}
+	require.NoError(t, err)
+	require.Len(t, events, 2)
+	assert.Equal(t, "Event One", events[0].Title)
+	assert.Equal(t, "Event Two", events[1].Title)
 }
 
 func TestDecodeLineUnfolding(t *testing.T) {
@@ -79,16 +62,10 @@ func TestDecodeLineUnfolding(t *testing.T) {
 		"END:VCALENDAR\r\n"
 
 	events, err := Decode(strings.NewReader(input))
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(events) != 1 {
-		t.Fatalf("expected 1 event, got %d", len(events))
-	}
+	require.NoError(t, err)
+	require.Len(t, events, 1)
 	want := "This is a very long summary that spans multiple lines"
-	if events[0].Title != want {
-		t.Errorf("title = %q, want %q", events[0].Title, want)
-	}
+	assert.Equal(t, want, events[0].Title)
 }
 
 func TestDecodeTZID(t *testing.T) {
@@ -101,16 +78,10 @@ func TestDecodeTZID(t *testing.T) {
 		"END:VCALENDAR\r\n"
 
 	events, err := Decode(strings.NewReader(input))
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(events) != 1 {
-		t.Fatalf("expected 1 event, got %d", len(events))
-	}
+	require.NoError(t, err)
+	require.Len(t, events, 1)
 	// Stockholm is CET (UTC+1) in March
-	if events[0].StartTime != "2025-03-15T09:00:00Z" {
-		t.Errorf("start = %q, want %q", events[0].StartTime, "2025-03-15T09:00:00Z")
-	}
+	assert.Equal(t, "2025-03-15T09:00:00Z", events[0].StartTime)
 }
 
 func TestDecodeAllDay(t *testing.T) {
@@ -123,18 +94,10 @@ func TestDecodeAllDay(t *testing.T) {
 		"END:VCALENDAR\r\n"
 
 	events, err := Decode(strings.NewReader(input))
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(events) != 1 {
-		t.Fatalf("expected 1 event, got %d", len(events))
-	}
-	if events[0].StartTime != "2025-03-15T00:00:00Z" {
-		t.Errorf("start = %q, want %q", events[0].StartTime, "2025-03-15T00:00:00Z")
-	}
-	if events[0].EndTime != "2025-03-16T00:00:00Z" {
-		t.Errorf("end = %q, want %q", events[0].EndTime, "2025-03-16T00:00:00Z")
-	}
+	require.NoError(t, err)
+	require.Len(t, events, 1)
+	assert.Equal(t, "2025-03-15T00:00:00Z", events[0].StartTime)
+	assert.Equal(t, "2025-03-16T00:00:00Z", events[0].EndTime)
 }
 
 func TestDecodeTextUnescaping(t *testing.T) {
@@ -148,19 +111,11 @@ func TestDecodeTextUnescaping(t *testing.T) {
 		"END:VCALENDAR\r\n"
 
 	events, err := Decode(strings.NewReader(input))
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(events) != 1 {
-		t.Fatalf("expected 1 event, got %d", len(events))
-	}
-	if events[0].Title != "Hello, World" {
-		t.Errorf("title = %q, want %q", events[0].Title, "Hello, World")
-	}
+	require.NoError(t, err)
+	require.Len(t, events, 1)
+	assert.Equal(t, "Hello, World", events[0].Title)
 	wantDesc := "Line one\nLine two;semicolon\\backslash"
-	if events[0].Description != wantDesc {
-		t.Errorf("description = %q, want %q", events[0].Description, wantDesc)
-	}
+	assert.Equal(t, wantDesc, events[0].Description)
 }
 
 func TestDecodeSkipsMalformedEvents(t *testing.T) {
@@ -180,15 +135,9 @@ func TestDecodeSkipsMalformedEvents(t *testing.T) {
 		"END:VCALENDAR\r\n"
 
 	events, err := Decode(strings.NewReader(input))
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(events) != 1 {
-		t.Fatalf("expected 1 event, got %d", len(events))
-	}
-	if events[0].Title != "Valid Event" {
-		t.Errorf("title = %q, want %q", events[0].Title, "Valid Event")
-	}
+	require.NoError(t, err)
+	require.Len(t, events, 1)
+	assert.Equal(t, "Valid Event", events[0].Title)
 }
 
 func TestDecodeRecurrenceID(t *testing.T) {
@@ -208,29 +157,15 @@ func TestDecodeRecurrenceID(t *testing.T) {
 		"END:VCALENDAR\r\n"
 
 	events, err := Decode(strings.NewReader(input))
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(events) != 2 {
-		t.Fatalf("expected 2 events (parent + override), got %d", len(events))
-	}
+	require.NoError(t, err)
+	require.Len(t, events, 2)
 	// First event is the parent
-	if events[0].Title != "Weekly Meeting" {
-		t.Errorf("parent title = %q, want %q", events[0].Title, "Weekly Meeting")
-	}
-	if events[0].RecurrenceFreq != "WEEKLY" {
-		t.Errorf("parent freq = %q, want WEEKLY", events[0].RecurrenceFreq)
-	}
-	if events[0].RecurrenceOriginalStart != "" {
-		t.Errorf("parent should not have RecurrenceOriginalStart, got %q", events[0].RecurrenceOriginalStart)
-	}
+	assert.Equal(t, "Weekly Meeting", events[0].Title)
+	assert.Equal(t, "WEEKLY", events[0].RecurrenceFreq)
+	assert.Empty(t, events[0].RecurrenceOriginalStart, "parent should not have RecurrenceOriginalStart")
 	// Second event is the override
-	if events[1].Title != "Weekly Meeting (moved)" {
-		t.Errorf("override title = %q, want %q", events[1].Title, "Weekly Meeting (moved)")
-	}
-	if events[1].RecurrenceOriginalStart != "2026-03-09T10:00:00Z" {
-		t.Errorf("override RecurrenceOriginalStart = %q, want %q", events[1].RecurrenceOriginalStart, "2026-03-09T10:00:00Z")
-	}
+	assert.Equal(t, "Weekly Meeting (moved)", events[1].Title)
+	assert.Equal(t, "2026-03-09T10:00:00Z", events[1].RecurrenceOriginalStart)
 }
 
 func TestDecodePathStyleTZIDWithIANA(t *testing.T) {
@@ -256,19 +191,11 @@ func TestDecodePathStyleTZIDWithIANA(t *testing.T) {
 		"END:VCALENDAR\r\n"
 
 	events, err := Decode(strings.NewReader(ics))
-	if err != nil {
-		t.Fatalf("Decode error: %v", err)
-	}
-	if len(events) != 1 {
-		t.Fatalf("expected 1 event, got %d", len(events))
-	}
+	require.NoError(t, err)
+	require.Len(t, events, 1)
 	// June 15 is CEST (UTC+2): 10:00 local = 08:00 UTC
-	if events[0].StartTime != "2025-06-15T08:00:00Z" {
-		t.Errorf("start = %q, want %q", events[0].StartTime, "2025-06-15T08:00:00Z")
-	}
-	if events[0].EndTime != "2025-06-15T09:00:00Z" {
-		t.Errorf("end = %q, want %q", events[0].EndTime, "2025-06-15T09:00:00Z")
-	}
+	assert.Equal(t, "2025-06-15T08:00:00Z", events[0].StartTime)
+	assert.Equal(t, "2025-06-15T09:00:00Z", events[0].EndTime)
 }
 
 func TestDecodeNonIANATZIDWithOffset(t *testing.T) {
@@ -289,19 +216,11 @@ func TestDecodeNonIANATZIDWithOffset(t *testing.T) {
 		"END:VCALENDAR\r\n"
 
 	events, err := Decode(strings.NewReader(ics))
-	if err != nil {
-		t.Fatalf("Decode error: %v", err)
-	}
-	if len(events) != 1 {
-		t.Fatalf("expected 1 event, got %d", len(events))
-	}
+	require.NoError(t, err)
+	require.Len(t, events, 1)
 	// +0530: 14:00 local = 08:30 UTC
-	if events[0].StartTime != "2025-01-15T08:30:00Z" {
-		t.Errorf("start = %q, want %q", events[0].StartTime, "2025-01-15T08:30:00Z")
-	}
-	if events[0].EndTime != "2025-01-15T09:30:00Z" {
-		t.Errorf("end = %q, want %q", events[0].EndTime, "2025-01-15T09:30:00Z")
-	}
+	assert.Equal(t, "2025-01-15T08:30:00Z", events[0].StartTime)
+	assert.Equal(t, "2025-01-15T09:30:00Z", events[0].EndTime)
 }
 
 func TestDecodeStandardIANATZIDWithVTimezone(t *testing.T) {
@@ -322,16 +241,10 @@ func TestDecodeStandardIANATZIDWithVTimezone(t *testing.T) {
 		"END:VCALENDAR\r\n"
 
 	events, err := Decode(strings.NewReader(ics))
-	if err != nil {
-		t.Fatalf("Decode error: %v", err)
-	}
-	if len(events) != 1 {
-		t.Fatalf("expected 1 event, got %d", len(events))
-	}
+	require.NoError(t, err)
+	require.Len(t, events, 1)
 	// January EST (UTC-5): 09:00 local = 14:00 UTC
-	if events[0].StartTime != "2025-01-15T14:00:00Z" {
-		t.Errorf("start = %q, want %q", events[0].StartTime, "2025-01-15T14:00:00Z")
-	}
+	assert.Equal(t, "2025-01-15T14:00:00Z", events[0].StartTime)
 }
 
 func TestDecodeGoogleConferenceAsURL(t *testing.T) {
@@ -345,15 +258,9 @@ func TestDecodeGoogleConferenceAsURL(t *testing.T) {
 		"END:VCALENDAR\r\n"
 
 	events, err := Decode(strings.NewReader(input))
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(events) != 1 {
-		t.Fatalf("expected 1 event, got %d", len(events))
-	}
-	if events[0].URL != "https://meet.google.com/abc-defg-hij" {
-		t.Errorf("URL = %q, want %q", events[0].URL, "https://meet.google.com/abc-defg-hij")
-	}
+	require.NoError(t, err)
+	require.Len(t, events, 1)
+	assert.Equal(t, "https://meet.google.com/abc-defg-hij", events[0].URL)
 }
 
 func TestDecodeURLTakesPrecedenceOverGoogleConference(t *testing.T) {
@@ -368,15 +275,9 @@ func TestDecodeURLTakesPrecedenceOverGoogleConference(t *testing.T) {
 		"END:VCALENDAR\r\n"
 
 	events, err := Decode(strings.NewReader(input))
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(events) != 1 {
-		t.Fatalf("expected 1 event, got %d", len(events))
-	}
-	if events[0].URL != "https://example.com/meeting" {
-		t.Errorf("URL = %q, want %q", events[0].URL, "https://example.com/meeting")
-	}
+	require.NoError(t, err)
+	require.Len(t, events, 1)
+	assert.Equal(t, "https://example.com/meeting", events[0].URL)
 }
 
 func TestDecodeUnknownTZIDNoVTimezone(t *testing.T) {
@@ -389,14 +290,8 @@ func TestDecodeUnknownTZIDNoVTimezone(t *testing.T) {
 		"END:VCALENDAR\r\n"
 
 	events, err := Decode(strings.NewReader(ics))
-	if err != nil {
-		t.Fatalf("Decode error: %v", err)
-	}
-	if len(events) != 1 {
-		t.Fatalf("expected 1 event, got %d", len(events))
-	}
+	require.NoError(t, err)
+	require.Len(t, events, 1)
 	// No timezone info available, parsed as-is (no offset applied)
-	if events[0].StartTime != "2025-01-15T09:00:00Z" {
-		t.Errorf("start = %q, want %q", events[0].StartTime, "2025-01-15T09:00:00Z")
-	}
+	assert.Equal(t, "2025-01-15T09:00:00Z", events[0].StartTime)
 }

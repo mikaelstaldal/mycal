@@ -5,6 +5,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/mikaelstaldal/mycal/internal/model"
 )
 
@@ -31,46 +34,27 @@ func TestEncode(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	if err := Encode(&buf, events); err != nil {
-		t.Fatalf("Encode failed: %v", err)
-	}
+	err := Encode(&buf, events)
+	require.NoError(t, err)
 
 	output := buf.String()
 
 	// Verify iCal structure
-	if !strings.Contains(output, "BEGIN:VCALENDAR") {
-		t.Error("missing VCALENDAR begin")
-	}
-	if !strings.Contains(output, "END:VCALENDAR") {
-		t.Error("missing VCALENDAR end")
-	}
-	if !strings.Contains(output, "VERSION:2.0") {
-		t.Error("missing VERSION")
-	}
+	assert.Contains(t, output, "BEGIN:VCALENDAR")
+	assert.Contains(t, output, "END:VCALENDAR")
+	assert.Contains(t, output, "VERSION:2.0")
 
 	// Verify first event
-	if !strings.Contains(output, "UID:event-1@mycal") {
-		t.Error("missing UID for event 1")
-	}
-	if !strings.Contains(output, "SUMMARY:Team Meeting") {
-		t.Error("missing SUMMARY for event 1")
-	}
-	if !strings.Contains(output, "DTSTART:20260217T140000Z") {
-		t.Error("missing DTSTART for event 1")
-	}
-	if !strings.Contains(output, "DESCRIPTION:Weekly sync") {
-		t.Error("missing DESCRIPTION for event 1")
-	}
+	assert.Contains(t, output, "UID:event-1@mycal")
+	assert.Contains(t, output, "SUMMARY:Team Meeting")
+	assert.Contains(t, output, "DTSTART:20260217T140000Z")
+	assert.Contains(t, output, "DESCRIPTION:Weekly sync")
 
 	// Verify comma escaping in second event
-	if !strings.Contains(output, "SUMMARY:Lunch\\, with friends") {
-		t.Error("comma not escaped in SUMMARY")
-	}
+	assert.Contains(t, output, "SUMMARY:Lunch\\, with friends")
 
 	// Count VEVENT blocks
-	if strings.Count(output, "BEGIN:VEVENT") != 2 {
-		t.Errorf("expected 2 VEVENT blocks, got %d", strings.Count(output, "BEGIN:VEVENT"))
-	}
+	assert.Equal(t, 2, strings.Count(output, "BEGIN:VEVENT"))
 }
 
 func TestEncodeWithLocation(t *testing.T) {
@@ -91,17 +75,12 @@ func TestEncodeWithLocation(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	if err := Encode(&buf, events); err != nil {
-		t.Fatalf("Encode failed: %v", err)
-	}
+	err := Encode(&buf, events)
+	require.NoError(t, err)
 
 	output := buf.String()
-	if !strings.Contains(output, "LOCATION:Stockholm Office") {
-		t.Error("missing LOCATION property")
-	}
-	if !strings.Contains(output, "GEO:59.329300;18.068600") {
-		t.Errorf("missing or incorrect GEO property, output:\n%s", output)
-	}
+	assert.Contains(t, output, "LOCATION:Stockholm Office")
+	assert.Contains(t, output, "GEO:59.329300;18.068600")
 }
 
 func TestDecodeWithLocation(t *testing.T) {
@@ -117,25 +96,14 @@ END:VEVENT
 END:VCALENDAR`
 
 	events, err := Decode(strings.NewReader(input))
-	if err != nil {
-		t.Fatalf("Decode failed: %v", err)
-	}
-	if len(events) != 1 {
-		t.Fatalf("expected 1 event, got %d", len(events))
-	}
+	require.NoError(t, err)
+	require.Len(t, events, 1)
 	ev := events[0]
-	if ev.Location != "Stockholm Office" {
-		t.Errorf("got location %q, want %q", ev.Location, "Stockholm Office")
-	}
-	if ev.Latitude == nil || ev.Longitude == nil {
-		t.Fatal("expected non-nil coordinates")
-	}
-	if *ev.Latitude < 59.329 || *ev.Latitude > 59.330 {
-		t.Errorf("got latitude %f, want ~59.3293", *ev.Latitude)
-	}
-	if *ev.Longitude < 18.068 || *ev.Longitude > 18.069 {
-		t.Errorf("got longitude %f, want ~18.0686", *ev.Longitude)
-	}
+	assert.Equal(t, "Stockholm Office", ev.Location)
+	require.NotNil(t, ev.Latitude)
+	require.NotNil(t, ev.Longitude)
+	assert.InDelta(t, 59.3293, *ev.Latitude, 0.001)
+	assert.InDelta(t, 18.0686, *ev.Longitude, 0.001)
 }
 
 func TestEncodeDecodeRRuleInterval(t *testing.T) {
@@ -153,27 +121,16 @@ func TestEncodeDecodeRRuleInterval(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	if err := Encode(&buf, events); err != nil {
-		t.Fatalf("Encode failed: %v", err)
-	}
+	err := Encode(&buf, events)
+	require.NoError(t, err)
 	output := buf.String()
-	if !strings.Contains(output, "RRULE:FREQ=WEEKLY;INTERVAL=2") {
-		t.Errorf("expected INTERVAL=2 in RRULE, got:\n%s", output)
-	}
+	assert.Contains(t, output, "RRULE:FREQ=WEEKLY;INTERVAL=2")
 
 	decoded, err := Decode(strings.NewReader(output))
-	if err != nil {
-		t.Fatalf("Decode failed: %v", err)
-	}
-	if len(decoded) != 1 {
-		t.Fatalf("expected 1 event, got %d", len(decoded))
-	}
-	if decoded[0].RecurrenceFreq != "WEEKLY" {
-		t.Errorf("freq = %q", decoded[0].RecurrenceFreq)
-	}
-	if decoded[0].RecurrenceInterval != 2 {
-		t.Errorf("interval = %d, want 2", decoded[0].RecurrenceInterval)
-	}
+	require.NoError(t, err)
+	require.Len(t, decoded, 1)
+	assert.Equal(t, "WEEKLY", decoded[0].RecurrenceFreq)
+	assert.Equal(t, 2, decoded[0].RecurrenceInterval)
 }
 
 func TestEncodeDecodeRRuleByDay(t *testing.T) {
@@ -191,21 +148,14 @@ func TestEncodeDecodeRRuleByDay(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	if err := Encode(&buf, events); err != nil {
-		t.Fatalf("Encode failed: %v", err)
-	}
+	err := Encode(&buf, events)
+	require.NoError(t, err)
 	output := buf.String()
-	if !strings.Contains(output, ";BYDAY=MO,WE,FR") {
-		t.Errorf("expected BYDAY in RRULE, got:\n%s", output)
-	}
+	assert.Contains(t, output, ";BYDAY=MO,WE,FR")
 
 	decoded, err := Decode(strings.NewReader(output))
-	if err != nil {
-		t.Fatalf("Decode failed: %v", err)
-	}
-	if decoded[0].RecurrenceByDay != "MO,WE,FR" {
-		t.Errorf("byDay = %q, want %q", decoded[0].RecurrenceByDay, "MO,WE,FR")
-	}
+	require.NoError(t, err)
+	assert.Equal(t, "MO,WE,FR", decoded[0].RecurrenceByDay)
 }
 
 func TestEncodeDecodeExdate(t *testing.T) {
@@ -223,24 +173,15 @@ func TestEncodeDecodeExdate(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	if err := Encode(&buf, events); err != nil {
-		t.Fatalf("Encode failed: %v", err)
-	}
+	err := Encode(&buf, events)
+	require.NoError(t, err)
 	output := buf.String()
-	if !strings.Contains(output, "EXDATE:20260205T100000Z") {
-		t.Errorf("expected EXDATE in output, got:\n%s", output)
-	}
-	if !strings.Contains(output, "EXDATE:20260210T100000Z") {
-		t.Errorf("expected second EXDATE in output")
-	}
+	assert.Contains(t, output, "EXDATE:20260205T100000Z")
+	assert.Contains(t, output, "EXDATE:20260210T100000Z")
 
 	decoded, err := Decode(strings.NewReader(output))
-	if err != nil {
-		t.Fatalf("Decode failed: %v", err)
-	}
-	if decoded[0].ExDates != "2026-02-05T10:00:00Z,2026-02-10T10:00:00Z" {
-		t.Errorf("exdates = %q", decoded[0].ExDates)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, "2026-02-05T10:00:00Z,2026-02-10T10:00:00Z", decoded[0].ExDates)
 }
 
 func TestEncodeDecodeRdate(t *testing.T) {
@@ -258,21 +199,14 @@ func TestEncodeDecodeRdate(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	if err := Encode(&buf, events); err != nil {
-		t.Fatalf("Encode failed: %v", err)
-	}
+	err := Encode(&buf, events)
+	require.NoError(t, err)
 	output := buf.String()
-	if !strings.Contains(output, "RDATE:20260205T100000Z") {
-		t.Errorf("expected RDATE in output, got:\n%s", output)
-	}
+	assert.Contains(t, output, "RDATE:20260205T100000Z")
 
 	decoded, err := Decode(strings.NewReader(output))
-	if err != nil {
-		t.Fatalf("Decode failed: %v", err)
-	}
-	if decoded[0].RDates != "2026-02-05T10:00:00Z" {
-		t.Errorf("rdates = %q", decoded[0].RDates)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, "2026-02-05T10:00:00Z", decoded[0].RDates)
 }
 
 func TestDecodeRRuleWithByParams(t *testing.T) {
@@ -286,25 +220,13 @@ func TestDecodeRRuleWithByParams(t *testing.T) {
 		"END:VCALENDAR\r\n"
 
 	events, err := Decode(strings.NewReader(input))
-	if err != nil {
-		t.Fatalf("Decode failed: %v", err)
-	}
-	if len(events) != 1 {
-		t.Fatalf("expected 1 event, got %d", len(events))
-	}
+	require.NoError(t, err)
+	require.Len(t, events, 1)
 	e := events[0]
-	if e.RecurrenceFreq != "MONTHLY" {
-		t.Errorf("freq = %q", e.RecurrenceFreq)
-	}
-	if e.RecurrenceInterval != 2 {
-		t.Errorf("interval = %d", e.RecurrenceInterval)
-	}
-	if e.RecurrenceByDay != "2MO" {
-		t.Errorf("byDay = %q", e.RecurrenceByDay)
-	}
-	if e.RecurrenceCount != 6 {
-		t.Errorf("count = %d", e.RecurrenceCount)
-	}
+	assert.Equal(t, "MONTHLY", e.RecurrenceFreq)
+	assert.Equal(t, 2, e.RecurrenceInterval)
+	assert.Equal(t, "2MO", e.RecurrenceByDay)
+	assert.Equal(t, 6, e.RecurrenceCount)
 }
 
 func TestDecodeValidColor(t *testing.T) {
@@ -318,16 +240,9 @@ func TestDecodeValidColor(t *testing.T) {
 		"END:VCALENDAR\r\n"
 
 	events, err := Decode(strings.NewReader(input))
-	if err != nil {
-		t.Fatalf("Decode failed: %v", err)
-	}
-	if len(events) != 1 {
-		t.Fatalf("expected 1 event, got %d", len(events))
-	}
-	e := events[0]
-	if e.Color != "gold" {
-		t.Errorf("color = %q", e.Color)
-	}
+	require.NoError(t, err)
+	require.Len(t, events, 1)
+	assert.Equal(t, "gold", events[0].Color)
 }
 
 func TestDecodeInvalidColor(t *testing.T) {
@@ -341,29 +256,17 @@ func TestDecodeInvalidColor(t *testing.T) {
 		"END:VCALENDAR\r\n"
 
 	events, err := Decode(strings.NewReader(input))
-	if err != nil {
-		t.Fatalf("Decode failed: %v", err)
-	}
-	if len(events) != 1 {
-		t.Fatalf("expected 1 event, got %d", len(events))
-	}
-	e := events[0]
-	if e.Color != "" {
-		t.Errorf("color = %q", e.Color)
-	}
+	require.NoError(t, err)
+	require.Len(t, events, 1)
+	assert.Empty(t, events[0].Color)
 }
 
 func TestEncodeEmpty(t *testing.T) {
 	var buf bytes.Buffer
-	if err := Encode(&buf, []model.Event{}); err != nil {
-		t.Fatalf("Encode failed: %v", err)
-	}
+	err := Encode(&buf, []model.Event{})
+	require.NoError(t, err)
 
 	output := buf.String()
-	if !strings.Contains(output, "BEGIN:VCALENDAR") {
-		t.Error("missing VCALENDAR")
-	}
-	if strings.Contains(output, "BEGIN:VEVENT") {
-		t.Error("should have no VEVENT blocks for empty list")
-	}
+	assert.Contains(t, output, "BEGIN:VCALENDAR")
+	assert.NotContains(t, output, "BEGIN:VEVENT")
 }

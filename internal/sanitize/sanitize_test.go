@@ -1,6 +1,10 @@
 package sanitize
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
 
 func TestHTML(t *testing.T) {
 	tests := []struct {
@@ -81,10 +85,7 @@ func TestHTML(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := HTML(tt.in)
-			if got != tt.want {
-				t.Errorf("HTML(%q)\n got  %q\n want %q", tt.in, got, tt.want)
-			}
+			assert.Equal(t, tt.want, HTML(tt.in))
 		})
 	}
 }
