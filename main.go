@@ -148,7 +148,7 @@ func main() {
 	}
 	mux.Handle("/", staticCacheMiddleware(http.FileServer(http.FS(staticFS))))
 
-	var root http.Handler = handler.SecurityHeadersMiddleware(csrf.Middleware(mux))
+	root := handler.SecurityHeadersMiddleware(csrf.Middleware(mux))
 	if authMiddleware != nil {
 		root = authMiddleware(root)
 	}

@@ -61,7 +61,7 @@ func setupTestServer(t *testing.T) *httptest.Server {
 // marshalBody ensures pointer-receiver MarshalJSON methods are reachable.
 func marshalBody(body any) ([]byte, error) {
 	v := reflect.ValueOf(body)
-	if v.Kind() != reflect.Ptr {
+	if v.Kind() != reflect.Pointer {
 		ptr := reflect.New(v.Type())
 		ptr.Elem().Set(v)
 		return json.Marshal(ptr.Interface())

@@ -221,7 +221,7 @@ func getImportReaderFromURL(rawURL string) (io.ReadCloser, error) {
 		return nil, badRequest("failed to fetch URL")
 	}
 	if resp.StatusCode != http.StatusOK {
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		return nil, badRequest("URL returned non-200 status")
 	}
 	return resp.Body, nil
@@ -419,7 +419,7 @@ func (h *handlerImpl) APIV1ImportPost(ctx context.Context, req api.APIV1ImportPo
 			return nil, err
 		}
 		reader = io.LimitReader(body, maxImportSize)
-		cleanup = func() { body.Close() }
+		cleanup = func() { _ = body.Close() }
 	default:
 		return nil, unsupported("Content-Type must be text/calendar or application/json")
 	}
@@ -455,7 +455,7 @@ func (h *handlerImpl) APIV1ImportSinglePost(ctx context.Context, req api.APIV1Im
 			return nil, err
 		}
 		reader = io.LimitReader(body, maxImportSize)
-		cleanup = func() { body.Close() }
+		cleanup = func() { _ = body.Close() }
 	default:
 		return nil, unsupported("Content-Type must be text/calendar or application/json")
 	}

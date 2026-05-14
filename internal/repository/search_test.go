@@ -105,7 +105,7 @@ func TestSearchSpecialCharacters(t *testing.T) {
 	assert.Len(t, results, 1)
 
 	// FTS5 operators should be safely quoted
-	results, err = repo.Search("AND OR NOT", "", "", nil)
+	_, err = repo.Search("AND OR NOT", "", "", nil)
 	require.NoError(t, err)
 	// Should not error even with FTS5 operator-like terms
 }

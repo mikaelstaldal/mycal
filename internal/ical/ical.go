@@ -36,55 +36,55 @@ func Encode(w io.Writer, events []model.Event) error {
 
 		// UID: overrides share parent's UID
 		if e.RecurrenceParentID != nil {
-			b.WriteString(fmt.Sprintf("UID:event-%d@mycal\r\n", *e.RecurrenceParentID))
+			fmt.Fprintf(&b, "UID:event-%d@mycal\r\n", *e.RecurrenceParentID)
 		} else {
-			b.WriteString(fmt.Sprintf("UID:event-%d@mycal\r\n", e.ID))
+			fmt.Fprintf(&b, "UID:event-%d@mycal\r\n", e.ID)
 		}
 
 		// RECURRENCE-ID for overrides
 		if e.RecurrenceParentID != nil && e.RecurrenceOriginalStart != "" {
 			if origTime, err := time.Parse(time.RFC3339, e.RecurrenceOriginalStart); err == nil {
 				if e.AllDay {
-					b.WriteString(fmt.Sprintf("RECURRENCE-ID;VALUE=DATE:%s\r\n", origTime.UTC().Format("20060102")))
+					fmt.Fprintf(&b, "RECURRENCE-ID;VALUE=DATE:%s\r\n", origTime.UTC().Format("20060102"))
 				} else {
-					b.WriteString(fmt.Sprintf("RECURRENCE-ID:%s\r\n", formatICalTime(origTime)))
+					fmt.Fprintf(&b, "RECURRENCE-ID:%s\r\n", formatICalTime(origTime))
 				}
 			}
 		}
 
 		if e.AllDay {
-			b.WriteString(fmt.Sprintf("DTSTART;VALUE=DATE:%s\r\n", start.UTC().Format("20060102")))
+			fmt.Fprintf(&b, "DTSTART;VALUE=DATE:%s\r\n", start.UTC().Format("20060102"))
 			if e.Duration != "" {
-				b.WriteString(fmt.Sprintf("DURATION:%s\r\n", e.Duration))
+				fmt.Fprintf(&b, "DURATION:%s\r\n", e.Duration)
 			} else {
-				b.WriteString(fmt.Sprintf("DTEND;VALUE=DATE:%s\r\n", end.UTC().Format("20060102")))
+				fmt.Fprintf(&b, "DTEND;VALUE=DATE:%s\r\n", end.UTC().Format("20060102"))
 			}
 		} else {
-			b.WriteString(fmt.Sprintf("DTSTART:%s\r\n", formatICalTime(start)))
+			fmt.Fprintf(&b, "DTSTART:%s\r\n", formatICalTime(start))
 			if e.Duration != "" {
-				b.WriteString(fmt.Sprintf("DURATION:%s\r\n", e.Duration))
+				fmt.Fprintf(&b, "DURATION:%s\r\n", e.Duration)
 			} else {
-				b.WriteString(fmt.Sprintf("DTEND:%s\r\n", formatICalTime(end)))
+				fmt.Fprintf(&b, "DTEND:%s\r\n", formatICalTime(end))
 			}
 		}
-		b.WriteString(fmt.Sprintf("SUMMARY:%s\r\n", escapeText(e.Title)))
+		fmt.Fprintf(&b, "SUMMARY:%s\r\n", escapeText(e.Title))
 		if e.Description != "" {
-			b.WriteString(fmt.Sprintf("DESCRIPTION:%s\r\n", escapeText(e.Description)))
+			fmt.Fprintf(&b, "DESCRIPTION:%s\r\n", escapeText(e.Description))
 		}
 		if e.Location != "" {
-			b.WriteString(fmt.Sprintf("LOCATION:%s\r\n", escapeText(e.Location)))
+			fmt.Fprintf(&b, "LOCATION:%s\r\n", escapeText(e.Location))
 		}
 		if e.Latitude != nil && e.Longitude != nil {
-			b.WriteString(fmt.Sprintf("GEO:%f;%f\r\n", *e.Latitude, *e.Longitude))
+			fmt.Fprintf(&b, "GEO:%f;%f\r\n", *e.Latitude, *e.Longitude)
 		}
 		if e.Categories != "" {
-			b.WriteString(fmt.Sprintf("CATEGORIES:%s\r\n", escapeText(e.Categories)))
+			fmt.Fprintf(&b, "CATEGORIES:%s\r\n", escapeText(e.Categories))
 		}
 		if e.URL != "" {
-			b.WriteString(fmt.Sprintf("URL:%s\r\n", e.URL))
+			fmt.Fprintf(&b, "URL:%s\r\n", e.URL)
 		}
 		if e.Color != "" {
-			b.WriteString(fmt.Sprintf("COLOR:%s\r\n", e.Color))
+			fmt.Fprintf(&b, "COLOR:%s\r\n", e.Color)
 		}
 		if e.RecurrenceFreq != "" {
 			rrule := "RRULE:FREQ=" + e.RecurrenceFreq
@@ -115,9 +115,9 @@ func Encode(w io.Writer, events []model.Event) error {
 				exd = strings.TrimSpace(exd)
 				if t, err := time.Parse(time.RFC3339, exd); err == nil {
 					if e.AllDay {
-						b.WriteString(fmt.Sprintf("EXDATE;VALUE=DATE:%s\r\n", t.UTC().Format("20060102")))
+						fmt.Fprintf(&b, "EXDATE;VALUE=DATE:%s\r\n", t.UTC().Format("20060102"))
 					} else {
-						b.WriteString(fmt.Sprintf("EXDATE:%s\r\n", formatICalTime(t)))
+						fmt.Fprintf(&b, "EXDATE:%s\r\n", formatICalTime(t))
 					}
 				}
 			}
@@ -127,9 +127,9 @@ func Encode(w io.Writer, events []model.Event) error {
 				rd = strings.TrimSpace(rd)
 				if t, err := time.Parse(time.RFC3339, rd); err == nil {
 					if e.AllDay {
-						b.WriteString(fmt.Sprintf("RDATE;VALUE=DATE:%s\r\n", t.UTC().Format("20060102")))
+						fmt.Fprintf(&b, "RDATE;VALUE=DATE:%s\r\n", t.UTC().Format("20060102"))
 					} else {
-						b.WriteString(fmt.Sprintf("RDATE:%s\r\n", formatICalTime(t)))
+						fmt.Fprintf(&b, "RDATE:%s\r\n", formatICalTime(t))
 					}
 				}
 			}
@@ -137,19 +137,19 @@ func Encode(w io.Writer, events []model.Event) error {
 		if e.ReminderMinutes > 0 {
 			b.WriteString("BEGIN:VALARM\r\n")
 			b.WriteString("ACTION:DISPLAY\r\n")
-			b.WriteString(fmt.Sprintf("TRIGGER:-PT%dM\r\n", e.ReminderMinutes))
-			b.WriteString(fmt.Sprintf("DESCRIPTION:Reminder: %s\r\n", escapeText(e.Title)))
+			fmt.Fprintf(&b, "TRIGGER:-PT%dM\r\n", e.ReminderMinutes)
+			fmt.Fprintf(&b, "DESCRIPTION:Reminder: %s\r\n", escapeText(e.Title))
 			b.WriteString("END:VALARM\r\n")
 		}
 		if e.CreatedAt != "" {
 			if t, err := time.Parse(time.RFC3339, e.CreatedAt); err == nil {
-				b.WriteString(fmt.Sprintf("CREATED:%s\r\n", formatICalTime(t)))
+				fmt.Fprintf(&b, "CREATED:%s\r\n", formatICalTime(t))
 			}
 		}
 		if e.UpdatedAt != "" {
 			if t, err := time.Parse(time.RFC3339, e.UpdatedAt); err == nil {
-				b.WriteString(fmt.Sprintf("LAST-MODIFIED:%s\r\n", formatICalTime(t)))
-				b.WriteString(fmt.Sprintf("DTSTAMP:%s\r\n", formatICalTime(t)))
+				fmt.Fprintf(&b, "LAST-MODIFIED:%s\r\n", formatICalTime(t))
+				fmt.Fprintf(&b, "DTSTAMP:%s\r\n", formatICalTime(t))
 			}
 		}
 		b.WriteString("END:VEVENT\r\n")
