@@ -193,7 +193,11 @@ func (s *FeedService) doRefresh(feed *model.Feed) {
 }
 
 func (s *FeedService) fetchAndImport(feedURL string, calendarID int64, eventColor string) (int, error) {
-	client := &http.Client{Timeout: 30 * time.Second}
+	// Re-validate stored feed URLs on every refresh, not just at create time.
+	if err := ValidateExternalURL(feedURL); err != nil {
+		return 0, err
+	}
+	client := NewSafeHTTPClient(30 * time.Second)
 	resp, err := client.Get(feedURL)
 	if err != nil {
 		return 0, fmt.Errorf("failed to fetch URL: %v", err)
@@ -269,6 +273,12 @@ func (s *FeedService) RefreshAllDue() {
 	}
 }
 
+// isBlockedIP reports whether an IP must not be connected to (loopback,
+// private, link-local or unspecified addresses).
+func isBlockedIP(ip net.IP) bool {
+	return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified()
+}
+
 // ValidateExternalURL checks that the URL is safe to fetch (not localhost or private IPs).
 func ValidateExternalURL(rawURL string) error {
 	u, err := url.Parse(rawURL)
@@ -292,13 +302,63 @@ func ValidateExternalURL(rawURL string) error {
 
 	ips, err := net.DefaultResolver.LookupIPAddr(ctx, hostname)
 	if err != nil {
-		return fmt.Errorf("DNS lookup failed for %s: %v", hostname, err)
+		// Don't leak resolver/hostname details to the client (SSRF oracle).
+		log.Printf("DNS lookup failed for %s: %v", hostname, err)
+		return fmt.Errorf("could not resolve URL host")
 	}
 
 	for _, ip := range ips {
-		if ip.IP.IsLoopback() || ip.IP.IsPrivate() || ip.IP.IsLinkLocalUnicast() || ip.IP.IsLinkLocalMulticast() || ip.IP.IsUnspecified() {
+		if isBlockedIP(ip.IP) {
 			return fmt.Errorf("URL must not point to a private or local address")
 		}
 	}
 	return nil
+}
+
+// NewSafeHTTPClient returns an HTTP client hardened against SSRF. It resolves
+// and validates the destination IP at dial time (closing the TOCTOU /
+// DNS-rebinding window between validation and fetch) and re-validates every
+// redirect target so a public URL cannot redirect to an internal address.
+func NewSafeHTTPClient(timeout time.Duration) *http.Client {
+	dialer := &net.Dialer{Timeout: 10 * time.Second}
+	transport := &http.Transport{
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			host, port, err := net.SplitHostPort(addr)
+			if err != nil {
+				return nil, err
+			}
+			ips, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+			if err != nil {
+				log.Printf("DNS lookup failed for %s: %v", host, err)
+				return nil, fmt.Errorf("could not resolve URL host")
+			}
+			for _, ip := range ips {
+				if isBlockedIP(ip.IP) {
+					return nil, fmt.Errorf("URL must not point to a private or local address")
+				}
+			}
+			// Dial one of the validated IPs directly so the connection cannot
+			// be made to a different address than the one we checked.
+			var dialErr error
+			for _, ip := range ips {
+				conn, err := dialer.DialContext(ctx, network, net.JoinHostPort(ip.IP.String(), port))
+				if err != nil {
+					dialErr = err
+					continue
+				}
+				return conn, nil
+			}
+			return nil, dialErr
+		},
+	}
+	return &http.Client{
+		Timeout:   timeout,
+		Transport: transport,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= 10 {
+				return fmt.Errorf("stopped after 10 redirects")
+			}
+			return ValidateExternalURL(req.URL.String())
+		},
+	}
 }

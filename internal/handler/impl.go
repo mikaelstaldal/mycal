@@ -215,7 +215,7 @@ func getImportReaderFromURL(rawURL string) (io.ReadCloser, error) {
 	if err := service.ValidateExternalURL(rawURL); err != nil {
 		return nil, badRequest(err.Error())
 	}
-	client := &http.Client{Timeout: 10 * time.Second}
+	client := service.NewSafeHTTPClient(10 * time.Second)
 	resp, err := client.Get(rawURL)
 	if err != nil {
 		return nil, badRequest("failed to fetch URL")
