@@ -356,11 +356,11 @@ func parseEvent(props []string, alarmProps []string, tzMap map[string]*time.Loca
 		case "UID":
 			uid = value
 		case "SUMMARY":
-			summary = unescapeText(value)
+			summary = sanitize.HTML(unescapeText(value))
 		case "DESCRIPTION":
 			description = sanitize.HTML(unescapeText(value))
 		case "LOCATION":
-			location = unescapeText(value)
+			location = sanitize.HTML(unescapeText(value))
 		case "GEO":
 			parts := strings.SplitN(value, ";", 2)
 			if len(parts) == 2 {
@@ -373,7 +373,7 @@ func parseEvent(props []string, alarmProps []string, tzMap map[string]*time.Loca
 				}
 			}
 		case "CATEGORIES":
-			categories = unescapeText(value)
+			categories = sanitize.HTML(unescapeText(value))
 		case "URL":
 			eventURL = value
 		case "X-GOOGLE-CONFERENCE":

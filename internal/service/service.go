@@ -215,9 +215,9 @@ func (s *EventService) Create(req *api.CreateEventRequest) (*model.Event, error)
 		ExDates:              req.Exdates.Or(""),
 		RDates:               req.Rdates.Or(""),
 		Duration:             req.Duration.Or(""),
-		Categories:           req.Categories.Or(""),
+		Categories:           sanitize.HTML(req.Categories.Or("")),
 		ReminderMinutes:      req.ReminderMinutes.Or(0),
-		Location:             req.Location.Or(""),
+		Location:             sanitize.HTML(req.Location.Or("")),
 	}
 	if req.URL.Set {
 		e.URL = req.URL.Value.String()
@@ -251,7 +251,7 @@ func (s *EventService) Update(id int64, req *api.UpdateEventRequest) (*model.Eve
 	}
 
 	if req.Title.Set {
-		existing.Title = req.Title.Value
+		existing.Title = sanitize.HTML(req.Title.Value)
 	}
 	if req.Description.Set {
 		existing.Description = sanitize.HTML(req.Description.Value)
@@ -293,7 +293,7 @@ func (s *EventService) Update(id int64, req *api.UpdateEventRequest) (*model.Eve
 		existing.Duration = req.Duration.Value
 	}
 	if req.Categories.Set {
-		existing.Categories = req.Categories.Value
+		existing.Categories = sanitize.HTML(req.Categories.Value)
 	}
 	if req.URL.Set {
 		existing.URL = req.URL.Value.String()
@@ -302,7 +302,7 @@ func (s *EventService) Update(id int64, req *api.UpdateEventRequest) (*model.Eve
 		existing.ReminderMinutes = req.ReminderMinutes.Value
 	}
 	if req.Location.Set {
-		existing.Location = req.Location.Value
+		existing.Location = sanitize.HTML(req.Location.Value)
 	}
 	if req.Latitude.Set && !req.Latitude.Null {
 		v := req.Latitude.Value
@@ -428,7 +428,7 @@ func (s *EventService) CreateOrUpdateOverride(parentID int64, instanceStart stri
 
 	// Apply updates
 	if req.Title.Set {
-		override.Title = req.Title.Value
+		override.Title = sanitize.HTML(req.Title.Value)
 	}
 	if req.Description.Set {
 		override.Description = sanitize.HTML(req.Description.Value)
@@ -465,7 +465,7 @@ func (s *EventService) CreateOrUpdateOverride(parentID int64, instanceStart stri
 		}
 	}
 	if req.Categories.Set {
-		override.Categories = req.Categories.Value
+		override.Categories = sanitize.HTML(req.Categories.Value)
 	}
 	if req.URL.Set {
 		override.URL = req.URL.Value.String()
@@ -474,7 +474,7 @@ func (s *EventService) CreateOrUpdateOverride(parentID int64, instanceStart stri
 		override.ReminderMinutes = req.ReminderMinutes.Value
 	}
 	if req.Location.Set {
-		override.Location = req.Location.Value
+		override.Location = sanitize.HTML(req.Location.Value)
 	}
 	if req.Latitude.Set && !req.Latitude.Null {
 		v := req.Latitude.Value
