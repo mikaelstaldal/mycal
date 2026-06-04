@@ -86,6 +86,10 @@ cd e2e && bash playwright-test --headed
 - **Database:** SQLite via [modernc.org/sqlite](https://pkg.go.dev/modernc.org/sqlite) (pure Go, no CGO)
 - **Frontend:** [Preact](https://preactjs.com/) + [HTM](https://github.com/developit/htm) loaded from CDN
 
+## Operations Guide
+
+See [OPERATIONS.md](OPERATIONS.md) for production installation, reverse proxy configuration, systemd service setup, and authentication.
+
 ## License
 
 Copyright 2026 Mikael Ståldal.
