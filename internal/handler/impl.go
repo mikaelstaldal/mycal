@@ -411,7 +411,7 @@ func (h *handlerImpl) APIV1ImportPost(ctx context.Context, req api.APIV1ImportPo
 
 	switch r := req.(type) {
 	case *api.APIV1ImportPostReqTextCalendar:
-		reader = io.LimitReader(r.Data, maxImportSize)
+		reader = r.Data
 		cleanup = func() {}
 	case *api.APIV1ImportPostReqApplicationJSON:
 		body, err := getImportReaderFromURL(r.URL.String())
@@ -447,7 +447,7 @@ func (h *handlerImpl) APIV1ImportSinglePost(ctx context.Context, req api.APIV1Im
 
 	switch r := req.(type) {
 	case *api.APIV1ImportSinglePostReqTextCalendar:
-		reader = io.LimitReader(r.Data, maxImportSize)
+		reader = r.Data
 		cleanup = func() {}
 	case *api.APIV1ImportSinglePostReqApplicationJSON:
 		body, err := getImportReaderFromURL(r.URL.String())

@@ -152,6 +152,7 @@ func main() {
 	if authMiddleware != nil {
 		root = authMiddleware(root)
 	}
+	root = http.MaxBytesHandler(root, 10*1024*1024) // 10 MiB global request body limit (matches import endpoint)
 
 	serverAddr := fmt.Sprintf("%s:%d", *addr, *port)
 	log.Printf("Starting server on %s", serverAddr)
