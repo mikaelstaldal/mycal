@@ -25,7 +25,7 @@ const databaseName = "mycal.sqlite"
 
 func main() {
 	port := flag.Int("port", 8080, "port to listen on")
-	addr := flag.String("addr", "", "address to listen on")
+	addr := flag.String("addr", "127.0.0.1", "address to listen on")
 	dataDir := flag.String("data", "data", "directory to store data in")
 	basicAuthFile := flag.String("basic-auth-file", "", "enable HTTP basic auth with username and password from given file in htpasswd format (bcrypt only)")
 	basicAuthRealm := flag.String("basic-auth-realm", "mycal", "realm for HTTP basic auth")

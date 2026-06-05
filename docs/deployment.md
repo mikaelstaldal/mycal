@@ -174,4 +174,4 @@ ReadWritePaths=/var/lib/mycal
 WantedBy=multi-user.target
 ```
 
-Bind mycal to `127.0.0.1` (via `-addr 127.0.0.1`) so it is only reachable from the local machine, not directly from the internet.
+mycal binds to `127.0.0.1` by default, so it is only reachable from the local machine. Pass `-addr 0.0.0.0` only if you need to bind all interfaces (e.g. without a reverse proxy).

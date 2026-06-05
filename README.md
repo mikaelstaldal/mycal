@@ -30,7 +30,7 @@ Open http://localhost:8080 in your browser.
 | Flag                | Default        | Description                                                                                        |
 |---------------------|----------------|----------------------------------------------------------------------------------------------------|
 | `-port`             | 8080           | port to listen on                                                                                  |
-| `-addr`             | all interfaces | address to listen on                                                                               |
+| `-addr`             | `127.0.0.1`    | address to listen on (use `0.0.0.0` to bind all interfaces)                                        |
 | `-data`             | `data`         | directory to store data in                                                                         |
 | `-basic-auth-file`  | *(disabled)*   | enable HTTP basic auth with username and password from given file in htpasswd format (bcrypt only) |
 | `-basic-auth-realm` | `mycal`        | realm for HTTP basic auth                                                                          |
@@ -49,10 +49,6 @@ htpasswd -Bc htpasswd admin
 ```
 
 When enabled, all endpoints (UI, API, and iCalendar feed) require valid credentials. The browser will prompt for a username and password automatically.
-
-## Deployment
-
-See [deployment guide](docs/deployment.md) for reverse-proxy requirements, authentication setup, and a systemd service example.
 
 ## API
 
