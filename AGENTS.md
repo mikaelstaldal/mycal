@@ -98,7 +98,7 @@ Always run `go mod tidy` after modifying the `go.mod` file.
 
 ## API
 
-The API is defined in the OpenAPI spec in `openapi.yaml`, with docs in `docs/API.md`, update both whenever the API is changed. 
+The API is defined in the OpenAPI spec in `openapi.yaml`, update it whenever the API is changed. 
 The OpenAPI spec is used to generate server and client code, so it must be accurate.
 
 In addition to the web UI here, the API is consumed by mobile clients outside of this repository. Keep the API backwards 

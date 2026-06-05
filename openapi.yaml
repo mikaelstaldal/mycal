@@ -1,7 +1,10 @@
 openapi: 3.0.3
 info:
   title: MyCal API
-  description: Calendar API with event management and iCalendar support.
+  description: >
+    Calendar API with event management and iCalendar support.
+    All endpoints are under `/api/v1`. Datetimes use RFC 3339 format
+    (or `YYYY-MM-DD` for all-day events). Errors return `{"error": "message"}`.
   version: 1.0.0
 servers:
   - url: http://localhost:8080
@@ -10,7 +13,9 @@ paths:
   /api/v1/preferences:
     get:
       summary: Get all preferences
-      description: Returns all preferences with their current values (defaults filled in for unset keys).
+      description: >
+        Returns all preferences with their current values (defaults filled in for unset keys).
+        Currently no server-side preferences are defined; the default event color is managed per-calendar via the calendars table.
       responses:
         "200":
           description: Current preferences
@@ -86,8 +91,22 @@ paths:
   /api/v1/events:
     get:
       summary: List or search events
-      description: >
+      description: |
         List events in a time range (requires `from` and `to`), or search events by text (requires `q`).
+
+        ```bash
+        # List events for a time range
+        curl 'http://localhost:8080/api/v1/events?from=2026-02-01T00:00:00Z&to=2026-03-01T00:00:00Z'
+
+        # Search events
+        curl 'http://localhost:8080/api/v1/events?q=meeting'
+
+        # Filter by calendar ID
+        curl 'http://localhost:8080/api/v1/events?from=2026-02-01T00:00:00Z&to=2026-03-01T00:00:00Z&calendar_id=1'
+
+        # Filter by multiple calendars
+        curl 'http://localhost:8080/api/v1/events?from=2026-02-01T00:00:00Z&to=2026-03-01T00:00:00Z&calendar_id=1&calendar_id=2'
+        ```
 
       parameters:
         - name: from
@@ -138,6 +157,30 @@ paths:
           $ref: "#/components/responses/Error"
     post:
       summary: Create an event
+      description: |
+        ```bash
+        # Create a timed event
+        curl -X POST http://localhost:8080/api/v1/events \
+          -H 'Content-Type: application/json' \
+          -d '{
+            "title": "Team Meeting",
+            "all_day": false,
+            "start_time": "2026-02-17T14:00:00Z",
+            "end_time": "2026-02-17T15:00:00Z",
+            "color": "dodgerblue"
+          }'
+
+        # Create an all-day event
+        curl -X POST http://localhost:8080/api/v1/events \
+          -H 'Content-Type: application/json' \
+          -d '{
+            "title": "Holiday",
+            "all_day": true,
+            "start_date": "2026-06-06",
+            "end_date": "2026-06-07",
+            "color": "green"
+          }'
+        ```
       requestBody:
         required: true
         content:
@@ -210,9 +253,24 @@ paths:
   /api/v1/import:
     post:
       summary: Import events from iCalendar data
-      description: >
-        Accepts iCalendar data either as raw `text/calendar` body or as a JSON body with a URL to fetch.
+      description: |
+        Accepts iCalendar data in two ways:
 
+        **Direct iCalendar content** — send the raw `.ics` data as the request body with `Content-Type: text/calendar`:
+
+        ```bash
+        curl -X POST http://localhost:8080/api/v1/import \
+          -H 'Content-Type: text/calendar' \
+          --data-binary @events.ics
+        ```
+
+        **URL import** — send a JSON body with `Content-Type: application/json`:
+
+        ```bash
+        curl -X POST http://localhost:8080/api/v1/import \
+          -H 'Content-Type: application/json' \
+          -d '{"url": "https://example.com/calendar.ics"}'
+        ```
       parameters:
         - name: calendar
           in: query
@@ -307,6 +365,19 @@ paths:
           $ref: "#/components/responses/Error"
     post:
       summary: Create a feed subscription
+      description: |
+        Creates a feed subscription that periodically re-imports events from an ICS URL.
+        Events with the same ICS UID are deduplicated automatically.
+
+        ```bash
+        curl -X POST http://localhost:8080/api/v1/feeds \
+          -H 'Content-Type: application/json' \
+          -d '{
+            "url": "https://example.com/calendar.ics",
+            "calendar_name": "work",
+            "refresh_interval_minutes": 60
+          }'
+        ```
       requestBody:
         required: true
         content:
@@ -382,6 +453,9 @@ paths:
   /api/v1/feeds/{id}/refresh:
     post:
       summary: Manually refresh a feed
+      description: >
+        Triggers an immediate refresh of the feed, regardless of the scheduled interval.
+        Returns the feed after refresh with updated `last_refreshed_at` and `last_error`.
       parameters:
         - name: id
           in: path
@@ -401,7 +475,10 @@ paths:
   /api/v1/events.ics:
     get:
       summary: iCalendar feed
-      description: Returns all events as an iCalendar feed. Optionally filter by calendar name.
+      description: >
+        Returns all events as an iCalendar feed. Optionally filter by calendar name or ID.
+        Subscribe from any app that supports iCalendar (Google Calendar, Apple Calendar, Thunderbird, etc.)
+        using `http://your-server/api/v1/events.ics`.
       parameters:
         - name: calendar_id
           in: query
@@ -433,7 +510,9 @@ paths:
   /calendar.ics:
     get:
       summary: iCalendar feed (convenience URL)
-      description: Same as `/api/v1/events.ics`.
+      description: >
+        Same as `/api/v1/events.ics`. Convenience URL for subscribing from calendar apps
+        at `http://your-server/calendar.ics`.
       parameters:
         - name: calendar_id
           in: query

@@ -52,7 +52,7 @@ When enabled, all endpoints (UI, API, and iCalendar feed) require valid credenti
 
 ## API
 
-See [API docs](docs/API.md).
+See the [OpenAPI specification](openapi.yaml).
 
 ## iCalendar Feed
 
