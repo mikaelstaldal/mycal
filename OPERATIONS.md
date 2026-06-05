@@ -1,6 +1,6 @@
 # mycal — Operations Guide
 
-This guide covers production installation of mycal on a Linux server, including TLS termination via a reverse proxy (nginx) and systemd service management.
+This guide covers production installation of mycal on a Linux server, including TLS termination via a reverse proxy (e.g. nginx) and systemd service management.
 
 ## Table of Contents
 
@@ -10,7 +10,7 @@ This guide covers production installation of mycal on a Linux server, including 
 4. [Set Up the Data Directory](#set-up-the-data-directory)
 5. [Set Up Authentication](#set-up-authentication)
 6. [Configure systemd](#configure-systemd)
-7. [Configure nginx as a Reverse Proxy](#configure-nginx-as-a-reverse-proxy)
+7. [Configure a Reverse Proxy](#configure-a-reverse-proxy)
 8. [First Login](#first-login)
 9. [iCalendar Feed](#icalendar-feed)
 10. [Exporting Data](#exporting-data)
@@ -132,9 +132,16 @@ journalctl -u mycal -f
 
 ---
 
-## Configure nginx as a Reverse Proxy
+## Configure a Reverse Proxy
 
-mycal does not terminate TLS itself. Place it behind nginx.
+mycal does not terminate TLS itself. Place it behind a reverse proxy.
+
+Two headers are **mandatory** regardless of which reverse proxy you use:
+
+- **`X-Forwarded-Host`** — mycal's CSRF middleware uses this header to determine the server's public-facing hostname and rejects state-changing requests whose `Origin` or `Referer` does not match it. The reverse proxy **must always overwrite** this header with the actual public hostname. Never pass the client-supplied value through — doing so lets an attacker bypass the CSRF check.
+- **Rate limiting** — mycal has no built-in rate limiting. The reverse proxy must enforce a per-IP request rate limit to prevent DoS via bulk event creation or repeated queries.
+
+### nginx
 
 Create `/etc/nginx/sites-available/mycal`:
 
@@ -183,13 +190,70 @@ nginx -t
 systemctl reload nginx
 ```
 
-### TLS certificate (Let's Encrypt)
+#### TLS certificate (Let's Encrypt)
 
 ```bash
 certbot --nginx -d calendar.example.com
 ```
 
 Certbot will modify the nginx config to handle certificate renewal automatically.
+
+### Apache 2
+
+Requires `mod_proxy`, `mod_proxy_http`, `mod_ratelimit`, `mod_ssl`, and `mod_headers`. Enable them with:
+
+```bash
+a2enmod proxy proxy_http ratelimit ssl headers
+```
+
+```apache
+<VirtualHost *:443>
+    ServerName calendar.example.com
+
+    SSLEngine on
+    SSLCertificateFile    /etc/letsencrypt/live/calendar.example.com/fullchain.pem
+    SSLCertificateKeyFile /etc/letsencrypt/live/calendar.example.com/privkey.pem
+
+    ProxyPreserveHost On
+    ProxyPass        / http://127.0.0.1:8080/
+    ProxyPassReverse / http://127.0.0.1:8080/
+
+    # Always overwrite X-Forwarded-Host with the actual public hostname.
+    # RequestHeader set runs after ProxyPass so it replaces any client-supplied value.
+    RequestHeader set X-Forwarded-Host "calendar.example.com"
+
+    RequestHeader set X-Forwarded-Proto "https"
+
+    # Rate limiting: 10 requests/second per connection
+    <Location />
+        SetOutputFilter RATE_LIMIT
+        SetEnv rate-limit 10
+    </Location>
+</VirtualHost>
+
+# Redirect HTTP to HTTPS
+<VirtualHost *:80>
+    ServerName calendar.example.com
+    Redirect permanent / https://calendar.example.com/
+</VirtualHost>
+```
+
+> **Note:** Apache's `mod_ratelimit` limits the *response* throughput (bytes/sec), not the request rate. For true per-IP request-rate limiting use `mod_qos` (available as a package on most distributions: `apt install libapache2-mod-qos`) and add `QS_SrvMaxConnPerIP 10` to the VirtualHost block.
+
+### Caddy
+
+```caddy
+calendar.example.com {
+    # Rate limiting (requires caddy-ratelimit module)
+    rate_limit {remote.ip} 10r/s
+
+    reverse_proxy 127.0.0.1:8080 {
+        header_up X-Forwarded-Host {host}
+    }
+}
+```
+
+> **Note:** The built-in Caddy distribution does not include a rate-limiting module. Build Caddy with `xcaddy build --with github.com/mholt/caddy-ratelimit`, or use nginx if you prefer not to build a custom binary.
 
 ---
 
@@ -251,9 +315,9 @@ sudo -u mycal /usr/local/bin/mycal \
 
 mycal binds to `127.0.0.1` by default and is never directly exposed to the internet. Ensure your firewall allows:
 
-| Port | Protocol | Purpose                          |
-|------|----------|----------------------------------|
-| 80   | TCP      | HTTP → redirect to HTTPS (nginx) |
-| 443  | TCP      | HTTPS (nginx → mycal)            |
+| Port | Protocol | Purpose                                  |
+|------|----------|------------------------------------------|
+| 80   | TCP      | HTTP → redirect to HTTPS (reverse-proxy) |
+| 443  | TCP      | HTTPS (reverse-proxy → mycal)            |
 
 The mycal process itself (port 8080) must not be reachable from outside the server.
