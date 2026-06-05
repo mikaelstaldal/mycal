@@ -81,13 +81,13 @@ func Encode(w io.Writer, events []model.Event) error {
 			fmt.Fprintf(&b, "CATEGORIES:%s\r\n", escapeText(e.Categories))
 		}
 		if e.URL != "" {
-			fmt.Fprintf(&b, "URL:%s\r\n", e.URL)
+			fmt.Fprintf(&b, "URL:%s\r\n", stripCRLF(e.URL))
 		}
 		if e.Color != "" {
-			fmt.Fprintf(&b, "COLOR:%s\r\n", e.Color)
+			fmt.Fprintf(&b, "COLOR:%s\r\n", stripCRLF(e.Color))
 		}
 		if e.RecurrenceFreq != "" {
-			rrule := "RRULE:FREQ=" + e.RecurrenceFreq
+			rrule := "RRULE:FREQ=" + stripCRLF(e.RecurrenceFreq)
 			if e.RecurrenceInterval > 1 {
 				rrule += fmt.Sprintf(";INTERVAL=%d", e.RecurrenceInterval)
 			}
@@ -100,13 +100,13 @@ func Encode(w io.Writer, events []model.Event) error {
 				}
 			}
 			if e.RecurrenceByDay != "" {
-				rrule += ";BYDAY=" + e.RecurrenceByDay
+				rrule += ";BYDAY=" + stripCRLF(e.RecurrenceByDay)
 			}
 			if e.RecurrenceByMonthDay != "" {
-				rrule += ";BYMONTHDAY=" + e.RecurrenceByMonthDay
+				rrule += ";BYMONTHDAY=" + stripCRLF(e.RecurrenceByMonthDay)
 			}
 			if e.RecurrenceByMonth != "" {
-				rrule += ";BYMONTH=" + e.RecurrenceByMonth
+				rrule += ";BYMONTH=" + stripCRLF(e.RecurrenceByMonth)
 			}
 			b.WriteString(rrule + "\r\n")
 		}
@@ -375,9 +375,13 @@ func parseEvent(props []string, alarmProps []string, tzMap map[string]*time.Loca
 		case "CATEGORIES":
 			categories = sanitize.HTML(unescapeText(value))
 		case "URL":
-			eventURL = value
+			if model.ValidateURL(value) == nil {
+				eventURL = value
+			}
 		case "X-GOOGLE-CONFERENCE":
-			googleConference = value
+			if model.ValidateURL(value) == nil {
+				googleConference = value
+			}
 		case "COLOR":
 			color = strings.ToLower(strings.TrimSpace(value))
 			if err := model.ValidateColor(color); err != nil {
@@ -650,5 +654,12 @@ func escapeText(s string) string {
 	s = strings.ReplaceAll(s, ";", "\\;")
 	s = strings.ReplaceAll(s, ",", "\\,")
 	s = strings.ReplaceAll(s, "\n", "\\n")
+	return s
+}
+
+// stripCRLF removes CR and LF characters to prevent iCal property injection.
+func stripCRLF(s string) string {
+	s = strings.ReplaceAll(s, "\r", "")
+	s = strings.ReplaceAll(s, "\n", "")
 	return s
 }

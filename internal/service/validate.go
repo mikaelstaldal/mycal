@@ -15,7 +15,6 @@ const (
 	maxDescriptionLength  = 10000
 	maxLocationLength     = 500
 	maxCategoriesLength   = 500
-	maxURLLength          = 2000
 	maxReminderMinutes    = 40320 // 4 weeks
 	maxRecurrenceCount    = 1000
 	maxRecurrenceInterval = 999
@@ -57,7 +56,7 @@ func ValidateCreateEventRequest(req *api.CreateEventRequest) (startTime, endTime
 		return "", "", fmt.Errorf("categories must be at most %d characters", maxCategoriesLength)
 	}
 	if req.URL.Set {
-		if err := validateURL(req.URL.Value.String()); err != nil {
+		if err := model.ValidateURL(req.URL.Value.String()); err != nil {
 			return "", "", err
 		}
 	}
@@ -230,7 +229,7 @@ func ValidateUpdateEventRequest(req *api.UpdateEventRequest) error {
 		return fmt.Errorf("categories must be at most %d characters", maxCategoriesLength)
 	}
 	if req.URL.Set {
-		if err := validateURL(req.URL.Value.String()); err != nil {
+		if err := model.ValidateURL(req.URL.Value.String()); err != nil {
 			return err
 		}
 	}
@@ -515,19 +514,6 @@ func validateDateRange(t time.Time) error {
 	maxYear := time.Now().Year() + maxYearOffset
 	if t.Year() < minYear || t.Year() > maxYear {
 		return fmt.Errorf("date must be between year %d and %d", minYear, maxYear)
-	}
-	return nil
-}
-
-func validateURL(u string) error {
-	if u == "" {
-		return nil
-	}
-	if len(u) > maxURLLength {
-		return fmt.Errorf("url must be at most %d characters", maxURLLength)
-	}
-	if !strings.HasPrefix(u, "http://") && !strings.HasPrefix(u, "https://") {
-		return fmt.Errorf("url must start with http:// or https://")
 	}
 	return nil
 }
