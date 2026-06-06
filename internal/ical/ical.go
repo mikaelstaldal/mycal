@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/mikaelstaldal/mycal/internal/model"
 	"github.com/mikaelstaldal/mycal/internal/sanitize"
@@ -156,8 +157,41 @@ func Encode(w io.Writer, events []model.Event) error {
 	}
 
 	b.WriteString("END:VCALENDAR\r\n")
-	_, err := io.WriteString(w, b.String())
-	return err
+	return foldICalContent(w, b.String())
+}
+
+// foldICalContent applies RFC 5545 §3.1 line folding to a complete iCal document,
+// writing each folded line directly to w.
+func foldICalContent(w io.Writer, s string) error {
+	for _, line := range strings.Split(s, "\r\n") {
+		if line == "" {
+			continue
+		}
+		if _, err := io.WriteString(w, foldLine(line)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// foldLine folds one content line at 75 octets per RFC 5545 §3.1, appending CRLF.
+func foldLine(line string) string {
+	if len(line) <= 75 {
+		return line + "\r\n"
+	}
+	var out strings.Builder
+	n := 0 // bytes written to the current physical line
+	for _, r := range line {
+		size := utf8.RuneLen(r)
+		if n > 0 && n+size > 75 {
+			out.WriteString("\r\n ")
+			n = 1 // the folding space
+		}
+		out.WriteRune(r)
+		n += size
+	}
+	out.WriteString("\r\n")
+	return out.String()
 }
 
 func formatICalTime(t time.Time) string {
@@ -316,9 +350,12 @@ func parseUTCOffset(offset string) *time.Location {
 
 // unfoldLines reads iCal content and handles line unfolding per RFC 5545:
 // lines that start with a space or tab are continuations of the previous line.
+const maxLineBytes = 1 << 20 // 1 MB — well above any reasonable unfolded iCal line
+
 func unfoldLines(r io.Reader) ([]string, error) {
 	var lines []string
 	scanner := bufio.NewScanner(r)
+	scanner.Buffer(make([]byte, 64*1024), maxLineBytes)
 	for scanner.Scan() {
 		line := scanner.Text()
 		// Remove trailing \r if present

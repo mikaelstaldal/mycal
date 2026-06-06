@@ -261,6 +261,49 @@ func TestDecodeInvalidColor(t *testing.T) {
 	assert.Empty(t, events[0].Color)
 }
 
+func TestEncodeLongLineFolding(t *testing.T) {
+	longTitle := strings.Repeat("A", 200)
+	events := []model.Event{
+		{
+			ID:          1,
+			Title:       longTitle,
+			Description: strings.Repeat("B", 500),
+			StartTime:   "2026-02-17T14:00:00Z",
+			EndTime:     "2026-02-17T15:00:00Z",
+		},
+	}
+
+	var buf bytes.Buffer
+	err := Encode(&buf, events)
+	require.NoError(t, err)
+
+	output := buf.String()
+
+	for _, line := range strings.Split(output, "\r\n") {
+		assert.LessOrEqual(t, len(line), 75, "line exceeds 75 octets: %q", line)
+	}
+
+	// Round-trip: decode must recover the original values.
+	decoded, err := Decode(strings.NewReader(output))
+	require.NoError(t, err)
+	require.Len(t, decoded, 1)
+	assert.Equal(t, longTitle, decoded[0].Title)
+}
+
+func TestDecodeLongUnfoldedLine(t *testing.T) {
+	// A malformed .ics where DESCRIPTION exceeds the default 64 KB scanner buffer.
+	// With the explicit 1 MB buffer the decoder must not return an error.
+	longDesc := strings.Repeat("X", 70000)
+	input := "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nSUMMARY:Test\r\n" +
+		"DTSTART:20260101T000000Z\r\nDTEND:20260101T010000Z\r\n" +
+		"DESCRIPTION:" + longDesc + "\r\n" +
+		"END:VEVENT\r\nEND:VCALENDAR\r\n"
+
+	events, err := Decode(strings.NewReader(input))
+	require.NoError(t, err)
+	require.Len(t, events, 1)
+}
+
 func TestEncodeEmpty(t *testing.T) {
 	var buf bytes.Buffer
 	err := Encode(&buf, []model.Event{})
