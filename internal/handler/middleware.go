@@ -57,7 +57,7 @@ func SecurityHeadersMiddleware(next http.Handler) http.Handler {
 		w.Header().Set("Content-Security-Policy",
 			"default-src 'self';"+
 				" script-src 'self' 'sha256-l4YleaHsC1MWhnC491PTrqrnc9YJbIKzgYkX6jf35As=' https://maps.googleapis.com;"+
-				" style-src 'self' 'unsafe-inline';"+
+				" style-src-elem 'self'; style-src-attr 'unsafe-inline';"+
 				" img-src 'self' data: https://*.tile.openstreetmap.org https://maps.googleapis.com https://maps.gstatic.com;"+
 				" connect-src 'self' https://maps.googleapis.com;"+
 				" font-src 'self';"+

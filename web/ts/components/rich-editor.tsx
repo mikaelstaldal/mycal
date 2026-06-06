@@ -103,8 +103,8 @@ export function RichEditor({ value, onChange }: RichEditorProps): VNode | null {
 
     return (
         <div class="rich-editor-wrapper">
-            {loading && <div style="padding: 8px; color: #666; font-size: 0.85rem;">Loading editor...</div>}
-            <div ref={containerRef} style={loading ? 'display:none' : ''} />
+            {loading && <div class="rich-editor-loading">Loading editor...</div>}
+            <div ref={containerRef} class={loading ? 'is-hidden' : ''} />
         </div>
     );
 }

@@ -141,7 +141,7 @@ export function Settings({ config, onConfigChange }: SettingsProps): VNode | nul
                                        placeholder="AIza..." />
                             </label>
                             {apiKeyError && (
-                                <div style="color: #c62828; font-size: 0.8rem; margin: -8px 0 8px;">
+                                <div class="api-key-error">
                                     {apiKeyError}
                                 </div>
                             )}

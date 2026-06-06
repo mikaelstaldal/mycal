@@ -54,10 +54,11 @@ export function MiniMonth({ currentDate, onDayClick, onMonthClick, config }: Min
                             const classes = ['mini-month-day',
                                 !currentMonth && 'mini-month-day-other',
                                 currentMonth && isToday(date) && 'mini-month-day-today',
+                                currentMonth && onDayClick && 'is-clickable',
                             ].filter(Boolean).join(' ');
                             return <div class={classes}
                                 onClick={currentMonth && onDayClick ? () => onDayClick(date) : undefined}
-                                style={currentMonth ? 'cursor: pointer' : ''}>{date.getDate()}</div>;
+                                >{date.getDate()}</div>;
                         })}
                     </div>
                 ))}

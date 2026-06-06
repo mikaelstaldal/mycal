@@ -90,10 +90,10 @@ export function YearView({ currentDate, events, onMonthClick, onWeekClick, onDay
                                     !currentMonth && 'year-day-other',
                                     currentMonth && isToday(date) && 'year-day-today',
                                     hasEvents && 'year-day-has-events',
-                                    isHighlighted && 'highlight-event'
+                                    isHighlighted && 'highlight-event',
+                                    currentMonth && 'is-clickable',
                                 ].filter(Boolean).join(' ');
                                 return <div class={classes}
-                                    style={currentMonth ? 'cursor: pointer' : ''}
                                     onClick={currentMonth ? (ev: MouseEvent) => { ev.stopPropagation(); onDayClick(date); } : undefined}>{date.getDate()}</div>;
                             })}
                         </div>

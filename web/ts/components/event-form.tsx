@@ -501,11 +501,11 @@ export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSa
                         Duration
                         <div class="duration-row">
                             <input type="number" min="0" max="999" value={durationHours}
-                                   style="width: 60px"
+                                   class="input-narrow"
                                    onInput={(e: Event) => setDurationHours(parseInt((e.target as HTMLInputElement).value) || 0)} />
                             <span>h</span>
                             <input type="number" min="0" max="59" value={durationMinutes}
-                                   style="width: 60px"
+                                   class="input-narrow"
                                    onInput={(e: Event) => setDurationMinutes(parseInt((e.target as HTMLInputElement).value) || 0)} />
                             <span>m</span>
                         </div>
@@ -588,7 +588,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSa
                                             ? `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=15/${latitude}/${longitude}`
                                             : `https://www.google.com/maps?q=${latitude},${longitude}`}
                                        target="_blank" rel="noopener noreferrer"
-                                       style="display: inline-block; margin: 4px 0 8px; color: #4285f4;">
+                                       class="map-link">
                                         {config.mapProvider === 'openstreetmap' ? 'View on OpenStreetMap' : 'View on Google Maps'} &#x2197;
                                     </a>
                                 )}
@@ -598,7 +598,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSa
                                     ? `https://www.openstreetmap.org/search?query=${encodeURIComponent(location)}`
                                     : `https://www.google.com/maps/search/${encodeURIComponent(location)}`}
                                target="_blank" rel="noopener noreferrer"
-                               style="display: inline-block; margin: 4px 0 8px; color: #4285f4;">
+                               class="map-link">
                                 {config.mapProvider === 'openstreetmap' ? 'Search on OpenStreetMap' : 'Search on Google Maps'} &#x2197;
                             </a>
                         ) : null}
@@ -660,7 +660,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSa
                             <div class="detail-row">
                                 <span class="detail-label">URL:</span>
                                 <a href={eventURL} target="_blank" rel="noopener noreferrer"
-                                   style="color: #4285f4; word-break: break-all; margin-left: 4px;">
+                                   class="url-link">
                                     {eventURL} &#x2197;
                                 </a>
                             </div>
@@ -703,7 +703,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSa
                                     Every
                                     <div class="interval-row">
                                         <input type="number" min="1" max="99" value={recurrenceInterval}
-                                               style="width: 60px"
+                                               class="input-narrow"
                                                onInput={(e: Event) => setRecurrenceInterval(parseInt((e.target as HTMLInputElement).value) || 1)} />
                                         <span>{({DAILY:'day(s)',WEEKLY:'week(s)',MONTHLY:'month(s)',YEARLY:'year(s)'} as Record<string,string>)[recurrenceFreq]}</span>
                                     </div>

@@ -2055,3 +2055,60 @@ body {
     justify-content: center;
     margin: auto;
 }
+
+.api-key-error {
+    color: var(--error-color);
+    font-size: 0.8rem;
+    margin: -8px 0 8px;
+}
+
+.input-narrow {
+    width: 60px;
+}
+
+.map-link {
+    display: inline-block;
+    margin: 4px 0 8px;
+    color: #4285f4;
+}
+
+.url-link {
+    color: #4285f4;
+    word-break: break-all;
+    margin-left: 4px;
+}
+
+.rich-editor-loading {
+    padding: 8px;
+    color: var(--text-subtle);
+    font-size: 0.85rem;
+}
+
+.is-hidden {
+    display: none;
+}
+
+.map-picker {
+    margin: 8px 0;
+    position: relative;
+    overflow: hidden;
+    border-radius: 6px;
+}
+
+.map-loading {
+    padding: 12px;
+    color: var(--text-subtle);
+}
+
+.map-canvas {
+    width: 100%;
+    height: 200px;
+}
+
+.map-canvas--editing {
+    height: 250px;
+}
+
+.is-clickable {
+    cursor: pointer;
+}

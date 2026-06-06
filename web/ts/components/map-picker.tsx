@@ -228,9 +228,9 @@ export function MapPicker({ mapProvider, apiKey, latitude, longitude, editing, o
     if (error) return null;
 
     return (
-        <div class="map-picker" style="margin: 8px 0; position: relative; overflow: hidden; border-radius: 6px;">
-            {loading && <div style="padding: 12px; color: #666;">Loading map...</div>}
-            <div ref={mapRef} style={`width: 100%; height: ${editing ? '250px' : '200px'}; ${loading ? 'display:none' : ''}`} />
+        <div class="map-picker">
+            {loading && <div class="map-loading">Loading map...</div>}
+            <div ref={mapRef} class={['map-canvas', editing && 'map-canvas--editing', loading && 'is-hidden'].filter(Boolean).join(' ')} />
         </div>
     );
 }
