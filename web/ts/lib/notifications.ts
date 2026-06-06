@@ -4,7 +4,17 @@ const STORAGE_KEY = 'mycal_fired_notifications';
 
 function getFired(): Record<string, number> {
     try {
-        return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+        const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+        if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+            return {};
+        }
+        const result: Record<string, number> = {};
+        for (const [k, v] of Object.entries(parsed)) {
+            if (typeof k === 'string' && typeof v === 'number' && Number.isFinite(v)) {
+                result[k] = v;
+            }
+        }
+        return result;
     } catch {
         return {};
     }

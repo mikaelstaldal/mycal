@@ -27,15 +27,65 @@ const DEFAULTS: AppConfig = {
     googleMapsApiKey: '', // only needed when mapProvider is 'google'
 };
 
+const VALID_VIEWS = ['year', 'month', 'week', 'day', 'schedule'] as const;
+const VALID_MAP_PROVIDERS = ['none', 'openstreetmap', 'google'] as const;
+const GOOGLE_API_KEY_RE = /^[A-Za-z0-9_-]{0,200}$/;
+// CSS color: named colors, #hex, rgb(), hsl() — restrict to safe printable ASCII, no quotes or angle brackets
+const CSS_COLOR_RE = /^[A-Za-z0-9#(),%. -]{1,100}$/;
+
+function sanitize(parsed: unknown, localeWeekStart: number): AppConfig {
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+        return { ...DEFAULTS, weekStartDay: localeWeekStart };
+    }
+    const p = parsed as Record<string, unknown>;
+
+    const defaultView = VALID_VIEWS.includes(p.defaultView as any)
+        ? (p.defaultView as AppConfig['defaultView'])
+        : DEFAULTS.defaultView;
+
+    const rawHour = Number(p.dayStartHour);
+    const dayStartHour = Number.isInteger(rawHour) && rawHour >= 0 && rawHour <= 23
+        ? rawHour
+        : DEFAULTS.dayStartHour;
+
+    const rawWSD = p.weekStartDay;
+    const weekStartDay = rawWSD != null
+        ? (rawWSD === 0 || rawWSD === 1 ? (rawWSD as 0 | 1) : DEFAULTS.weekStartDay)
+        : localeWeekStart;
+
+    const defaultEventColor = typeof p.defaultEventColor === 'string' && CSS_COLOR_RE.test(p.defaultEventColor)
+        ? p.defaultEventColor
+        : DEFAULTS.defaultEventColor;
+
+    const mapProvider = VALID_MAP_PROVIDERS.includes(p.mapProvider as any)
+        ? (p.mapProvider as AppConfig['mapProvider'])
+        : DEFAULTS.mapProvider;
+
+    const googleMapsApiKey = typeof p.googleMapsApiKey === 'string' && GOOGLE_API_KEY_RE.test(p.googleMapsApiKey)
+        ? p.googleMapsApiKey
+        : DEFAULTS.googleMapsApiKey;
+
+    let calendarColors: Record<number, string> | undefined;
+    if (typeof p.calendarColors === 'object' && p.calendarColors !== null && !Array.isArray(p.calendarColors)) {
+        const cc: Record<number, string> = {};
+        for (const [k, v] of Object.entries(p.calendarColors as Record<string, unknown>)) {
+            const id = Number(k);
+            if (Number.isInteger(id) && id > 0 && typeof v === 'string' && CSS_COLOR_RE.test(v)) {
+                cc[id] = v;
+            }
+        }
+        calendarColors = cc;
+    }
+
+    return { defaultView, dayStartHour, weekStartDay, defaultEventColor, mapProvider, googleMapsApiKey, ...(calendarColors !== undefined && { calendarColors }) };
+}
+
 export function getConfig(): AppConfig {
     try {
         const stored = localStorage.getItem(STORAGE_KEY);
         if (stored) {
             const parsed = JSON.parse(stored);
-            const localeDefault = getLocaleWeekStartDay();
-            // If weekStartDay is null or absent, use locale detection
-            const weekStartDay = parsed.weekStartDay != null ? parsed.weekStartDay : localeDefault;
-            return { ...DEFAULTS, ...parsed, weekStartDay };
+            return sanitize(parsed, getLocaleWeekStartDay());
         }
     } catch (e) {
         // ignore corrupt data
