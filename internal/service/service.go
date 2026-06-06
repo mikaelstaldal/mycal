@@ -683,7 +683,7 @@ func (s *EventService) Import(events []model.Event, calendarName string) (int, e
 			continue
 		}
 		ev := &model.Event{
-			Title:                   e.Title,
+			Title:                   sanitize.HTML(e.Title),
 			Description:             sanitize.HTML(e.Description),
 			StartTime:               e.StartTime,
 			EndTime:                 e.EndTime,
