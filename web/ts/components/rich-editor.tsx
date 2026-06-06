@@ -1,6 +1,6 @@
 import { h } from 'preact';
 import type { VNode } from 'preact';
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useRef } from 'preact/hooks';
 
 let quillLoadPromise: Promise<void> | null = null;
 let quillLoaded = false;
@@ -40,20 +40,30 @@ interface RichEditorProps {
 }
 
 export function RichEditor({ value, onChange }: RichEditorProps): VNode | null {
-    const containerRef = useRef<HTMLDivElement | null>(null);
+    const wrapperRef = useRef<HTMLDivElement | null>(null);
     const quillRef = useRef<Quill | null>(null);
-    const [loading, setLoading] = useState(true);
     const lastValueRef = useRef(value);
 
     useEffect(() => {
         let cancelled = false;
-        setLoading(true);
+        const wrapper = wrapperRef.current!;
+
+        // Loading indicator managed imperatively so Preact never reconciles
+        // children it doesn't own (Quill inserts a sibling toolbar into the DOM).
+        const loadingEl = document.createElement('div');
+        loadingEl.className = 'rich-editor-loading';
+        loadingEl.textContent = 'Loading editor...';
+        wrapper.appendChild(loadingEl);
 
         loadQuill().then(() => {
-            if (cancelled || !containerRef.current) return;
-            setLoading(false);
+            if (cancelled) return;
 
-            const quill = new Quill(containerRef.current, {
+            loadingEl.remove();
+
+            const container = document.createElement('div');
+            wrapper.appendChild(container);
+
+            const quill = new Quill(container, {
                 theme: 'snow',
                 modules: { toolbar: TOOLBAR_OPTIONS },
                 placeholder: 'Event description...',
@@ -61,11 +71,10 @@ export function RichEditor({ value, onChange }: RichEditorProps): VNode | null {
             quillRef.current = quill;
 
             if (value) {
-                quill.setContents(quill.clipboard.convert(value));
+                quill.setContents(quill.clipboard.convert({ html: value }));
             }
 
-            containerRef.current.closest('.ql-container')
-                ?.previousElementSibling
+            wrapper.querySelector('.ql-toolbar')
                 ?.querySelectorAll<HTMLButtonElement>('button')
                 .forEach(b => b.type = 'button');
 
@@ -79,7 +88,8 @@ export function RichEditor({ value, onChange }: RichEditorProps): VNode | null {
                 quill.formatText(sel.index, sel.length, 'link', text);
             }, true);
 
-            quill.on('text-change', () => {
+            quill.on('text-change', (_delta: any, _old: any, source: string) => {
+                if (source !== 'user') return;
                 const content = quill.root.innerHTML;
                 const normalized = content === '<p><br></p>' ? '' : content;
                 lastValueRef.current = normalized;
@@ -90,6 +100,7 @@ export function RichEditor({ value, onChange }: RichEditorProps): VNode | null {
         return () => {
             cancelled = true;
             quillRef.current = null;
+            while (wrapper.firstChild) wrapper.removeChild(wrapper.firstChild);
         };
     }, []);
 
@@ -97,14 +108,11 @@ export function RichEditor({ value, onChange }: RichEditorProps): VNode | null {
         if (!quillRef.current) return;
         if (value !== lastValueRef.current) {
             lastValueRef.current = value;
-            quillRef.current.setContents(quillRef.current.clipboard.convert(value || ''));
+            quillRef.current.setContents(quillRef.current.clipboard.convert({ html: value || '' }));
         }
     }, [value]);
 
-    return (
-        <div class="rich-editor-wrapper">
-            {loading && <div class="rich-editor-loading">Loading editor...</div>}
-            <div ref={containerRef} class={loading ? 'is-hidden' : ''} />
-        </div>
-    );
+    // No children in the virtual DOM — all children are managed imperatively
+    // to prevent Preact from reconciling against Quill's DOM modifications.
+    return <div ref={wrapperRef} class="rich-editor-wrapper" />;
 }

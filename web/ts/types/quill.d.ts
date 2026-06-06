@@ -1,7 +1,7 @@
 declare class Quill {
   constructor(container: HTMLElement, options?: any);
   root: HTMLElement;
-  clipboard: { convert(html: string): any };
+  clipboard: { convert(input: { html?: string; text?: string }): any };
   getSelection(): { index: number; length: number } | null;
   formatText(index: number, length: number, format: string, value: any): void;
   on(event: string, handler: (...args: any[]) => void): this;
