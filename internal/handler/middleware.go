@@ -62,7 +62,7 @@ func SecurityHeadersMiddleware(httpsMode bool) func(http.Handler) http.Handler {
 					" script-src 'self' 'sha256-l4YleaHsC1MWhnC491PTrqrnc9YJbIKzgYkX6jf35As=' https://maps.googleapis.com;"+
 					" style-src-elem 'self'; style-src-attr 'unsafe-inline';"+
 					" img-src 'self' data: https://*.tile.openstreetmap.org https://maps.googleapis.com https://maps.gstatic.com;"+
-					" connect-src 'self' https://maps.googleapis.com;"+
+					" connect-src 'self' https://maps.googleapis.com https://*.tile.openstreetmap.org;"+
 					" font-src 'self';"+
 					" frame-src 'none';"+
 					" object-src 'none';"+
