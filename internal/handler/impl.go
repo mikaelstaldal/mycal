@@ -199,8 +199,8 @@ func parseCalendarIDsFromParams(calendarIDs []int, calendarNames []string, calSv
 		ids = append(ids, int64(id))
 	}
 	for _, name := range calendarNames {
-		calID, err := calSvc.GetOrCreateByName(name)
-		if err == nil {
+		calID, err := calSvc.GetIDByName(name)
+		if err == nil && calID != 0 {
 			ids = append(ids, calID)
 		}
 	}

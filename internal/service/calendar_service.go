@@ -70,3 +70,19 @@ func (s *CalendarService) GetOrCreateByName(name string) (int64, error) {
 	}
 	return newCal.ID, nil
 }
+
+// GetIDByName looks up a calendar by name and returns its ID, or 0 if not found.
+// Unlike GetOrCreateByName, this never creates a new calendar.
+func (s *CalendarService) GetIDByName(name string) (int64, error) {
+	if name == "" {
+		return 0, nil
+	}
+	cal, err := s.repo.GetCalendarByName(name)
+	if err != nil {
+		return 0, err
+	}
+	if cal == nil {
+		return 0, nil
+	}
+	return cal.ID, nil
+}
