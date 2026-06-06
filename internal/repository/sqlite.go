@@ -4,11 +4,24 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/mikaelstaldal/mycal/internal/model"
 	_ "modernc.org/sqlite"
 )
+
+func columnExists(db *sql.DB, table, column string) bool {
+	var n int
+	_ = db.QueryRow(`SELECT COUNT(*) FROM pragma_table_info(?) WHERE name = ?`, table, column).Scan(&n)
+	return n > 0
+}
+
+func execMigration(db *sql.DB, query string, args ...any) {
+	if _, err := db.Exec(query, args...); err != nil {
+		log.Printf("migration warning: %v", err)
+	}
+}
 
 type SQLiteRepository struct {
 	db *sql.DB
@@ -76,11 +89,15 @@ func initSchema(db *sql.DB) error {
 	}
 
 	// Migration: add calendar_name column (idempotent)
-	_, _ = db.Exec(`ALTER TABLE events ADD COLUMN calendar_name TEXT NOT NULL DEFAULT ''`)
+	if !columnExists(db, "events", "calendar_name") {
+		execMigration(db, `ALTER TABLE events ADD COLUMN calendar_name TEXT NOT NULL DEFAULT ''`)
+	}
 
 	// Migration: add ics_uid column (idempotent)
-	_, _ = db.Exec(`ALTER TABLE events ADD COLUMN ics_uid TEXT NOT NULL DEFAULT ''`)
-	_, _ = db.Exec(`CREATE INDEX IF NOT EXISTS idx_events_ics_uid ON events(ics_uid)`)
+	if !columnExists(db, "events", "ics_uid") {
+		execMigration(db, `ALTER TABLE events ADD COLUMN ics_uid TEXT NOT NULL DEFAULT ''`)
+	}
+	execMigration(db, `CREATE INDEX IF NOT EXISTS idx_events_ics_uid ON events(ics_uid)`)
 
 	_, err = db.Exec(`INSERT INTO events_fts(events_fts) VALUES('rebuild')`)
 	if err != nil {
@@ -121,40 +138,56 @@ func initSchema(db *sql.DB) error {
 	}
 
 	// Insert default calendar (id=0 reserved for default)
-	_, _ = db.Exec(`INSERT OR IGNORE INTO calendars (id, name, color) VALUES (0, 'Default', 'dodgerblue')`)
+	execMigration(db, `INSERT OR IGNORE INTO calendars (id, name, color) VALUES (0, 'Default', 'dodgerblue')`)
 
 	// Migrate defaultEventColor preference to default calendar's color
 	var prefColor string
 	err = db.QueryRow(`SELECT value FROM preferences WHERE key = 'defaultEventColor'`).Scan(&prefColor)
 	if err == nil && prefColor != "" {
-		_, _ = db.Exec(`UPDATE calendars SET color = ? WHERE id = 0`, prefColor)
-		_, _ = db.Exec(`DELETE FROM preferences WHERE key = 'defaultEventColor'`)
+		execMigration(db, `UPDATE calendars SET color = ? WHERE id = 0`, prefColor)
+		execMigration(db, `DELETE FROM preferences WHERE key = 'defaultEventColor'`)
 	}
 
 	// Migrate existing calendar_name values to calendars table
-	_, _ = db.Exec(`INSERT OR IGNORE INTO calendars (name, color)
-		SELECT DISTINCT calendar_name, 'dodgerblue' FROM events WHERE calendar_name != ''
-		UNION
-		SELECT DISTINCT calendar_name, 'dodgerblue' FROM feeds WHERE calendar_name != ''`)
+	if columnExists(db, "events", "calendar_name") {
+		execMigration(db, `INSERT OR IGNORE INTO calendars (name, color)
+			SELECT DISTINCT calendar_name, 'dodgerblue' FROM events WHERE calendar_name != ''`)
+	}
+	if columnExists(db, "feeds", "calendar_name") {
+		execMigration(db, `INSERT OR IGNORE INTO calendars (name, color)
+			SELECT DISTINCT calendar_name, 'dodgerblue' FROM feeds WHERE calendar_name != ''`)
+	}
 
 	// Migration: add calendar_id columns (idempotent)
-	_, _ = db.Exec(`ALTER TABLE events ADD COLUMN calendar_id INTEGER NOT NULL DEFAULT 0`)
-	_, _ = db.Exec(`ALTER TABLE feeds ADD COLUMN calendar_id INTEGER NOT NULL DEFAULT 0`)
+	if !columnExists(db, "events", "calendar_id") {
+		execMigration(db, `ALTER TABLE events ADD COLUMN calendar_id INTEGER NOT NULL DEFAULT 0`)
+	}
+	if !columnExists(db, "feeds", "calendar_id") {
+		execMigration(db, `ALTER TABLE feeds ADD COLUMN calendar_id INTEGER NOT NULL DEFAULT 0`)
+	}
 
 	// Populate calendar_id from calendar_name
-	_, _ = db.Exec(`UPDATE events SET calendar_id = COALESCE((SELECT id FROM calendars WHERE name = events.calendar_name), 0) WHERE calendar_name != '' AND calendar_id = 0`)
-	_, _ = db.Exec(`UPDATE feeds SET calendar_id = COALESCE((SELECT id FROM calendars WHERE name = feeds.calendar_name), 0) WHERE calendar_name != '' AND calendar_id = 0`)
+	if columnExists(db, "events", "calendar_name") {
+		execMigration(db, `UPDATE events SET calendar_id = COALESCE((SELECT id FROM calendars WHERE name = events.calendar_name), 0) WHERE calendar_name != '' AND calendar_id = 0`)
+	}
+	if columnExists(db, "feeds", "calendar_name") {
+		execMigration(db, `UPDATE feeds SET calendar_id = COALESCE((SELECT id FROM calendars WHERE name = feeds.calendar_name), 0) WHERE calendar_name != '' AND calendar_id = 0`)
+	}
 
 	// Add indexes
-	_, _ = db.Exec(`CREATE INDEX IF NOT EXISTS idx_events_calendar_id ON events(calendar_id)`)
-	_, _ = db.Exec(`CREATE INDEX IF NOT EXISTS idx_feeds_calendar_id ON feeds(calendar_id)`)
+	execMigration(db, `CREATE INDEX IF NOT EXISTS idx_events_calendar_id ON events(calendar_id)`)
+	execMigration(db, `CREATE INDEX IF NOT EXISTS idx_feeds_calendar_id ON feeds(calendar_id)`)
 
 	// Migration: drop redundant calendar_name from feeds and events (now derived via JOIN with calendars)
-	_, _ = db.Exec(`ALTER TABLE feeds DROP COLUMN calendar_name`)
-	_, _ = db.Exec(`ALTER TABLE events DROP COLUMN calendar_name`)
+	if columnExists(db, "feeds", "calendar_name") {
+		execMigration(db, `ALTER TABLE feeds DROP COLUMN calendar_name`)
+	}
+	if columnExists(db, "events", "calendar_name") {
+		execMigration(db, `ALTER TABLE events DROP COLUMN calendar_name`)
+	}
 
 	// Migration: composite index for time-range overlap queries (start_time < to AND end_time > from)
-	_, _ = db.Exec(`CREATE INDEX IF NOT EXISTS idx_events_time_range ON events(start_time, end_time)`)
+	execMigration(db, `CREATE INDEX IF NOT EXISTS idx_events_time_range ON events(start_time, end_time)`)
 
 	return nil
 }
