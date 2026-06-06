@@ -656,15 +656,24 @@ export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSa
                                 </div>
                             </div>
                         )}
-                        {eventURL && (
-                            <div class="detail-row">
-                                <span class="detail-label">URL:</span>
-                                <a href={eventURL} target="_blank" rel="noopener noreferrer"
-                                   class="url-link">
-                                    {eventURL} &#x2197;
-                                </a>
-                            </div>
-                        )}
+                        {eventURL && (() => {
+                            let scheme: string;
+                            try { scheme = new URL(eventURL).protocol; } catch { scheme = ''; }
+                            const safeScheme = scheme === 'http:' || scheme === 'https:' || scheme === 'mailto:';
+                            return (
+                                <div class="detail-row">
+                                    <span class="detail-label">URL:</span>
+                                    {safeScheme ? (
+                                        <a href={eventURL} target="_blank" rel="noopener noreferrer"
+                                           class="url-link">
+                                            {eventURL} &#x2197;
+                                        </a>
+                                    ) : (
+                                        <span class="url-link">{eventURL}</span>
+                                    )}
+                                </div>
+                            );
+                        })()}
                     </Fragment>
                 )}
 
