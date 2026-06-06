@@ -62,7 +62,8 @@ func SecurityHeadersMiddleware(next http.Handler) http.Handler {
 				" connect-src 'self' https://maps.googleapis.com;"+
 				" font-src 'self';"+
 				" frame-src 'none';"+
-				" object-src 'none'")
+				" object-src 'none';"+
+				" frame-ancestors 'none'")
 		next.ServeHTTP(w, r)
 	})
 }
