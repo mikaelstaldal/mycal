@@ -112,3 +112,39 @@ Make migrations when changing the database schema, assume there is production da
 ## Version control
 
 Git is used for version control. When creating new files, make sure to add them to Git.
+
+## Security Guidelines
+
+### Input sanitization — apply uniformly across all write paths
+
+- Sanitize HTML (using `sanitize.HTML`) on **every** write path: interactive create, interactive update, iCal import, and override import. Never sanitize only on creation and skip it on update.
+- Apply the same validation to imported data that you apply to interactively-entered data. An import path is not a trusted source.
+- In the frontend, never assign HTML to `innerHTML` directly. Use the library's own API (e.g. `quill.setContents(quill.clipboard.convert(value))`) so the library's sanitizer runs.
+
+### URL and scheme validation
+
+- Validate URL schemes (allow only `http:`, `https:`, `mailto:`) on **all** paths — both interactive and import. Never store a URL without scheme validation.
+- In the frontend, validate `href` values before rendering them as links; fall back to plain text for disallowed schemes.
+
+### SSRF prevention
+
+- Validate URLs at **connection time** (inside a custom `DialContext`), not just before the fetch. Validate-then-fetch is a TOCTOU race (DNS rebinding).
+- Set `CheckRedirect` to re-validate every redirect target; do not follow redirects blindly to potentially private addresses.
+- Re-run URL validation on every periodic re-fetch of stored feed URLs, not just on initial registration.
+- Return generic error messages to the client for DNS/network errors (e.g. "could not resolve URL host"). Log details server-side only.
+
+### HTTP server hardening
+
+- Apply a global request body size limit (`http.MaxBytesHandler` or `MaxBytesReader`) to **all** handlers, not just file upload endpoints.
+- Set both `ReadTimeout` and `ReadHeaderTimeout` on `http.Server` to prevent Slowloris-style attacks.
+
+### Security headers and CSP
+
+- Keep the Content-Security-Policy tight. When adding new outbound resources (tile servers, CDNs, APIs), update **both** `connect-src` and any other relevant directive (`img-src`, `script-src`) at the same time.
+- Include `frame-ancestors 'none'` in the CSP in addition to `X-Frame-Options: DENY`; modern browsers prefer the CSP directive.
+- Avoid `'unsafe-inline'` in `style-src`; prefer nonces or hashes.
+
+### API design
+
+- GET requests must never modify the database or create side effects. Filtering by a non-existent resource name should return an empty result, not create the resource.
+- Add `maxLength` constraints in `openapi.yaml` for all string query parameters, not just request body fields.
