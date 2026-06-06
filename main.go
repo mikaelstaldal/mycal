@@ -159,7 +159,8 @@ func main() {
 	server := http.Server{
 		Addr:         serverAddr,
 		Handler:      root,
-		ReadTimeout:  5 * time.Second,
+		ReadHeaderTimeout: 2 * time.Second,
+		ReadTimeout:       5 * time.Second,
 		WriteTimeout: 20 * time.Second,
 		IdleTimeout:  time.Minute,
 	}
