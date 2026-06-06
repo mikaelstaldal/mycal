@@ -29,6 +29,7 @@ func main() {
 	dataDir := flag.String("data", "data", "directory to store data in")
 	basicAuthFile := flag.String("basic-auth-file", "", "enable HTTP basic auth with username and password from given file in htpasswd format (bcrypt only)")
 	basicAuthRealm := flag.String("basic-auth-realm", "mycal", "realm for HTTP basic auth")
+	httpsMode := flag.Bool("https", false, "set Strict-Transport-Security header (use when served behind a TLS-terminating proxy)")
 	exportICS := flag.String("export-ics", "", "export all events to an .ics file and exit")
 	flag.Parse()
 
@@ -148,7 +149,7 @@ func main() {
 	}
 	mux.Handle("/", staticCacheMiddleware(http.FileServer(http.FS(staticFS))))
 
-	root := handler.SecurityHeadersMiddleware(csrf.Middleware(mux))
+	root := handler.SecurityHeadersMiddleware(*httpsMode)(csrf.Middleware(mux))
 	if authMiddleware != nil {
 		root = authMiddleware(root)
 	}
