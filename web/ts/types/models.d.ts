@@ -21,4 +21,5 @@ export interface AppConfig {
   mapProvider: 'none' | 'openstreetmap' | 'google';
   googleMapsApiKey: string;
   calendarColors?: Record<number, string>;
+  mymailUrl?: string;
 }

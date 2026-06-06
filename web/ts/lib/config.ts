@@ -32,6 +32,7 @@ const VALID_MAP_PROVIDERS = ['none', 'openstreetmap', 'google'] as const;
 const GOOGLE_API_KEY_RE = /^[A-Za-z0-9_-]{0,200}$/;
 // CSS color: named colors, #hex, rgb(), hsl() — restrict to safe printable ASCII, no quotes or angle brackets
 const CSS_COLOR_RE = /^[A-Za-z0-9#(),%. -]{1,100}$/;
+const URL_RE = /^https?:\/\/[^\s<>"]{1,500}$/;
 
 function sanitize(parsed: unknown, localeWeekStart: number): AppConfig {
     if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
@@ -77,7 +78,11 @@ function sanitize(parsed: unknown, localeWeekStart: number): AppConfig {
         calendarColors = cc;
     }
 
-    return { defaultView, dayStartHour, weekStartDay, defaultEventColor, mapProvider, googleMapsApiKey, ...(calendarColors !== undefined && { calendarColors }) };
+    const mymailUrl = typeof p.mymailUrl === 'string' && URL_RE.test(p.mymailUrl)
+        ? p.mymailUrl
+        : undefined;
+
+    return { defaultView, dayStartHour, weekStartDay, defaultEventColor, mapProvider, googleMapsApiKey, ...(calendarColors !== undefined && { calendarColors }), ...(mymailUrl !== undefined && { mymailUrl }) };
 }
 
 export function getConfig(): AppConfig {

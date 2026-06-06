@@ -28,7 +28,6 @@ declare global {
 
 function App() {
     const [darkMode, setDarkMode] = useState(() => localStorage.getItem('darkMode') === 'true');
-    const mymailUrl = window.__serverConfig?.mymailUrl ?? '';
     const [currentDate, setCurrentDate] = useState(new Date());
     const [events, setEvents] = useState<CalendarEvent[]>([]);
     const [showForm, setShowForm] = useState(false);
@@ -526,7 +525,7 @@ function App() {
                            copiedEvent={copiedEvent}
                            onSave={handleSave} onDelete={handleDelete} onClose={handleClose}
                            onCopy={selectedEvent ? handleCopy : undefined}
-                           config={config} mymailUrl={mymailUrl} />
+                           config={config} mymailUrl={config.mymailUrl || window.__serverConfig?.mymailUrl || ''} />
             )}
             {showImportSingle && (
                 <ImportSingleForm onImported={(message: string, isError?: boolean) => { setShowImportSingle(false); if (!isError) loadEvents(); setToastError(!!isError); setToast(message); }}

@@ -80,7 +80,6 @@ func main() {
 	basicAuthRealm := flag.String("basic-auth-realm", "mycal", "realm for HTTP basic auth")
 	httpsMode := flag.Bool("https", false, "set Strict-Transport-Security header (use when served behind a TLS-terminating proxy)")
 	publicURL := flag.String("public-url", "", "Public-facing base URL for CSRF validation, e.g. https://example.com (defaults to http://<addr>:<port>)")
-	mymailURL := flag.String("mymail-url", "", "MyMail base URL for the share-via-email feature (default: auto-derived from -public-url)")
 	exportICS := flag.String("export-ics", "", "export all events to an .ics file and exit")
 	flag.Parse()
 
@@ -190,11 +189,7 @@ func main() {
 		}
 	}()
 
-	// Resolve MyMail URL: explicit flag takes precedence over auto-derived value.
-	resolvedMymailURL := *mymailURL
-	if resolvedMymailURL == "" {
-		resolvedMymailURL = deriveMymailURL(*publicURL)
-	}
+	resolvedMymailURL := deriveMymailURL(*publicURL)
 	if resolvedMymailURL != "" {
 		log.Printf("mycal: MyMail URL configured as %s", resolvedMymailURL)
 	}

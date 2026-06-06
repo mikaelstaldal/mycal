@@ -2,6 +2,7 @@ import { h, Fragment } from 'preact';
 import type { VNode } from 'preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { toLocalDatetimeValue, fromLocalDatetimeValue, formatTime, toLocalDateValue, formatDateOnly, exclusiveToInclusiveDate, inclusiveToExclusiveDate, getTimezoneAbbr } from '../lib/date-utils.js';
+import { getEventICS } from '../lib/api.js';
 import { MapPicker } from './map-picker.js';
 import { RichEditor } from './rich-editor.js';
 import { showConfirm } from '../lib/confirm.js';
@@ -354,9 +355,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSa
         setShareSending(true);
         setShareError('');
         try {
-            const icsRes = await fetch(`/api/v1/events/${encodeURIComponent(event.id)}/ics`);
-            if (!icsRes.ok) throw new Error(`Failed to get event data (${icsRes.status})`);
-            const icsText = await icsRes.text();
+            const icsText = await getEventICS(event.id);
 
             const safeTitle = event.title.replace(/[^\w\s-]/g, '').trim() || 'event';
             const formData = new FormData();

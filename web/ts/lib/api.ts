@@ -22,6 +22,12 @@ export async function getEvent(id: string): Promise<CalendarEvent> {
     return res.json();
 }
 
+export async function getEventICS(id: string): Promise<string> {
+    const res = await fetch(`${BASE}/${encodeURIComponent(id)}/ics`);
+    if (!res.ok) throw new Error(`Failed to get event data (${res.status})`);
+    return res.text();
+}
+
 export async function createEvent(data: CreateEventRequest): Promise<CalendarEvent> {
     const res = await fetch(BASE, {
         method: 'POST',

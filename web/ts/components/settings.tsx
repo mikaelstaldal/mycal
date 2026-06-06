@@ -5,6 +5,12 @@ import { saveConfig } from '../lib/config.js';
 import { formatHour } from '../lib/date-utils.js';
 import type { AppConfig } from '../types/models.js';
 
+declare global {
+    interface Window {
+        __serverConfig?: { mymailUrl?: string };
+    }
+}
+
 // Google Maps API keys are 39 chars starting with "AIza"
 function isValidGoogleMapsApiKey(key: string) {
     return /^AIza[A-Za-z0-9_-]{35}$/.test(key);
@@ -147,6 +153,18 @@ export function Settings({ config, onConfigChange }: SettingsProps): VNode | nul
                             )}
                         </div>
                     )}
+                    <label>
+                        MyMail URL
+                        <input type="url" value={config.mymailUrl || ''}
+                               placeholder={window.__serverConfig?.mymailUrl || 'https://example.com/mymail'}
+                               onInput={(e: Event) => {
+                                   const v = (e.target as HTMLInputElement).value.trim();
+                                   handleChange('mymailUrl', v || undefined);
+                               }} />
+                        {!config.mymailUrl && window.__serverConfig?.mymailUrl && (
+                            <span class="settings-hint">Auto-configured: {window.__serverConfig.mymailUrl}</span>
+                        )}
+                    </label>
                     <div class="dialog-actions">
                         <button onClick={handleClose}>Close</button>
                     </div>

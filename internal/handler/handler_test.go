@@ -413,6 +413,31 @@ func TestExportICal(t *testing.T) {
 	assert.True(t, strings.HasPrefix(ct, "text/calendar"), "content-type = %q", ct)
 }
 
+func TestExportSingleEventICal(t *testing.T) {
+	ts := setupTestServer(t)
+	event := createTestEvent(t, ts)
+
+	resp, err := http.Get(ts.URL + "/api/v1/events/" + event.ID + "/ics")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	ct := resp.Header.Get("Content-Type")
+	assert.True(t, strings.HasPrefix(ct, "text/calendar"), "content-type = %q", ct)
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	assert.Contains(t, string(body), "BEGIN:VCALENDAR")
+	assert.Contains(t, string(body), "SUMMARY:Test Event")
+}
+
+func TestExportSingleEventICal_NotFound(t *testing.T) {
+	ts := setupTestServer(t)
+
+	resp, err := http.Get(ts.URL + "/api/v1/events/99999/ics")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+}
+
 // --- iCal import ---
 
 func TestImportEvents(t *testing.T) {
