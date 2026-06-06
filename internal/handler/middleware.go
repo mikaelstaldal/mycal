@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/mikaelstaldal/go-server-common/httputil"
 	"github.com/mikaelstaldal/go-server-common/recovery"
 )
 
@@ -49,28 +50,28 @@ func gzipMiddleware(next http.Handler) http.Handler {
 }
 
 // SecurityHeadersMiddleware adds security headers to all responses.
-// Pass httpsMode=true when the app is served over HTTPS (directly or via TLS-terminating
-// proxy) to also emit Strict-Transport-Security.
-func SecurityHeadersMiddleware(httpsMode bool) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("X-Content-Type-Options", "nosniff")
-			w.Header().Set("X-Frame-Options", "DENY")
-			w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
-			w.Header().Set("Content-Security-Policy",
-				"default-src 'self';"+
-					" script-src 'self' 'sha256-l4YleaHsC1MWhnC491PTrqrnc9YJbIKzgYkX6jf35As=' https://maps.googleapis.com;"+
-					" style-src-elem 'self'; style-src-attr 'unsafe-inline';"+
-					" img-src 'self' data: https://*.tile.openstreetmap.org https://maps.googleapis.com https://maps.gstatic.com;"+
-					" connect-src 'self' https://maps.googleapis.com https://*.tile.openstreetmap.org;"+
-					" font-src 'self';"+
-					" frame-src 'none';"+
-					" object-src 'none';"+
-					" frame-ancestors 'none'")
-			if httpsMode {
-				w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
-			}
-			next.ServeHTTP(w, r)
-		})
+// importMapHash is the 'sha256-…' CSP token for the inline importmap in
+// index.html (see web.ImportMapCSPHash); it is added to script-src so the
+// importmap is allowed without 'unsafe-inline'. Pass httpsMode=true when the
+// app is served over HTTPS (directly or via TLS-terminating proxy) to also emit
+// Strict-Transport-Security.
+func SecurityHeadersMiddleware(importMapHash string, httpsMode bool) func(http.Handler) http.Handler {
+	csp := "default-src 'self';" +
+		" script-src 'self' " + importMapHash + " https://maps.googleapis.com;" +
+		" style-src-elem 'self'; style-src-attr 'unsafe-inline';" +
+		" img-src 'self' data: https://*.tile.openstreetmap.org https://maps.googleapis.com https://maps.gstatic.com;" +
+		" connect-src 'self' https://maps.googleapis.com https://*.tile.openstreetmap.org;" +
+		" font-src 'self';" +
+		" frame-src 'none';" +
+		" object-src 'none';" +
+		" frame-ancestors 'none'"
+	hsts := ""
+	if httpsMode {
+		hsts = "max-age=31536000; includeSubDomains"
 	}
+	return httputil.SecurityHeaders(httputil.SecurityHeadersOptions{
+		CSP:            csp,
+		ReferrerPolicy: "strict-origin-when-cross-origin",
+		HSTS:           hsts,
+	})
 }

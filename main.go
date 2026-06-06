@@ -8,13 +8,13 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/mikaelstaldal/go-server-common/auth"
 	"github.com/mikaelstaldal/go-server-common/csrf"
+	commonweb "github.com/mikaelstaldal/go-server-common/web"
 	"github.com/mikaelstaldal/mycal/internal/handler"
 	"github.com/mikaelstaldal/mycal/internal/ical"
 	"github.com/mikaelstaldal/mycal/internal/repository"
@@ -151,16 +151,17 @@ func main() {
 	}
 	mux.Handle("/", staticCacheMiddleware(http.FileServer(http.FS(staticFS))))
 
-	serverOrigin := fmt.Sprintf("http://%s:%d", *addr, *port)
-	if *publicURL != "" {
-		u, err := url.Parse(*publicURL)
-		if err != nil || u.Host == "" {
-			log.Fatalf("invalid -public-url %q: must be a full URL like https://example.com", *publicURL)
-		}
-		serverOrigin = u.Scheme + "://" + u.Host
+	serverOrigin, err := csrf.ResolveServerOrigin(*publicURL, *addr, *port)
+	if err != nil {
+		log.Fatalf("%v", err)
 	}
 
-	root := handler.SecurityHeadersMiddleware(*httpsMode)(csrf.Middleware(serverOrigin)(mux))
+	importMapHash, err := commonweb.ImportMapCSPHash(web.Static)
+	if err != nil {
+		log.Fatalf("compute importmap CSP hash: %v", err)
+	}
+
+	root := handler.SecurityHeadersMiddleware(importMapHash, *httpsMode)(csrf.Middleware(serverOrigin)(mux))
 	if authMiddleware != nil {
 		root = authMiddleware(root)
 	}
