@@ -100,6 +100,8 @@ ExecStart=/usr/local/bin/mycal \
     -data /var/lib/mycal \
     -addr 127.0.0.1 \
     -port 8080 \
+    -public-url https://calendar.example.com \
+    -https \
     -basic-auth-file ${CREDENTIALS_DIRECTORY}/basic-auth
 
 Restart=on-failure
@@ -136,9 +138,10 @@ journalctl -u mycal -f
 
 mycal does not terminate TLS itself. Place it behind a reverse proxy.
 
-Two headers are **mandatory** regardless of which reverse proxy you use:
+Start mycal with `-public-url https://calendar.example.com` (and `-https` to enable `Strict-Transport-Security`). The CSRF middleware rejects state-changing requests whose `Origin` or `Referer` does not match the configured public URL.
 
-- **`X-Forwarded-Host`** — mycal's CSRF middleware uses this header to determine the server's public-facing hostname and rejects state-changing requests whose `Origin` or `Referer` does not match it. The reverse proxy **must always overwrite** this header with the actual public hostname. Never pass the client-supplied value through — doing so lets an attacker bypass the CSRF check.
+One requirement regardless of which reverse proxy you use:
+
 - **Rate limiting** — mycal has no built-in rate limiting. The reverse proxy must enforce a per-IP request rate limit to prevent DoS via bulk event creation or repeated queries.
 
 ### nginx
@@ -174,10 +177,6 @@ server {
         proxy_set_header X-Real-IP         $remote_addr;
         proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-
-        # Required for CSRF validation: always overwrite X-Forwarded-Host with the
-        # actual public hostname. Never pass the client-supplied value through.
-        proxy_set_header X-Forwarded-Host  $host;
     }
 }
 ```
@@ -218,10 +217,6 @@ a2enmod proxy proxy_http ratelimit ssl headers
     ProxyPass        / http://127.0.0.1:8080/
     ProxyPassReverse / http://127.0.0.1:8080/
 
-    # Always overwrite X-Forwarded-Host with the actual public hostname.
-    # RequestHeader set runs after ProxyPass so it replaces any client-supplied value.
-    RequestHeader set X-Forwarded-Host "calendar.example.com"
-
     RequestHeader set X-Forwarded-Proto "https"
 
     # Rate limiting: 10 requests/second per connection
@@ -247,9 +242,7 @@ calendar.example.com {
     # Rate limiting (requires caddy-ratelimit module)
     rate_limit {remote.ip} 10r/s
 
-    reverse_proxy 127.0.0.1:8080 {
-        header_up X-Forwarded-Host {host}
-    }
+    reverse_proxy 127.0.0.1:8080
 }
 ```
 

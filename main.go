@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"time"
@@ -30,6 +31,7 @@ func main() {
 	basicAuthFile := flag.String("basic-auth-file", "", "enable HTTP basic auth with username and password from given file in htpasswd format (bcrypt only)")
 	basicAuthRealm := flag.String("basic-auth-realm", "mycal", "realm for HTTP basic auth")
 	httpsMode := flag.Bool("https", false, "set Strict-Transport-Security header (use when served behind a TLS-terminating proxy)")
+	publicURL := flag.String("public-url", "", "Public-facing base URL for CSRF validation, e.g. https://example.com (defaults to http://<addr>:<port>)")
 	exportICS := flag.String("export-ics", "", "export all events to an .ics file and exit")
 	flag.Parse()
 
@@ -149,7 +151,16 @@ func main() {
 	}
 	mux.Handle("/", staticCacheMiddleware(http.FileServer(http.FS(staticFS))))
 
-	root := handler.SecurityHeadersMiddleware(*httpsMode)(csrf.Middleware(mux))
+	serverOrigin := fmt.Sprintf("http://%s:%d", *addr, *port)
+	if *publicURL != "" {
+		u, err := url.Parse(*publicURL)
+		if err != nil || u.Host == "" {
+			log.Fatalf("invalid -public-url %q: must be a full URL like https://example.com", *publicURL)
+		}
+		serverOrigin = u.Scheme + "://" + u.Host
+	}
+
+	root := handler.SecurityHeadersMiddleware(*httpsMode)(csrf.Middleware(serverOrigin)(mux))
 	if authMiddleware != nil {
 		root = authMiddleware(root)
 	}
@@ -158,12 +169,12 @@ func main() {
 	serverAddr := fmt.Sprintf("%s:%d", *addr, *port)
 	log.Printf("Starting server on %s", serverAddr)
 	server := http.Server{
-		Addr:         serverAddr,
-		Handler:      root,
+		Addr:              serverAddr,
+		Handler:           root,
 		ReadHeaderTimeout: 2 * time.Second,
 		ReadTimeout:       5 * time.Second,
-		WriteTimeout: 20 * time.Second,
-		IdleTimeout:  time.Minute,
+		WriteTimeout:      20 * time.Second,
+		IdleTimeout:       time.Minute,
 	}
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatalf("Failed to start server: %v", err)

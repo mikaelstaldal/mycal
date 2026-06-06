@@ -29,12 +29,14 @@ Open http://localhost:8080 in your browser.
 
 | Flag                | Default        | Description                                                                                        |
 |---------------------|----------------|----------------------------------------------------------------------------------------------------|
-| `-port`             | 8080           | port to listen on                                                                                  |
-| `-addr`             | `127.0.0.1`    | address to listen on (use `0.0.0.0` to bind all interfaces)                                        |
-| `-data`             | `data`         | directory to store data in                                                                         |
-| `-basic-auth-file`  | *(disabled)*   | enable HTTP basic auth with username and password from given file in htpasswd format (bcrypt only) |
-| `-basic-auth-realm` | `mycal`        | realm for HTTP basic auth                                                                          |
-| `-export-ics`       |                | export all events to an .ics file and exit                                                         |
+| `-port`             | 8080                    | port to listen on                                                                                  |
+| `-addr`             | `127.0.0.1`             | address to listen on (use `0.0.0.0` to bind all interfaces)                                        |
+| `-data`             | `data`                  | directory to store data in                                                                         |
+| `-public-url`       | `http://<addr>:<port>`  | public-facing base URL for CSRF validation (required behind a reverse proxy), e.g. `https://example.com` |
+| `-https`            | false                   | set `Strict-Transport-Security` header (use when served behind a TLS-terminating proxy)            |
+| `-basic-auth-file`  | *(disabled)*            | enable HTTP basic auth with username and password from given file in htpasswd format (bcrypt only) |
+| `-basic-auth-realm` | `mycal`                 | realm for HTTP basic auth                                                                          |
+| `-export-ics`       |                         | export all events to an .ics file and exit                                                         |
 
 ### Authentication
 
