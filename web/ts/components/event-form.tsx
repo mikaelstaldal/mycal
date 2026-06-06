@@ -42,9 +42,10 @@ interface EventFormProps {
     onClose: () => void;
     onCopy?: () => void;
     config: AppConfig;
+    mymailUrl?: string;
 }
 
-export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSave, onDelete, onClose, onCopy, config }: EventFormProps): VNode | null {
+export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSave, onDelete, onClose, onCopy, config, mymailUrl }: EventFormProps): VNode | null {
     const dialogRef = useRef<HTMLDialogElement | null>(null);
     const titleRef = useRef<HTMLInputElement | null>(null);
     const isInstanceEdit = event && event._editInstance;
@@ -77,6 +78,11 @@ export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSa
     const [durationMinutes, setDurationMinutes] = useState(0);
     const [categories, setCategories] = useState('');
     const [eventURL, setEventURL] = useState('');
+    const [showShare, setShowShare] = useState(false);
+    const [shareRecipient, setShareRecipient] = useState('');
+    const [shareSending, setShareSending] = useState(false);
+    const [shareError, setShareError] = useState('');
+    const [shareSuccess, setShareSuccess] = useState(false);
 
     function populateFromEvent(src: CalendarEvent) {
         setTitle(src.title);
@@ -342,6 +348,44 @@ export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSa
         onClose();
     }
 
+    async function shareViaEmail(e: Event) {
+        e.preventDefault();
+        if (!event?.id || !mymailUrl || !shareRecipient.trim()) return;
+        setShareSending(true);
+        setShareError('');
+        try {
+            const icsRes = await fetch(`/api/v1/events/${encodeURIComponent(event.id)}/ics`);
+            if (!icsRes.ok) throw new Error(`Failed to get event data (${icsRes.status})`);
+            const icsText = await icsRes.text();
+
+            const safeTitle = event.title.replace(/[^\w\s-]/g, '').trim() || 'event';
+            const formData = new FormData();
+            formData.append('message', JSON.stringify({
+                to_addr: shareRecipient.trim(),
+                subject: `Invitation: ${event.title}`,
+                body_text: `You are invited to: ${event.title}`,
+            }));
+            formData.append('attachments', new Blob([icsText], { type: 'text/calendar' }), `${safeTitle}.ics`);
+
+            const sendRes = await fetch(`${mymailUrl}/api/v1/messages/send-with-attachments`, {
+                method: 'POST',
+                body: formData,
+                credentials: 'include',
+            });
+            if (!sendRes.ok) {
+                let msg = `Send failed (${sendRes.status})`;
+                try { const j = await sendRes.json(); if (j.error) msg = j.error; } catch (_) {}
+                throw new Error(msg);
+            }
+            setShareSuccess(true);
+            setShareRecipient('');
+        } catch (err: any) {
+            setShareError(err.message || 'Unknown error');
+        } finally {
+            setShareSending(false);
+        }
+    }
+
     function handleRestoreExdate(exdate: string) {
         const remaining = exdates.split(',').filter(d => d.trim() !== exdate).join(',');
         setExdates(remaining);
@@ -423,6 +467,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSa
                             <Fragment>
                                 <button type="button" onClick={() => setEditing(true)}>Edit</button>
                                 {onCopy && <button type="button" onClick={onCopy}>Copy</button>}
+                                {mymailUrl && <button type="button" onClick={() => { setShowShare(s => !s); setShareError(''); setShareSuccess(false); }}>Share</button>}
                                 <button type="button" class="danger" onClick={handleDelete}>Delete</button>
                             </Fragment>
                         )}
@@ -439,6 +484,32 @@ export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSa
                 </div>
 
                 {error && <div class="error">{error}</div>}
+
+                {showShare && event && !editing && (
+                    <div class="share-form">
+                        <form onSubmit={shareViaEmail}>
+                            <label>
+                                Share via email
+                                <div class="share-input-row">
+                                    <input
+                                        type="email"
+                                        placeholder="Recipient email"
+                                        value={shareRecipient}
+                                        onInput={(e: Event) => { setShareRecipient((e.target as HTMLInputElement).value); setShareSuccess(false); setShareError(''); }}
+                                        disabled={shareSending}
+                                        required
+                                    />
+                                    <button type="submit" disabled={shareSending || !shareRecipient.trim()}>
+                                        {shareSending ? 'Sending…' : 'Send'}
+                                    </button>
+                                    <button type="button" onClick={() => setShowShare(false)}>Cancel</button>
+                                </div>
+                            </label>
+                            {shareSuccess && <div class="share-success">Sent!</div>}
+                            {shareError && <div class="share-error">{shareError}</div>}
+                        </form>
+                    </div>
+                )}
 
                 {editing ? (
                     <label>

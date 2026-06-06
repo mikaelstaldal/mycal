@@ -2112,3 +2112,32 @@ body {
 .is-clickable {
     cursor: pointer;
 }
+
+.share-form {
+    padding: 8px 0 4px;
+    border-top: 1px solid var(--border);
+    margin-top: 4px;
+}
+
+.share-input-row {
+    display: flex;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.share-input-row input[type="email"] {
+    flex: 1;
+    min-width: 0;
+}
+
+.share-success {
+    color: #2a7a2a;
+    font-size: 0.85em;
+    margin-top: 4px;
+}
+
+.share-error {
+    color: var(--danger, #d32f2f);
+    font-size: 0.85em;
+    margin-top: 4px;
+}

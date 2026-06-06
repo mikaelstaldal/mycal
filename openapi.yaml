@@ -250,6 +250,23 @@ paths:
                 $ref: "#/components/schemas/Event"
         default:
           $ref: "#/components/responses/Error"
+  /api/v1/events/{id}/ics:
+    get:
+      summary: Export a single event as iCalendar
+      description: >
+        Returns the event as an iCalendar document suitable for use as an email attachment.
+        Supports the same composite ID format as the other event endpoints.
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      responses:
+        "200":
+          description: iCalendar data for the event
+          content:
+            text/calendar:
+              schema:
+                type: string
+        default:
+          $ref: "#/components/responses/Error"
   /api/v1/import:
     post:
       summary: Import events from iCalendar data

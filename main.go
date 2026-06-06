@@ -2,14 +2,19 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/base64"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io/fs"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/mikaelstaldal/go-server-common/auth"
@@ -24,6 +29,49 @@ import (
 
 const databaseName = "mycal.sqlite"
 
+// deriveMymailURL returns the MyMail base URL derived from publicURL by replacing
+// its path with "/mymail". Returns empty string if publicURL is empty or has no path segment.
+func deriveMymailURL(publicURL string) string {
+	if publicURL == "" {
+		return ""
+	}
+	u, err := url.Parse(publicURL)
+	if err != nil || strings.Trim(u.Path, "/") == "" {
+		return ""
+	}
+	u.Path = "/mymail"
+	u.RawQuery = ""
+	u.Fragment = ""
+	return u.String()
+}
+
+// serverConfigScript returns an inline JS snippet that sets window.__serverConfig.
+func serverConfigScript(mymailURL string) string {
+	b, _ := json.Marshal(mymailURL)
+	return "window.__serverConfig={mymailUrl:" + string(b) + "};"
+}
+
+// inlineScriptCSPHash returns the CSP sha256 hash token for an inline script.
+func inlineScriptCSPHash(script string) string {
+	h := sha256.Sum256([]byte(script))
+	return "'sha256-" + base64.StdEncoding.EncodeToString(h[:]) + "'"
+}
+
+// buildIndexHTML reads index.html from the embedded FS and, when configScript is
+// non-empty, injects it as an inline <script> before </head>.
+func buildIndexHTML(staticFS fs.FS, configScript string) ([]byte, error) {
+	content, err := fs.ReadFile(staticFS, "static/index.html")
+	if err != nil {
+		return nil, err
+	}
+	if configScript == "" {
+		return content, nil
+	}
+	modified := strings.Replace(string(content), "</head>",
+		"<script>"+configScript+"</script>\n</head>", 1)
+	return []byte(modified), nil
+}
+
 func main() {
 	port := flag.Int("port", 8080, "port to listen on")
 	addr := flag.String("addr", "127.0.0.1", "address to listen on")
@@ -32,6 +80,7 @@ func main() {
 	basicAuthRealm := flag.String("basic-auth-realm", "mycal", "realm for HTTP basic auth")
 	httpsMode := flag.Bool("https", false, "set Strict-Transport-Security header (use when served behind a TLS-terminating proxy)")
 	publicURL := flag.String("public-url", "", "Public-facing base URL for CSRF validation, e.g. https://example.com (defaults to http://<addr>:<port>)")
+	mymailURL := flag.String("mymail-url", "", "MyMail base URL for the share-via-email feature (default: auto-derived from -public-url)")
 	exportICS := flag.String("export-ics", "", "export all events to an .ics file and exit")
 	flag.Parse()
 
@@ -141,6 +190,30 @@ func main() {
 		}
 	}()
 
+	// Resolve MyMail URL: explicit flag takes precedence over auto-derived value.
+	resolvedMymailURL := *mymailURL
+	if resolvedMymailURL == "" {
+		resolvedMymailURL = deriveMymailURL(*publicURL)
+	}
+	if resolvedMymailURL != "" {
+		log.Printf("mycal: MyMail URL configured as %s", resolvedMymailURL)
+	}
+
+	importMapHash, err := commonweb.ImportMapCSPHash(web.Static)
+	if err != nil {
+		log.Fatalf("compute importmap CSP hash: %v", err)
+	}
+
+	var configScript, configScriptHash string
+	if resolvedMymailURL != "" {
+		configScript = serverConfigScript(resolvedMymailURL)
+		configScriptHash = inlineScriptCSPHash(configScript)
+	}
+	indexHTML, err := buildIndexHTML(web.Static, configScript)
+	if err != nil {
+		log.Fatalf("build index.html: %v", err)
+	}
+
 	mux := http.NewServeMux()
 	mux.Handle("/api/", apiRouter)
 	mux.Handle("GET /calendar.ics", apiRouter)
@@ -149,19 +222,22 @@ func main() {
 	if err != nil {
 		log.Fatalf("static fs: %v", err)
 	}
-	mux.Handle("/", staticCacheMiddleware(http.FileServer(http.FS(staticFS))))
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" || r.URL.Path == "/index.html" {
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.Header().Set("Cache-Control", "no-cache")
+			_, _ = w.Write(indexHTML)
+			return
+		}
+		staticCacheMiddleware(http.FileServer(http.FS(staticFS))).ServeHTTP(w, r)
+	})
 
 	serverOrigin, err := csrf.ResolveServerOrigin(*publicURL, *addr, *port)
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
 
-	importMapHash, err := commonweb.ImportMapCSPHash(web.Static)
-	if err != nil {
-		log.Fatalf("compute importmap CSP hash: %v", err)
-	}
-
-	root := handler.SecurityHeadersMiddleware(importMapHash, *httpsMode)(csrf.Middleware(serverOrigin)(mux))
+	root := handler.SecurityHeadersMiddleware(importMapHash, configScriptHash, *httpsMode)(csrf.Middleware(serverOrigin)(mux))
 	if authMiddleware != nil {
 		root = authMiddleware(root)
 	}

@@ -397,6 +397,27 @@ func (h *handlerImpl) APIV1EventsIDDelete(ctx context.Context, params api.APIV1E
 	return &api.APIV1EventsIDDeleteNoContent{}, nil
 }
 
+func (h *handlerImpl) APIV1EventsIDIcsGet(ctx context.Context, params api.APIV1EventsIDIcsGetParams) (api.APIV1EventsIDIcsGetOK, error) {
+	dbID, instanceStart, err := model.ParseEventID(params.ID)
+	if err != nil {
+		return api.APIV1EventsIDIcsGetOK{}, badRequest("invalid id")
+	}
+	var event *model.Event
+	if instanceStart != "" {
+		event, err = h.svc.GetInstance(dbID, instanceStart)
+	} else {
+		event, err = h.svc.GetByID(dbID)
+	}
+	if err != nil {
+		return api.APIV1EventsIDIcsGetOK{}, err
+	}
+	var buf bytes.Buffer
+	if err := ical.Encode(&buf, []model.Event{*event}); err != nil {
+		return api.APIV1EventsIDIcsGetOK{}, fmt.Errorf("failed to encode iCal: %w", err)
+	}
+	return api.APIV1EventsIDIcsGetOK{Data: &buf}, nil
+}
+
 func (h *handlerImpl) APIV1EventsIcsGet(ctx context.Context, params api.APIV1EventsIcsGetParams) (api.APIV1EventsIcsGetOK, error) {
 	reader, err := icsResponse(h.svc, h.calSvc, params.CalendarID, params.Calendar)
 	if err != nil {

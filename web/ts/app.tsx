@@ -20,8 +20,15 @@ import { checkAndNotify, requestPermission } from './lib/notifications.js';
 import { showChoice } from './lib/confirm.js';
 import type { CalendarEvent, CalendarMeta, AppConfig } from './types/models.js';
 
+declare global {
+    interface Window {
+        __serverConfig?: { mymailUrl?: string };
+    }
+}
+
 function App() {
     const [darkMode, setDarkMode] = useState(() => localStorage.getItem('darkMode') === 'true');
+    const mymailUrl = window.__serverConfig?.mymailUrl ?? '';
     const [currentDate, setCurrentDate] = useState(new Date());
     const [events, setEvents] = useState<CalendarEvent[]>([]);
     const [showForm, setShowForm] = useState(false);
@@ -519,7 +526,7 @@ function App() {
                            copiedEvent={copiedEvent}
                            onSave={handleSave} onDelete={handleDelete} onClose={handleClose}
                            onCopy={selectedEvent ? handleCopy : undefined}
-                           config={config} />
+                           config={config} mymailUrl={mymailUrl} />
             )}
             {showImportSingle && (
                 <ImportSingleForm onImported={(message: string, isError?: boolean) => { setShowImportSingle(false); if (!isError) loadEvents(); setToastError(!!isError); setToast(message); }}
