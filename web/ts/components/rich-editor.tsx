@@ -61,7 +61,7 @@ export function RichEditor({ value, onChange }: RichEditorProps): VNode | null {
             quillRef.current = quill;
 
             if (value) {
-                quill.root.innerHTML = value;
+                quill.setContents(quill.clipboard.convert(value));
             }
 
             containerRef.current.closest('.ql-container')
@@ -97,7 +97,7 @@ export function RichEditor({ value, onChange }: RichEditorProps): VNode | null {
         if (!quillRef.current) return;
         if (value !== lastValueRef.current) {
             lastValueRef.current = value;
-            quillRef.current.root.innerHTML = value || '';
+            quillRef.current.setContents(quillRef.current.clipboard.convert(value || ''));
         }
     }, [value]);
 
