@@ -1,16 +1,13 @@
 package service
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"log"
-	"net"
 	"net/http"
-	"net/url"
-	"strings"
 	"time"
 
+	"github.com/mikaelstaldal/go-server-common/httputil"
 	"github.com/mikaelstaldal/mycal/internal/api"
 	"github.com/mikaelstaldal/mycal/internal/ical"
 	"github.com/mikaelstaldal/mycal/internal/model"
@@ -35,7 +32,7 @@ func (s *FeedService) Create(req *api.CreateFeedRequest) (*model.Feed, error) {
 		return nil, fmt.Errorf("%w: %s", ErrValidation, err.Error())
 	}
 	rawURL := req.URL.String()
-	if err := ValidateExternalURL(rawURL); err != nil {
+	if err := httputil.ValidateExternalURL(rawURL); err != nil {
 		return nil, fmt.Errorf("%w: %s", ErrValidation, err.Error())
 	}
 
@@ -93,7 +90,7 @@ func (s *FeedService) Update(id int64, req *api.UpdateFeedRequest) (*model.Feed,
 	}
 	if req.URL.Set {
 		rawURL := req.URL.Value.String()
-		if err := ValidateExternalURL(rawURL); err != nil {
+		if err := httputil.ValidateExternalURL(rawURL); err != nil {
 			return nil, fmt.Errorf("%w: %s", ErrValidation, err.Error())
 		}
 		existing.URL = rawURL
@@ -194,10 +191,10 @@ func (s *FeedService) doRefresh(feed *model.Feed) {
 
 func (s *FeedService) fetchAndImport(feedURL string, calendarID int64, eventColor string) (int, error) {
 	// Re-validate stored feed URLs on every refresh, not just at create time.
-	if err := ValidateExternalURL(feedURL); err != nil {
+	if err := httputil.ValidateExternalURL(feedURL); err != nil {
 		return 0, err
 	}
-	client := NewSafeHTTPClient(30 * time.Second)
+	client := httputil.NewSafeHTTPClient(30 * time.Second)
 	resp, err := client.Get(feedURL)
 	if err != nil {
 		return 0, fmt.Errorf("failed to fetch URL: %v", err)
@@ -270,95 +267,5 @@ func (s *FeedService) RefreshAllDue() {
 			}
 		}
 		s.doRefresh(f)
-	}
-}
-
-// isBlockedIP reports whether an IP must not be connected to (loopback,
-// private, link-local or unspecified addresses).
-func isBlockedIP(ip net.IP) bool {
-	return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified()
-}
-
-// ValidateExternalURL checks that the URL is safe to fetch (not localhost or private IPs).
-func ValidateExternalURL(rawURL string) error {
-	u, err := url.Parse(rawURL)
-	if err != nil {
-		return fmt.Errorf("invalid URL")
-	}
-	if u.Scheme != "http" && u.Scheme != "https" {
-		return fmt.Errorf("URL scheme must be http or https")
-	}
-	hostname := u.Hostname()
-	if hostname == "" {
-		return fmt.Errorf("URL must have a hostname")
-	}
-	lower := strings.ToLower(hostname)
-	if lower == "localhost" || strings.HasSuffix(lower, ".localhost") {
-		return fmt.Errorf("URL must not point to localhost")
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	ips, err := net.DefaultResolver.LookupIPAddr(ctx, hostname)
-	if err != nil {
-		// Don't leak resolver/hostname details to the client (SSRF oracle).
-		log.Printf("DNS lookup failed for %s: %v", hostname, err)
-		return fmt.Errorf("could not resolve URL host")
-	}
-
-	for _, ip := range ips {
-		if isBlockedIP(ip.IP) {
-			return fmt.Errorf("URL must not point to a private or local address")
-		}
-	}
-	return nil
-}
-
-// NewSafeHTTPClient returns an HTTP client hardened against SSRF. It resolves
-// and validates the destination IP at dial time (closing the TOCTOU /
-// DNS-rebinding window between validation and fetch) and re-validates every
-// redirect target so a public URL cannot redirect to an internal address.
-func NewSafeHTTPClient(timeout time.Duration) *http.Client {
-	dialer := &net.Dialer{Timeout: 10 * time.Second}
-	transport := &http.Transport{
-		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			host, port, err := net.SplitHostPort(addr)
-			if err != nil {
-				return nil, err
-			}
-			ips, err := net.DefaultResolver.LookupIPAddr(ctx, host)
-			if err != nil {
-				log.Printf("DNS lookup failed for %s: %v", host, err)
-				return nil, fmt.Errorf("could not resolve URL host")
-			}
-			for _, ip := range ips {
-				if isBlockedIP(ip.IP) {
-					return nil, fmt.Errorf("URL must not point to a private or local address")
-				}
-			}
-			// Dial one of the validated IPs directly so the connection cannot
-			// be made to a different address than the one we checked.
-			var dialErr error
-			for _, ip := range ips {
-				conn, err := dialer.DialContext(ctx, network, net.JoinHostPort(ip.IP.String(), port))
-				if err != nil {
-					dialErr = err
-					continue
-				}
-				return conn, nil
-			}
-			return nil, dialErr
-		},
-	}
-	return &http.Client{
-		Timeout:   timeout,
-		Transport: transport,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			if len(via) >= 10 {
-				return fmt.Errorf("stopped after 10 redirects")
-			}
-			return ValidateExternalURL(req.URL.String())
-		},
 	}
 }
