@@ -1,6 +1,6 @@
 module github.com/mikaelstaldal/mycal
 
-go 1.26.1
+go 1.26.4
 
 require (
 	github.com/go-faster/errors v0.7.1
