@@ -23,7 +23,7 @@ This guide covers production installation of mycal on a Linux server, including 
 - A Linux server.
 - nginx (or another reverse proxy capable of TLS termination).
 - A valid TLS certificate for your domain (e.g. from Let's Encrypt).
-- Go 1.25+, `ogen`, `tsc`, and `openapi-typescript` if building from source; otherwise download a pre-built binary.
+- Go 1.26+, `ogen`, `tsc`, and `openapi-typescript` if building from source; otherwise download a pre-built binary.
 
 ---
 
