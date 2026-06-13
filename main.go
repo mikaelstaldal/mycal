@@ -164,6 +164,7 @@ func main() {
 		log.Fatalf("open database: %v", err)
 	}
 	defer db.Close()
+	db.SetMaxOpenConns(1)
 	err = ensureWritable(db)
 	if err != nil {
 		log.Fatalf("open database: %v", err)
