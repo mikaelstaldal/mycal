@@ -1,0 +1,3 @@
+package internal
+
+//go:generate ogen --target ./api --clean --package api ../openapi.yaml
