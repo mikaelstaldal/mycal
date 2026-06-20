@@ -3,36 +3,22 @@ package repository
 import (
 	"database/sql"
 	"fmt"
-	"net/url"
-	"strings"
 
-	_ "modernc.org/sqlite"
+	"github.com/mikaelstaldal/go-server-common/sqlite"
 )
 
 // OpenDB opens the SQLite database at path, enables foreign keys, sets the
 // busy_timeout pragma (0 = skip), applies any extraPragmas, and runs pending
-// schema migrations. Pragmas are baked into the DSN so every connection in
-// the pool inherits them automatically.
+// schema migrations. Connection setup (DSN, pragmas, WAL mode) is delegated to
+// the shared sqlite package; the imperative v1 schema migration — which
+// reconciles pre-user_version legacy databases and so cannot be expressed as a
+// flat statement list — is applied by initSchema.
 func OpenDB(path string, busyTimeout int, extraPragmas ...string) (*sql.DB, error) {
-	params := url.Values{}
-	params.Add("_pragma", "foreign_keys=on")
-	if busyTimeout > 0 {
-		params.Add("_pragma", fmt.Sprintf("busy_timeout=%d", busyTimeout))
-	}
-	for _, p := range extraPragmas {
-		params.Add("_pragma", p)
-	}
-	// If path already contains query params (e.g. in-memory URIs used in tests),
-	// append with "&" rather than "?" to avoid a double-separator.
-	sep := "?"
-	if strings.Contains(path, "?") {
-		sep = "&"
-	}
-	dsn := path + sep + params.Encode()
-
-	db, err := sql.Open("sqlite", dsn)
+	// Passing no migrations leaves migration to initSchema while still letting
+	// the shared package build the DSN, bake in pragmas, and enable WAL mode.
+	db, err := sqlite.Open(path, busyTimeout, nil, extraPragmas...)
 	if err != nil {
-		return nil, fmt.Errorf("open database: %w", err)
+		return nil, err
 	}
 
 	if err := initSchema(db); err != nil {
@@ -61,11 +47,6 @@ func initSchema(db *sql.DB) error {
 	}
 
 	if version < 1 {
-		// WAL mode must be set before schema initialization and outside a transaction.
-		if _, err := db.Exec("PRAGMA journal_mode = WAL"); err != nil {
-			return fmt.Errorf("set WAL mode: %w", err)
-		}
-
 		// A pre-existing events table means this database was created before the
 		// user_version scheme; it may carry legacy columns that need reconciling.
 		legacy := tableExists(db, "events")
