@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io/fs"
@@ -233,23 +234,23 @@ func main() {
 		log.Fatalf("%v", err)
 	}
 
-	root := handler.SecurityHeadersMiddleware(importMapHash, configScriptHash, *httpsMode)(csrf.Middleware(serverOrigin)(mux))
+	httpHandler := handler.SecurityHeadersMiddleware(importMapHash, configScriptHash, *httpsMode)(csrf.Middleware(serverOrigin)(mux))
 	if authMiddleware != nil {
-		root = authMiddleware(root)
+		httpHandler = authMiddleware(httpHandler)
 	}
-	root = http.MaxBytesHandler(root, 10*1024*1024) // 10 MiB global request body limit (matches import endpoint)
+	httpHandler = http.MaxBytesHandler(httpHandler, 10*1024*1024) // 10 MiB global request body limit (matches import endpoint)
 
 	serverAddr := fmt.Sprintf("%s:%d", *addr, *port)
-	log.Printf("Starting server on %s", serverAddr)
 	server := http.Server{
 		Addr:              serverAddr,
-		Handler:           root,
+		Handler:           httpHandler,
 		ReadHeaderTimeout: 2 * time.Second,
 		ReadTimeout:       5 * time.Second,
 		WriteTimeout:      20 * time.Second,
 		IdleTimeout:       time.Minute,
 	}
-	if err := server.ListenAndServe(); err != nil {
+	log.Printf("Starting server on %s", serverAddr)
+	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatalf("Failed to start server: %v", err)
 	}
 }
