@@ -3,193 +3,20 @@ package repository
 import (
 	"database/sql"
 	"errors"
-	"fmt"
-	"log"
 	"strings"
 
 	"github.com/mikaelstaldal/mycal/internal/model"
 	_ "modernc.org/sqlite"
 )
 
-func columnExists(db *sql.DB, table, column string) bool {
-	var n int
-	_ = db.QueryRow(`SELECT COUNT(*) FROM pragma_table_info(?) WHERE name = ?`, table, column).Scan(&n)
-	return n > 0
-}
-
-func execMigration(db *sql.DB, query string, args ...any) {
-	if _, err := db.Exec(query, args...); err != nil {
-		log.Printf("migration warning: %v", err)
-	}
-}
-
 type SQLiteRepository struct {
 	db *sql.DB
 }
 
+// NewSQLiteRepository wraps an already-opened database. Schema migrations are
+// run by OpenDB, not here, so this can wrap a read-only connection too.
 func NewSQLiteRepository(db *sql.DB) (*SQLiteRepository, error) {
-	if err := initSchema(db); err != nil {
-		return nil, fmt.Errorf("init schema: %w", err)
-	}
 	return &SQLiteRepository{db: db}, nil
-}
-
-func initSchema(db *sql.DB) error {
-	_, err := db.Exec(`
-		CREATE TABLE IF NOT EXISTS events (
-			id               INTEGER PRIMARY KEY AUTOINCREMENT,
-			title            TEXT NOT NULL,
-			description      TEXT NOT NULL DEFAULT '',
-			start_time       TEXT NOT NULL,
-			end_time         TEXT NOT NULL,
-			all_day          INTEGER NOT NULL DEFAULT 0,
-			color            TEXT NOT NULL DEFAULT '',
-			recurrence_freq  TEXT NOT NULL DEFAULT '',
-			recurrence_count INTEGER NOT NULL DEFAULT 0,
-			recurrence_until TEXT NOT NULL DEFAULT '',
-			recurrence_interval INTEGER NOT NULL DEFAULT 0,
-			recurrence_by_day TEXT NOT NULL DEFAULT '',
-			recurrence_by_monthday TEXT NOT NULL DEFAULT '',
-			recurrence_by_month TEXT NOT NULL DEFAULT '',
-			exdates TEXT NOT NULL DEFAULT '',
-			rdates TEXT NOT NULL DEFAULT '',
-			recurrence_parent_id INTEGER,
-			recurrence_original_start TEXT NOT NULL DEFAULT '',
-			duration         TEXT NOT NULL DEFAULT '',
-			categories       TEXT NOT NULL DEFAULT '',
-			url              TEXT NOT NULL DEFAULT '',
-			reminder_minutes INTEGER NOT NULL DEFAULT 0,
-			location         TEXT NOT NULL DEFAULT '',
-			latitude         REAL,
-			longitude        REAL,
-			created_at       TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
-			updated_at       TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
-		);
-		CREATE INDEX IF NOT EXISTS idx_events_start_time ON events(start_time);
-		CREATE INDEX IF NOT EXISTS idx_events_end_time ON events(end_time);
-		CREATE INDEX IF NOT EXISTS idx_events_recurrence_parent_id ON events(recurrence_parent_id);
-
-		CREATE VIRTUAL TABLE IF NOT EXISTS events_fts USING fts5(
-			title, description, content='events', content_rowid='id'
-		);
-
-		CREATE TRIGGER IF NOT EXISTS events_ai AFTER INSERT ON events BEGIN
-			INSERT INTO events_fts(rowid, title, description) VALUES (new.id, new.title, new.description);
-		END;
-		CREATE TRIGGER IF NOT EXISTS events_ad AFTER DELETE ON events BEGIN
-			INSERT INTO events_fts(events_fts, rowid, title, description) VALUES('delete', old.id, old.title, old.description);
-		END;
-		CREATE TRIGGER IF NOT EXISTS events_au AFTER UPDATE ON events BEGIN
-			INSERT INTO events_fts(events_fts, rowid, title, description) VALUES('delete', old.id, old.title, old.description);
-			INSERT INTO events_fts(rowid, title, description) VALUES (new.id, new.title, new.description);
-		END;
-	`)
-	if err != nil {
-		return err
-	}
-
-	// Migration: add calendar_name column (idempotent)
-	if !columnExists(db, "events", "calendar_name") {
-		execMigration(db, `ALTER TABLE events ADD COLUMN calendar_name TEXT NOT NULL DEFAULT ''`)
-	}
-
-	// Migration: add ics_uid column (idempotent)
-	if !columnExists(db, "events", "ics_uid") {
-		execMigration(db, `ALTER TABLE events ADD COLUMN ics_uid TEXT NOT NULL DEFAULT ''`)
-	}
-	execMigration(db, `CREATE INDEX IF NOT EXISTS idx_events_ics_uid ON events(ics_uid)`)
-
-	_, err = db.Exec(`INSERT INTO events_fts(events_fts) VALUES('rebuild')`)
-	if err != nil {
-		return err
-	}
-
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS preferences (
-		key   TEXT PRIMARY KEY,
-		value TEXT NOT NULL DEFAULT ''
-	)`)
-	if err != nil {
-		return err
-	}
-
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS feeds (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		url TEXT NOT NULL,
-		calendar_name TEXT NOT NULL DEFAULT '',
-		refresh_interval_minutes INTEGER NOT NULL DEFAULT 60,
-		last_refreshed_at TEXT NOT NULL DEFAULT '',
-		last_error TEXT NOT NULL DEFAULT '',
-		enabled INTEGER NOT NULL DEFAULT 1,
-		created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
-		updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
-	)`)
-	if err != nil {
-		return err
-	}
-
-	// Migration: create calendars table
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS calendars (
-		id    INTEGER PRIMARY KEY AUTOINCREMENT,
-		name  TEXT NOT NULL UNIQUE,
-		color TEXT NOT NULL DEFAULT 'dodgerblue'
-	)`)
-	if err != nil {
-		return err
-	}
-
-	// Insert default calendar (id=0 reserved for default)
-	execMigration(db, `INSERT OR IGNORE INTO calendars (id, name, color) VALUES (0, 'Default', 'dodgerblue')`)
-
-	// Migrate defaultEventColor preference to default calendar's color
-	var prefColor string
-	err = db.QueryRow(`SELECT value FROM preferences WHERE key = 'defaultEventColor'`).Scan(&prefColor)
-	if err == nil && prefColor != "" {
-		execMigration(db, `UPDATE calendars SET color = ? WHERE id = 0`, prefColor)
-		execMigration(db, `DELETE FROM preferences WHERE key = 'defaultEventColor'`)
-	}
-
-	// Migrate existing calendar_name values to calendars table
-	if columnExists(db, "events", "calendar_name") {
-		execMigration(db, `INSERT OR IGNORE INTO calendars (name, color)
-			SELECT DISTINCT calendar_name, 'dodgerblue' FROM events WHERE calendar_name != ''`)
-	}
-	if columnExists(db, "feeds", "calendar_name") {
-		execMigration(db, `INSERT OR IGNORE INTO calendars (name, color)
-			SELECT DISTINCT calendar_name, 'dodgerblue' FROM feeds WHERE calendar_name != ''`)
-	}
-
-	// Migration: add calendar_id columns (idempotent)
-	if !columnExists(db, "events", "calendar_id") {
-		execMigration(db, `ALTER TABLE events ADD COLUMN calendar_id INTEGER NOT NULL DEFAULT 0`)
-	}
-	if !columnExists(db, "feeds", "calendar_id") {
-		execMigration(db, `ALTER TABLE feeds ADD COLUMN calendar_id INTEGER NOT NULL DEFAULT 0`)
-	}
-
-	// Populate calendar_id from calendar_name
-	if columnExists(db, "events", "calendar_name") {
-		execMigration(db, `UPDATE events SET calendar_id = COALESCE((SELECT id FROM calendars WHERE name = events.calendar_name), 0) WHERE calendar_name != '' AND calendar_id = 0`)
-	}
-	if columnExists(db, "feeds", "calendar_name") {
-		execMigration(db, `UPDATE feeds SET calendar_id = COALESCE((SELECT id FROM calendars WHERE name = feeds.calendar_name), 0) WHERE calendar_name != '' AND calendar_id = 0`)
-	}
-
-	// Add indexes
-	execMigration(db, `CREATE INDEX IF NOT EXISTS idx_events_calendar_id ON events(calendar_id)`)
-	execMigration(db, `CREATE INDEX IF NOT EXISTS idx_feeds_calendar_id ON feeds(calendar_id)`)
-
-	// Migration: drop redundant calendar_name from feeds and events (now derived via JOIN with calendars)
-	if columnExists(db, "feeds", "calendar_name") {
-		execMigration(db, `ALTER TABLE feeds DROP COLUMN calendar_name`)
-	}
-	if columnExists(db, "events", "calendar_name") {
-		execMigration(db, `ALTER TABLE events DROP COLUMN calendar_name`)
-	}
-
-	// Migration: composite index for time-range overlap queries (start_time < to AND end_time > from)
-	execMigration(db, `CREATE INDEX IF NOT EXISTS idx_events_time_range ON events(start_time, end_time)`)
-
-	return nil
 }
 
 const selectColumnsBase = `e.id, e.title, e.description, e.start_time, e.end_time, e.all_day, e.color, e.recurrence_freq, e.recurrence_count, e.recurrence_until, e.recurrence_interval, e.recurrence_by_day, e.recurrence_by_monthday, e.recurrence_by_month, e.exdates, e.rdates, e.recurrence_parent_id, e.recurrence_original_start, e.duration, e.categories, e.url, e.reminder_minutes, e.location, e.latitude, e.longitude, e.calendar_id, COALESCE(cal.name, ''), e.ics_uid, e.created_at, e.updated_at`

@@ -1,19 +1,17 @@
 package repository
 
 import (
-	"database/sql"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/mikaelstaldal/mycal/internal/model"
-	_ "modernc.org/sqlite"
 )
 
 func setupTestRepo(t *testing.T) *SQLiteRepository {
 	t.Helper()
-	db, err := sql.Open("sqlite", ":memory:")
+	db, err := OpenDB(":memory:", 0)
 	require.NoError(t, err)
 	t.Cleanup(func() { db.Close() })
 	repo, err := NewSQLiteRepository(db)

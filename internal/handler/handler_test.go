@@ -2,7 +2,6 @@ package handler_test
 
 import (
 	"bytes"
-	"database/sql"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -20,7 +19,6 @@ import (
 	"github.com/mikaelstaldal/mycal/internal/handler"
 	"github.com/mikaelstaldal/mycal/internal/repository"
 	"github.com/mikaelstaldal/mycal/internal/service"
-	_ "modernc.org/sqlite"
 )
 
 func mustTime(s string) time.Time {
@@ -41,7 +39,7 @@ func mustDate(s string) time.Time {
 
 func setupTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
-	db, err := sql.Open("sqlite", ":memory:")
+	db, err := repository.OpenDB(":memory:", 0)
 	require.NoError(t, err, "open db")
 	repo, err := repository.NewSQLiteRepository(db)
 	require.NoError(t, err, "init repo")

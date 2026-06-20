@@ -4,7 +4,6 @@ package api_test
 // All request/response bodies use plain structs and maps — no generated api package types.
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -60,7 +59,7 @@ type jsonError struct {
 
 func setupTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
-	db, err := sql.Open("sqlite", ":memory:")
+	db, err := repository.OpenDB(":memory:", 0)
 	require.NoError(t, err)
 	repo, err := repository.NewSQLiteRepository(db)
 	require.NoError(t, err)

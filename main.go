@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -160,15 +161,27 @@ func main() {
 		log.Printf("basic authentication enabled")
 	}
 
-	db, err := sql.Open("sqlite", databaseFile)
+	db, err := repository.OpenDB(databaseFile, 5000,
+		"mmap_size=134217728",
+		"synchronous=NORMAL",
+	)
 	if err != nil {
 		log.Fatalf("open database: %v", err)
 	}
 	defer db.Close()
-	db.SetMaxOpenConns(1)
-	err = ensureWritable(db)
-	if err != nil {
+
+	// Allow concurrent reads under WAL mode; writes still serialize at the SQLite level.
+	numConns := runtime.GOMAXPROCS(0)
+	db.SetMaxOpenConns(numConns)
+	db.SetMaxIdleConns(numConns)
+
+	if err = ensureWritable(db); err != nil {
 		log.Fatalf("open database: %v", err)
+	}
+
+	// One-shot: update query planner statistics for all connections.
+	if _, err := db.Exec("PRAGMA optimize"); err != nil {
+		log.Fatalf("PRAGMA optimize: %v", err)
 	}
 
 	repo, err := repository.NewSQLiteRepository(db)

@@ -1,7 +1,6 @@
 package repository
 
 import (
-	"database/sql"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,7 +11,7 @@ import (
 
 func newTestRepo(t *testing.T) *SQLiteRepository {
 	t.Helper()
-	db, err := sql.Open("sqlite", ":memory:")
+	db, err := OpenDB(":memory:", 0)
 	require.NoError(t, err)
 	t.Cleanup(func() { db.Close() })
 	repo, err := NewSQLiteRepository(db)
