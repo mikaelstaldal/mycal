@@ -6,34 +6,17 @@
     <title>mycal</title>
     <link rel="icon" href="favicon.ico" sizes="any">
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="style.css">
     <script type="importmap">
     {
         "imports": {
-            "preact": "./vendor/preact.mjs",
-            "preact/hooks": "./vendor/preact-hooks.mjs"
+            "preact": "./vendor/preact/preact.module.js",
+            "preact/hooks": "./vendor/preact/hooks.module.js",
+            "preact/jsx-runtime": "./vendor/preact/jsx-runtime.module.js"
         }
     }
     </script>
+    <link rel="stylesheet" href="app.css">
     <link rel="modulepreload" href="app.js">
-    <link rel="modulepreload" href="lib/api.js">
-    <link rel="modulepreload" href="lib/confirm.js">
-    <link rel="modulepreload" href="lib/config.js">
-    <link rel="modulepreload" href="lib/date-utils.js">
-    <link rel="modulepreload" href="lib/drag.js">
-    <link rel="modulepreload" href="lib/notifications.js">
-    <link rel="modulepreload" href="components/calendar-sidebar.js">
-    <link rel="modulepreload" href="components/calendar.js">
-    <link rel="modulepreload" href="components/day-view.js">
-    <link rel="modulepreload" href="components/event-form.js">
-    <link rel="modulepreload" href="components/import-form.js">
-    <link rel="modulepreload" href="components/map-picker.js">
-    <link rel="modulepreload" href="components/nav.js">
-    <link rel="modulepreload" href="components/rich-editor.js">
-    <link rel="modulepreload" href="components/settings.js">
-    <link rel="modulepreload" href="components/toast.js">
-    <link rel="modulepreload" href="components/week-view.js">
-    <link rel="modulepreload" href="components/year-view.js">
 </head>
 <body>
     <div id="app"></div>

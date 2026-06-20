@@ -28,7 +28,7 @@ test.describe('Import', () => {
 
     // Dialog should close and a success toast should appear
     await expect(dialog).not.toBeVisible();
-    await expect(page.locator('.toast:not(.toast-error)')).toBeVisible();
+    await expect(page.locator('.toast-item:not(.toast-error)')).toBeVisible();
 
     // Navigate to March 2026 to see the imported event
     const heading = page.locator('nav h1');

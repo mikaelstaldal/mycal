@@ -16,7 +16,7 @@ stop_server() {
 
 trap stop_server EXIT
 
-"$BINARY" -port "$PORT" -data "$DATA_DIR" &
+"$BINARY" -port "$PORT" -data "$DATA_DIR" -public-url http://localhost:${PORT} &
 SERVER_PID=$!
 
 # Wait for server to be ready

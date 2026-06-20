@@ -1,24 +1,28 @@
-import { h, render } from 'preact';
+import { render } from 'preact';
 import { useState, useEffect, useCallback, useRef } from 'preact/hooks';
-import { Nav } from './components/nav.js';
-import { Calendar } from './components/calendar.js';
-import { WeekView } from './components/week-view.js';
-import { DayView } from './components/day-view.js';
-import { ScheduleView } from './components/schedule-view.js';
-import { YearView } from './components/year-view.js';
-import { EventForm } from './components/event-form.js';
-import { ImportSingleForm, ImportBulkForm } from './components/import-form.js';
-import { FeedsDialog } from './components/feeds.js';
-import { Toast } from './components/toast.js';
-import { Settings } from './components/settings.js';
-import { CalendarSidebar } from './components/calendar-sidebar.js';
-import { MiniMonth } from './components/mini-month.js';
-import { listEvents, searchEvents, createEvent, updateEvent, deleteEvent, getEvent, importSingleEvent, listCalendars, updateCalendar } from './lib/api.js';
-import { addMonths, addWeeks, startOfWeek, toRFC3339, eventStartStr } from './lib/date-utils.js';
-import { getConfig, hasUserDefaultView } from './lib/config.js';
-import { checkAndNotify, requestPermission } from './lib/notifications.js';
-import { showChoice } from './lib/confirm.js';
-import type { CalendarEvent, CalendarMeta, AppConfig } from './types/models.js';
+import { Nav } from './layout/Nav.js';
+import { Calendar } from './views/Calendar.js';
+import { WeekView } from './views/WeekView.js';
+import { DayView } from './views/DayView.js';
+import { ScheduleView } from './views/ScheduleView.js';
+import { YearView } from './views/YearView.js';
+import { EventForm } from './components/EventForm.js';
+import { ImportSingleForm, ImportBulkForm } from './components/ImportForm.js';
+import { FeedsDialog } from './components/FeedsDialog.js';
+import { Toast } from './components/Toast.js';
+import { Settings } from './components/Settings.js';
+import { CalendarSidebar } from './layout/CalendarSidebar.js';
+import { MiniMonth } from './layout/MiniMonth.js';
+import { api } from './api/client.js';
+import { showToast } from './util/toast.js';
+import { addMonths, addWeeks, startOfWeek, toRFC3339, eventStartStr } from './util/date-utils.js';
+import { getConfig, hasUserDefaultView } from './util/config.js';
+import { checkAndNotify, requestPermission } from './util/notifications.js';
+import { showChoice } from './util/confirm.js';
+import type { components } from './api/types.js';
+import type { AppConfig } from './util/config.js';
+type CalendarEvent = components['schemas']['Event'];
+type CalendarMeta = components['schemas']['Calendar'];
 
 declare global {
     interface Window {
@@ -39,8 +43,6 @@ function App() {
     const [showImportSingle, setShowImportSingle] = useState(false);
     const [showImportBulk, setShowImportBulk] = useState(false);
     const [showFeeds, setShowFeeds] = useState(false);
-    const [toast, setToast] = useState<string | null>(null);
-    const [toastError, setToastError] = useState(false);
     const [viewMode, setViewMode] = useState<string>(() => {
         if (hasUserDefaultView()) return getConfig().defaultView;
         return window.innerWidth <= 600 ? 'schedule' : 'week';
@@ -65,7 +67,7 @@ function App() {
 
     const loadCalendars = useCallback(async () => {
         try {
-            const cals = await listCalendars();
+            const cals = await api.calendars.list();
             setCalendars(cals);
             const defaultCal = cals.find(c => c.id === 0);
             const calColors: Record<number, string> = {};
@@ -76,8 +78,7 @@ function App() {
                 calendarColors: calColors
             }));
         } catch (err) {
-            setToastError(true);
-            setToast('Failed to load calendars');
+            showToast('Failed to load calendars', { error: true });
         }
     }, []);
 
@@ -107,11 +108,10 @@ function App() {
             to = new Date(year, month + 1, 7);
         }
         try {
-            const data = await listEvents(toRFC3339(from), toRFC3339(to));
+            const data = await api.events.list(toRFC3339(from), toRFC3339(to));
             setEvents(data);
         } catch (err) {
-            setToastError(true);
-            setToast('Failed to load events');
+            showToast('Failed to load events', { error: true });
         }
     }, [currentDate, viewMode, config.weekStartDay, scheduleDaysLoaded]);
 
@@ -135,12 +135,11 @@ function App() {
         const newDays = scheduleDaysLoaded + 30;
         const to = new Date(today.getFullYear(), today.getMonth(), today.getDate() + newDays);
         try {
-            const data = await listEvents(toRFC3339(from), toRFC3339(to));
+            const data = await api.events.list(toRFC3339(from), toRFC3339(to));
             setEvents(prev => [...prev, ...data]);
             setScheduleDaysLoaded(newDays);
         } catch (err) {
-            setToastError(true);
-            setToast('Failed to load more events');
+            showToast('Failed to load more events', { error: true });
         } finally {
             setLoadingMoreSchedule(false);
         }
@@ -174,7 +173,7 @@ function App() {
 
     async function handleEditCalendar(id: number, data: { name: string; color: string }) {
         try {
-            await updateCalendar(id, data);
+            await api.calendars.update(id, data);
             await loadCalendars();
             await loadEvents();
         } catch (err) {
@@ -250,7 +249,7 @@ function App() {
                 setSelectedEvent(event);
             } else {
                 try {
-                    const parent = await getEvent(parentId);
+                    const parent = await api.events.get(parentId);
                     setSelectedEvent(parent);
                 } catch (err) {
                     console.error('Failed to fetch parent event:', err);
@@ -269,9 +268,9 @@ function App() {
             requestPermission();
         }
         if (id) {
-            await updateEvent(id, data);
+            await api.events.update(id, data);
         } else {
-            await createEvent(data);
+            await api.events.create(data);
         }
         setShowForm(false);
         setSelectedEvent(null);
@@ -280,7 +279,7 @@ function App() {
     }
 
     async function handleDelete(id: string) {
-        await deleteEvent(id);
+        await api.events.delete(id);
         setShowForm(false);
         setSelectedEvent(null);
         await loadEvents();
@@ -308,11 +307,10 @@ function App() {
             const update = isDateOnly
                 ? { start_date: startTime, end_date: endTime }
                 : { start_time: startTime, end_time: endTime };
-            await updateEvent(eventId, update);
+            await api.events.update(eventId, update);
             await loadEvents();
         } catch (err) {
-            setToastError(true);
-            setToast('Failed to update event');
+            showToast('Failed to update event', { error: true });
         }
     }
 
@@ -364,7 +362,7 @@ function App() {
         const generation = ++searchGeneration.current;
         searchTimer.current = setTimeout(async () => {
             try {
-                const results = await searchEvents(value.trim());
+                const results = await api.events.search(value.trim());
                 if (generation === searchGeneration.current) {
                     setSearchResults(results);
                 }
@@ -401,13 +399,11 @@ function App() {
         if (!file || !file.name.endsWith('.ics')) return;
         try {
             const text = await file.text();
-            await importSingleEvent(text);
-            setToastError(false);
-            setToast('Event imported successfully');
+            await api.import.single(text);
+            showToast('Event imported successfully');
             await loadEvents();
         } catch (err: any) {
-            setToastError(true);
-            setToast(err.message || 'Import failed');
+            showToast(err.message || 'Import failed', { error: true });
         }
     }
 
@@ -528,20 +524,20 @@ function App() {
                            config={config} mymailUrl={config.mymailUrl || window.__serverConfig?.mymailUrl || ''} />
             )}
             {showImportSingle && (
-                <ImportSingleForm onImported={(message: string, isError?: boolean) => { setShowImportSingle(false); if (!isError) loadEvents(); setToastError(!!isError); setToast(message); }}
+                <ImportSingleForm onImported={() => { setShowImportSingle(false); loadEvents(); }}
                                   onClose={() => setShowImportSingle(false)} />
             )}
             {showImportBulk && (
-                <ImportBulkForm onImported={(message: string, isError?: boolean) => { setShowImportBulk(false); if (!isError) loadEvents(); setToastError(!!isError); setToast(message); }}
+                <ImportBulkForm onImported={() => { setShowImportBulk(false); loadEvents(); }}
                                 onClose={() => setShowImportBulk(false)} />
             )}
             {showFeeds && (
                 <FeedsDialog onClose={() => setShowFeeds(false)}
                              onRefreshed={() => { loadEvents(); loadCalendars(); }} />
             )}
-            {toast && <Toast message={toast} isError={toastError} onDone={() => setToast(null)} />}
+            <Toast />
         </div>
     );
 }
 
-render(<App /> as any, document.getElementById('app'));
+render(<App />, document.getElementById('app')!);

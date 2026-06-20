@@ -236,7 +236,7 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle("/api/", apiRouter)
+	mux.Handle("/api/v1/", apiRouter)
 	mux.Handle("GET /calendar.ics", apiRouter)
 
 	staticFS, err := fs.Sub(web.Static, "static")
