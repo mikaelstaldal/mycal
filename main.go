@@ -21,6 +21,7 @@ import (
 
 	"github.com/mikaelstaldal/go-server-common/auth"
 	"github.com/mikaelstaldal/go-server-common/csrf"
+	"github.com/mikaelstaldal/go-server-common/httputil"
 	commonweb "github.com/mikaelstaldal/go-server-common/web"
 	"github.com/mikaelstaldal/mycal/internal/handler"
 	"github.com/mikaelstaldal/mycal/internal/ical"
@@ -246,8 +247,38 @@ func main() {
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
+	var httpHandler http.Handler = mux
+	httpHandler = csrf.Middleware(serverOrigin)(httpHandler)
 
-	httpHandler := handler.SecurityHeadersMiddleware(importMapHash, configScriptHash, *httpsMode)(csrf.Middleware(serverOrigin)(mux))
+	// importMapHash is the 'sha256-…' CSP token for the inline importmap in
+	// index.html (see web.ImportMapCSPHash); it is added to script-src so the
+	// importmap is allowed without 'unsafe-inline'. configScriptHash is the
+	// 'sha256-…' token for the injected server-config inline script (empty if
+	// no script was injected). Pass httpsMode=true when the app is served over
+	// HTTPS (directly or via TLS-terminating proxy) to also emit
+	// Strict-Transport-Security.	scriptSrc := "'self' " + importMapHash
+	scriptSrc := "'self' " + importMapHash
+	if configScriptHash != "" {
+		scriptSrc += " " + configScriptHash
+	}
+	csp := "default-src 'self';" +
+		" script-src " + scriptSrc + " https://maps.googleapis.com;" +
+		" style-src-elem 'self'; style-src-attr 'unsafe-inline';" +
+		" img-src 'self' data: https://*.tile.openstreetmap.org https://maps.googleapis.com https://maps.gstatic.com;" +
+		" connect-src 'self' https://maps.googleapis.com https://*.tile.openstreetmap.org;" +
+		" font-src 'self';" +
+		" frame-src 'none';" +
+		" object-src 'none';" +
+		" frame-ancestors 'none'"
+	hsts := ""
+	if *httpsMode {
+		hsts = "max-age=31536000; includeSubDomains"
+	}
+	httpHandler = httputil.SecurityHeaders(httputil.SecurityHeadersOptions{
+		CSP:            csp,
+		ReferrerPolicy: "strict-origin-when-cross-origin",
+		HSTS:           hsts,
+	})(httpHandler)
 	if authMiddleware != nil {
 		httpHandler = authMiddleware(httpHandler)
 	}
