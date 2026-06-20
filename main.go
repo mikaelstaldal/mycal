@@ -14,9 +14,11 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/mikaelstaldal/go-server-common/auth"
@@ -196,12 +198,20 @@ func main() {
 	feedSvc := service.NewFeedService(repo, repo, repo)
 	apiRouter := handler.NewRouter(svc, prefSvc, feedSvc, calSvc)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// Start background feed refresh goroutine
 	go func() {
 		ticker := time.NewTicker(5 * time.Minute)
 		defer ticker.Stop()
-		for range ticker.C {
-			feedSvc.RefreshAllDue()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				feedSvc.RefreshAllDue()
+			}
 		}
 	}()
 
@@ -285,7 +295,7 @@ func main() {
 	httpHandler = http.MaxBytesHandler(httpHandler, 10*1024*1024) // 10 MiB global request body limit (matches import endpoint)
 
 	serverAddr := fmt.Sprintf("%s:%d", *addr, *port)
-	server := http.Server{
+	srv := &http.Server{
 		Addr:              serverAddr,
 		Handler:           httpHandler,
 		ReadHeaderTimeout: 2 * time.Second,
@@ -293,8 +303,21 @@ func main() {
 		WriteTimeout:      20 * time.Second,
 		IdleTimeout:       time.Minute,
 	}
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGTERM, syscall.SIGINT)
+	go func() {
+		<-sigCh
+		signal.Stop(sigCh)
+		log.Println("shutting down...")
+		cancel()
+		shutdownCtx, done := context.WithTimeout(context.Background(), 10*time.Second)
+		defer done()
+		srv.Shutdown(shutdownCtx) //nolint:errcheck
+	}()
+
 	log.Printf("Starting server on %s", serverAddr)
-	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatalf("Failed to start server: %v", err)
 	}
 }
