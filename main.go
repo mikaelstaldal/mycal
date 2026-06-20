@@ -243,6 +243,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("static fs: %v", err)
 	}
+	staticHandler, err := httputil.StaticHandler(staticFS)
+	if err != nil {
+		log.Fatalf("static handler: %v", err)
+	}
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/" || r.URL.Path == "/index.html" {
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -250,7 +254,7 @@ func main() {
 			_, _ = w.Write(indexHTML)
 			return
 		}
-		staticCacheMiddleware(http.FileServer(http.FS(staticFS))).ServeHTTP(w, r)
+		staticHandler.ServeHTTP(w, r)
 	})
 
 	serverOrigin, err := csrf.ResolveServerOrigin(*publicURL, *addr, *port)
@@ -320,15 +324,6 @@ func main() {
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatalf("Failed to start server: %v", err)
 	}
-}
-
-// staticCacheMiddleware sets Cache-Control: no-cache so browsers revalidate via ETag
-// on each request rather than re-downloading unchanged embedded assets.
-func staticCacheMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Cache-Control", "no-cache")
-		next.ServeHTTP(w, r)
-	})
 }
 
 func ensureWritable(db *sql.DB) error {
