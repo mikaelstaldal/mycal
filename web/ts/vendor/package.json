@@ -1,0 +1,10 @@
+{
+  "name": "mycal-vendor-rebuild",
+  "private": true,
+  "description": "Throwaway manifest for web/ts/vendor/rebuild.sh — not used at runtime.",
+  "dependencies": {
+    "preact": "10.29.7",
+    "leaflet": "1.9.4",
+    "quill": "2.0.3"
+  }
+}

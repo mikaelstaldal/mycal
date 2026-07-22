@@ -57,7 +57,7 @@ export function CalendarSidebar({ calendars, selectedCalendarIds, onToggleCalend
                             <input type="text" class="calendar-edit-name" value={editName}
                                    onInput={(e: Event) => setEditName((e.target as HTMLInputElement).value)}
                                    onKeyDown={handleKeyDown}
-                                   ref={(el: HTMLInputElement | null) => el && setTimeout(() => el.focus(), 0)} />
+                                   ref={(el: HTMLInputElement | null) => { if (el) setTimeout(() => el.focus(), 0); }} />
                             <div class="calendar-edit-actions">
                                 <button class="calendar-edit-btn" onClick={handleSave} title="Save">&#x2713;</button>
                                 <button class="calendar-edit-btn" onClick={handleCancel} title="Cancel">&#x2717;</button>

@@ -10,11 +10,11 @@ function loadQuill(): Promise<void> {
     quillLoadPromise = new Promise((resolve, reject) => {
         const link = document.createElement('link');
         link.rel = 'stylesheet';
-        link.href = 'vendor/quill.snow.css';
+        link.href = 'vendor/quill-2.0.3.snow.css';
         document.head.appendChild(link);
 
         const script = document.createElement('script');
-        script.src = 'vendor/quill.js';
+        script.src = 'vendor/quill-2.0.3.js';
         script.async = true;
         script.onload = () => { quillLoaded = true; resolve(); };
         script.onerror = () => { quillLoadPromise = null; reject(new Error('Failed to load Quill')); };
