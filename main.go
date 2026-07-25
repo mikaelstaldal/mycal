@@ -52,6 +52,10 @@ func deriveMymailURL(publicURL string) string {
 }
 
 // serverConfigScript returns an inline JS snippet that sets window.__serverConfig.
+// The snippet is spliced into index.html verbatim, so the value must not be able
+// to terminate the surrounding <script> element. json.Marshal emits <, > and &
+// as Unicode escapes (HTML escaping is on by default), which makes that
+// impossible — do not replace it with an encoder that has SetEscapeHTML(false).
 func serverConfigScript(mymailURL string) string {
 	b, _ := json.Marshal(mymailURL)
 	return "window.__serverConfig={mymailUrl:" + string(b) + "};"
