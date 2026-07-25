@@ -15,7 +15,7 @@ In addition to the built-in web interface, there is also
 - Color-coded events
 - iCalendar (RFC 5545) import and feed for subscribing from other calendar apps
 - JSON REST API for future native clients
-- Single binary with embedded frontend — no JS build step
+- Single binary with embedded frontend — no bundler, no npm install to build
 
 ## Getting Started
 
@@ -82,11 +82,17 @@ cd e2e && bash playwright-test --headed
 
 - **Backend:** Go with `net/http` (Go 1.22+ routing)
 - **Database:** SQLite via [modernc.org/sqlite](https://pkg.go.dev/modernc.org/sqlite) (pure Go, no CGO)
-- **Frontend:** [Preact](https://preactjs.com/) + [HTM](https://github.com/developit/htm) loaded from CDN
+- **Frontend:** [Preact](https://preactjs.com/) with JSX, written in TypeScript (`web/ts/`) and compiled by `tsc`
+- **Vendoring:** Preact, [Quill](https://quilljs.com/) and [Leaflet](https://leafletjs.com/) are committed under `web/static/vendor/` and loaded via an import map — no CDN at runtime
+- **API:** described in [openapi.yaml](openapi.yaml); Go server stubs generated with [ogen](https://ogen.dev/), TypeScript types with [openapi-typescript](https://github.com/openapi-ts/openapi-typescript)
 
 ## Operations Guide
 
 See [OPERATIONS.md](OPERATIONS.md) for production installation, reverse proxy configuration, systemd service setup, and authentication.
+
+## Credits
+
+See [CREDITS.md](CREDITS.md) for the third-party libraries, assets and data sources used.
 
 ## License
 
