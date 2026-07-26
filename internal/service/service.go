@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"net/url"
 	"strings"
 	"time"
 
@@ -221,7 +220,7 @@ func (s *EventService) Create(req *api.CreateEventRequest) (*model.Event, error)
 		Location:             sanitize.HTML(req.Location.Or("")),
 	}
 	if req.URL.Set {
-		e.URL = req.URL.Value.String()
+		e.URL = req.URL.Value
 	}
 	if req.Latitude.Set && !req.Latitude.Null {
 		v := req.Latitude.Value
@@ -297,7 +296,7 @@ func (s *EventService) Update(id int64, req *api.UpdateEventRequest) (*model.Eve
 		existing.Categories = sanitize.HTML(req.Categories.Value)
 	}
 	if req.URL.Set {
-		existing.URL = req.URL.Value.String()
+		existing.URL = req.URL.Value
 	}
 	if req.NoteSlug.Set {
 		existing.NoteSlug = req.NoteSlug.Value
@@ -473,7 +472,7 @@ func (s *EventService) CreateOrUpdateOverride(parentID int64, instanceStart stri
 		override.Categories = sanitize.HTML(req.Categories.Value)
 	}
 	if req.URL.Set {
-		override.URL = req.URL.Value.String()
+		override.URL = req.URL.Value
 	}
 	if req.NoteSlug.Set {
 		override.NoteSlug = req.NoteSlug.Value
@@ -562,9 +561,7 @@ func buildEventForImport(e model.Event) (*model.Event, error) {
 		req.Categories = api.NewOptString(e.Categories)
 	}
 	if e.URL != "" {
-		if u, err := url.Parse(e.URL); err == nil {
-			req.URL = api.NewOptURI(*u)
-		}
+		req.URL = api.NewOptString(e.URL)
 	}
 	if e.ReminderMinutes != 0 {
 		req.ReminderMinutes = api.NewOptInt(e.ReminderMinutes)

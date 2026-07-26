@@ -899,8 +899,8 @@ components:
           maxLength: 500
         url:
           type: string
-          format: uri
           maxLength: 2000
+          description: 'Reference URL (must start with http:// or https://). The empty string means no URL.'
         note_slug:
           type: string
           maxLength: 100
@@ -983,8 +983,8 @@ components:
           maxLength: 500
         url:
           type: string
-          format: uri
           maxLength: 2000
+          description: 'Reference URL (must start with http:// or https://). The empty string means no URL.'
         note_slug:
           type: string
           maxLength: 100

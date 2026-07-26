@@ -56,7 +56,7 @@ func ValidateCreateEventRequest(req *api.CreateEventRequest) (startTime, endTime
 		return "", "", fmt.Errorf("categories must be at most %d characters", maxCategoriesLength)
 	}
 	if req.URL.Set {
-		if err := model.ValidateURL(req.URL.Value.String()); err != nil {
+		if err := model.ValidateURL(req.URL.Value); err != nil {
 			return "", "", err
 		}
 	}
@@ -234,7 +234,7 @@ func ValidateUpdateEventRequest(req *api.UpdateEventRequest) error {
 		return fmt.Errorf("categories must be at most %d characters", maxCategoriesLength)
 	}
 	if req.URL.Set {
-		if err := model.ValidateURL(req.URL.Value.String()); err != nil {
+		if err := model.ValidateURL(req.URL.Value); err != nil {
 			return err
 		}
 	}

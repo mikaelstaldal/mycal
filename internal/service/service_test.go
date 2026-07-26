@@ -3,7 +3,6 @@ package service
 import (
 	"database/sql"
 	"errors"
-	"net/url"
 	"testing"
 	"time"
 
@@ -150,10 +149,6 @@ func optDateTime(s string) api.OptDateTime {
 func optDate(s string) api.OptDate {
 	t, _ := time.Parse("2006-01-02", s)
 	return api.NewOptDate(t)
-}
-func optURL(s string) api.OptURI {
-	u, _ := url.Parse(s)
-	return api.NewOptURI(*u)
 }
 func optFreqUpdate(s string) api.OptUpdateEventRequestRecurrenceFreq {
 	return api.NewOptUpdateEventRequestRecurrenceFreq(api.UpdateEventRequestRecurrenceFreq(s))
@@ -695,7 +690,7 @@ func TestUpdate_AllFieldUpdates(t *testing.T) {
 		Exdates:              optString("2026-02-22T10:00:00Z"),
 		Rdates:               optString("2026-03-01T10:00:00Z"),
 		Categories:           optString("work"),
-		URL:                  optURL("https://example.com"),
+		URL:                  optString("https://example.com"),
 		ReminderMinutes:      optInt(30),
 		Location:             optString("Room A"),
 		Latitude:             optFloat(59.33),
@@ -914,7 +909,7 @@ func TestCreateOrUpdateOverride_NewOverrideWithAllFields(t *testing.T) {
 		Color:           optString("red"),
 		Duration:        optString("PT3H"),
 		Categories:      optString("meeting"),
-		URL:             optURL("https://new.example.com"),
+		URL:             optString("https://new.example.com"),
 		ReminderMinutes: optInt(30),
 		Location:        optString("Home"),
 		Latitude:        optFloat(60.0),

@@ -299,11 +299,12 @@ export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSa
             longitude: longitude !== '' ? parseFloat(longitude) : null,
         };
 
-        const extraFields: any = {};
-        if (categories) extraFields.categories = categories;
-        if (eventURL) extraFields.url = eventURL;
-        // Always sent: the empty string is how an existing note link is removed.
-        extraFields.note_slug = noteSlug;
+        // All always sent: the empty string is how an existing value is removed.
+        const extraFields: any = {
+            categories,
+            url: eventURL,
+            note_slug: noteSlug,
+        };
 
         const recurrenceFields = isInstanceEdit ? {} : {
             recurrence_freq: recurrenceFreq,

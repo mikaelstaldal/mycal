@@ -650,13 +650,12 @@ func TestCreateEventWithCategories(t *testing.T) {
 
 func TestCreateEventWithURL(t *testing.T) {
 	ts := setupTestServer(t)
-	u, _ := url.Parse("https://example.com/meeting")
 	body := api.CreateEventRequest{
 		Title:     "Linked Event",
 		AllDay:    false,
 		StartTime: api.NewOptDateTime(mustTime("2026-03-15T10:00:00Z")),
 		EndTime:   api.NewOptDateTime(mustTime("2026-03-15T11:00:00Z")),
-		URL:       api.NewOptURI(*u),
+		URL:       api.NewOptString("https://example.com/meeting"),
 	}
 	resp := postJSON(t, ts.URL+"/api/v1/events", body)
 	require.Equal(t, http.StatusCreated, resp.StatusCode)
@@ -666,17 +665,37 @@ func TestCreateEventWithURL(t *testing.T) {
 
 func TestCreateEventWithBadURL(t *testing.T) {
 	ts := setupTestServer(t)
-	u, _ := url.Parse("ftp://example.com")
 	body := api.CreateEventRequest{
 		Title:     "Bad URL",
 		AllDay:    false,
 		StartTime: api.NewOptDateTime(mustTime("2026-03-15T10:00:00Z")),
 		EndTime:   api.NewOptDateTime(mustTime("2026-03-15T11:00:00Z")),
-		URL:       api.NewOptURI(*u),
+		URL:       api.NewOptString("ftp://example.com"),
 	}
 	resp := postJSON(t, ts.URL+"/api/v1/events", body)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+}
+
+func TestUpdateEventClearsURL(t *testing.T) {
+	ts := setupTestServer(t)
+	body := api.CreateEventRequest{
+		Title:     "Linked Event",
+		AllDay:    false,
+		StartTime: api.NewOptDateTime(mustTime("2026-03-15T10:00:00Z")),
+		EndTime:   api.NewOptDateTime(mustTime("2026-03-15T11:00:00Z")),
+		URL:       api.NewOptString("https://example.com/meeting"),
+	}
+	resp := postJSON(t, ts.URL+"/api/v1/events", body)
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
+	created := decodeJSON[api.Event](t, resp)
+
+	resp = patchJSON(t, ts.URL+"/api/v1/events/"+created.ID, api.UpdateEventRequest{
+		URL: api.NewOptString(""),
+	})
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	updated := decodeJSON[api.Event](t, resp)
+	assert.False(t, updated.URL.Set, "url should be cleared")
 }
 
 // --- iCal import/export with new properties ---

@@ -9,6 +9,7 @@ export interface EventData {
   location?: string;
   color?: string;
   note_slug?: string;
+  url?: string;
 }
 
 export async function createEventViaAPI(

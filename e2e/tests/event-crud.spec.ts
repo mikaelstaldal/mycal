@@ -132,6 +132,36 @@ test.describe('Event CRUD', () => {
     await expect(page.locator('.event-chip', { hasText: 'All Day Meeting' })).toBeVisible();
   });
 
+  test('clear URL by emptying the field', async ({ page, request }) => {
+    const today = todayDate();
+    await createEventViaAPI(request, {
+      title: 'Linked Event',
+      all_day: false,
+      start_time: `${today}T10:00:00Z`,
+      end_time: `${today}T11:00:00Z`,
+      url: 'https://example.com/meeting',
+    });
+
+    await page.reload();
+    await page.getByRole('button', { name: 'Month' }).click();
+    await expect(page.locator('.calendar-grid')).toBeVisible();
+
+    await page.locator('.event-chip', { hasText: 'Linked Event' }).click();
+    const dialog = page.locator('dialog.event-dialog');
+    await expect(dialog).toBeVisible();
+    await expect(dialog.locator('a.url-link')).toHaveAttribute('href', 'https://example.com/meeting');
+
+    // Clear the URL field and save
+    await dialog.getByRole('button', { name: 'Edit' }).click();
+    await dialog.getByRole('textbox', { name: 'URL' }).fill('');
+    await dialog.getByRole('button', { name: 'Save' }).click();
+
+    // Reopen the event — the URL must be gone
+    await page.locator('.event-chip', { hasText: 'Linked Event' }).click();
+    await expect(dialog).toBeVisible();
+    await expect(dialog.locator('.detail-label', { hasText: 'URL:' })).toHaveCount(0);
+  });
+
   test('validation: save with empty title shows error', async ({ page }) => {
     const todayCell = page.locator('.day.today .day-number');
     await todayCell.click();
