@@ -1,7 +1,7 @@
 import { Fragment } from 'preact';
 import type { VNode } from 'preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
-import { toLocalDatetimeValue, fromLocalDatetimeValue, formatTime, toLocalDateValue, formatDateOnly, exclusiveToInclusiveDate, inclusiveToExclusiveDate, getTimezoneAbbr } from '../util/date-utils.js';
+import { toLocalDatetimeValue, fromLocalDatetimeValue, formatTime, formatDate, toLocalDateValue, formatDateOnly, exclusiveToInclusiveDate, inclusiveToExclusiveDate, getTimezoneAbbr } from '../util/date-utils.js';
 import { api } from '../api/client.js';
 import { MapPicker } from './MapPicker.js';
 import { RichEditor } from './RichEditor.js';
@@ -23,11 +23,6 @@ const WEEKDAYS = [
     { key: 'SA', label: 'Sat' },
     { key: 'SU', label: 'Sun' },
 ];
-
-function formatDatetime(isoStr: string) {
-    const d = new Date(isoStr);
-    return d.toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });
-}
 
 function getWeekdayAbbr(date: Date) {
     const days = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
@@ -461,16 +456,21 @@ export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSa
         setRdates(remaining);
     }
 
-    function displayStart() {
+    // Start and end on one line, with the date shown once when both fall on the same day.
+    function displayWhen() {
         if (!event) return '';
-        if (event.all_day) return formatDateOnly(event.start_date!);
-        return formatDatetime(event.start_time!);
-    }
-
-    function displayEnd() {
-        if (!event) return '';
-        if (event.all_day) return formatDateOnly(exclusiveToInclusiveDate(event.end_date!));
-        return formatDatetime(event.end_time!);
+        if (event.all_day) {
+            const start = formatDateOnly(event.start_date!);
+            const end = formatDateOnly(exclusiveToInclusiveDate(event.end_date!));
+            return start === end ? start : `${start} – ${end}`;
+        }
+        const start = new Date(event.start_time!);
+        const end = new Date(event.end_time!);
+        const tz = getTimezoneAbbr(start);
+        if (start.toDateString() === end.toDateString()) {
+            return `${formatDate(start)}, ${formatTime(event.start_time!)} – ${formatTime(event.end_time!)} ${tz}`;
+        }
+        return `${formatDate(start)}, ${formatTime(event.start_time!)} – ${formatDate(end)}, ${formatTime(event.end_time!)} ${tz}`;
     }
 
     function displayReminder() {
@@ -598,7 +598,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSa
                         </div>
                     </label>
                 ) : (
-                    <div class="detail-row"><span class="detail-label">Start:</span> {displayStart()}</div>
+                    <div class="detail-row"><span class="detail-label">When:</span> {displayWhen()}</div>
                 )}
 
                 {editing && (
@@ -637,9 +637,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSa
                             {!allDay && <span class="tz-label">{getTimezoneAbbr()}</span>}
                         </div>
                     </label>
-                ) : (
-                    <div class="detail-row"><span class="detail-label">End:</span> {displayEnd()}</div>
-                )}
+                ) : null}
 
                 {editing ? (
                     <Fragment>

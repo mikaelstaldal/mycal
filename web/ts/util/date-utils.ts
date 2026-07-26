@@ -181,8 +181,8 @@ export function formatHour(hour: number): string {
     return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 }
 
-export function getTimezoneAbbr(): string {
+export function getTimezoneAbbr(date: Date = new Date()): string {
     return Intl.DateTimeFormat(undefined, { timeZoneName: 'short' })
-        .formatToParts(new Date())
+        .formatToParts(date)
         .find(p => p.type === 'timeZoneName')?.value || '';
 }
