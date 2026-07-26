@@ -639,6 +639,150 @@ export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSa
                     </label>
                 ) : null}
 
+                {!isInstanceEdit && editing ? (
+                    <Fragment>
+                        <div class="form-row">
+                            <label>
+                                Repeat
+                                <select value={recurrenceFreq}
+                                        onChange={(e: Event) => setRecurrenceFreq((e.target as HTMLSelectElement).value)}>
+                                    <option value="">None</option>
+                                    <option value="DAILY">Daily</option>
+                                    <option value="WEEKLY">Weekly</option>
+                                    <option value="MONTHLY">Monthly</option>
+                                    <option value="YEARLY">Yearly</option>
+                                </select>
+                            </label>
+                            {!allDay && (
+                                <label>
+                                    Reminder
+                                    <select value={reminderMinutes}
+                                            onChange={(e: Event) => setReminderMinutes(parseInt((e.target as HTMLSelectElement).value) || 0)}>
+                                        <option value="0">None</option>
+                                        <option value="5">5 min before</option>
+                                        <option value="10">10 min before</option>
+                                        <option value="15">15 min before</option>
+                                        <option value="30">30 min before</option>
+                                        <option value="60">1 hour before</option>
+                                    </select>
+                                </label>
+                            )}
+                        </div>
+                        {recurrenceFreq && (
+                            <Fragment>
+                                <label>
+                                    Every
+                                    <div class="interval-row">
+                                        <input type="number" min="1" max="99" value={recurrenceInterval}
+                                               class="input-narrow"
+                                               onInput={(e: Event) => setRecurrenceInterval(parseInt((e.target as HTMLInputElement).value) || 1)} />
+                                        <span>{({DAILY:'day(s)',WEEKLY:'week(s)',MONTHLY:'month(s)',YEARLY:'year(s)'} as Record<string,string>)[recurrenceFreq]}</span>
+                                    </div>
+                                </label>
+                                {recurrenceFreq === 'WEEKLY' && (
+                                    <div class="byday-picker">
+                                        <span>On days</span>
+                                        <div class="byday-buttons">
+                                            {WEEKDAYS.map(wd => (
+                                                <button type="button"
+                                                        class={`byday-btn ${recurrenceByDay.split(',').includes(wd.key) ? 'active' : ''}`}
+                                                        onClick={() => toggleByDay(wd.key)}>
+                                                    {wd.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                {recurrenceFreq === 'MONTHLY' && (
+                                    <div class="monthly-options">
+                                        <label class="radio-label">
+                                            <input type="radio" name="monthly-mode" value="bymonthday"
+                                                   checked={monthlyMode === 'bymonthday'}
+                                                   onChange={() => {
+                                                       setMonthlyMode('bymonthday');
+                                                       setRecurrenceByDay('');
+                                                       if (startDate) {
+                                                           setRecurrenceByMonthDay(String(startDate.getDate()));
+                                                       }
+                                                   }} />
+                                            On day {startDate ? startDate.getDate() : '...'}
+                                        </label>
+                                        <label class="radio-label">
+                                            <input type="radio" name="monthly-mode" value="byday"
+                                                   checked={monthlyMode === 'byday'}
+                                                   onChange={() => {
+                                                       setMonthlyMode('byday');
+                                                       setRecurrenceByMonthDay('');
+                                                       if (startDate) {
+                                                           const nth = getNthWeekdayOfMonth(startDate);
+                                                           const dayAbbr = getWeekdayAbbr(startDate);
+                                                           setRecurrenceByDay(`${nth}${dayAbbr}`);
+                                                       }
+                                                   }} />
+                                            On the {startDate ? ordinalLabel(getNthWeekdayOfMonth(startDate)) : '...'} {startDate ? WEEKDAYS.find(w => w.key === getWeekdayAbbr(startDate))?.label : '...'}
+                                        </label>
+                                    </div>
+                                )}
+                                <label>
+                                    Occurrences (0 = unlimited)
+                                    <input type="number" min="0" value={recurrenceCount}
+                                           onInput={(e: Event) => setRecurrenceCount(parseInt((e.target as HTMLInputElement).value) || 0)} />
+                                </label>
+                                <label>
+                                    Until date (optional)
+                                    <input type="date" value={recurrenceUntil}
+                                           onInput={(e: Event) => setRecurrenceUntil((e.target as HTMLInputElement).value)} />
+                                </label>
+                                {displayExdates().length > 0 && (
+                                    <div class="exdates-section">
+                                        <span>Excluded dates</span>
+                                        <div class="exdates-list">
+                                            {displayExdates().map(exd => (
+                                                <div class="exdate-item" key={exd}>
+                                                    <span>{new Date(exd).toLocaleDateString()}</span>
+                                                    <button type="button" class="small-btn" onClick={() => handleRestoreExdate(exd)}>Restore</button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                <div class="rdates-section">
+                                    <span>Additional dates</span>
+                                    <div class="rdate-add-row">
+                                        <input type="date" value={newRdate}
+                                               onInput={(e: Event) => setNewRdate((e.target as HTMLInputElement).value)} />
+                                        <button type="button" class="small-btn" onClick={handleAddRdate}>Add</button>
+                                    </div>
+                                    {displayRdates().length > 0 && (
+                                        <div class="rdates-list">
+                                            {displayRdates().map(rd => (
+                                                <div class="rdate-item" key={rd}>
+                                                    <span>{new Date(rd).toLocaleDateString()}</span>
+                                                    <button type="button" class="small-btn danger" onClick={() => handleRemoveRdate(rd)}>Remove</button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </Fragment>
+                        )}
+                    </Fragment>
+                ) : !isInstanceEdit && recurrenceFreq && !editing ? (
+                    <Fragment>
+                        <div class="detail-row"><span class="detail-label">Repeat:</span> {displayRecurrence()}</div>
+                        {displayExdates().length > 0 && (
+                            <div class="detail-row"><span class="detail-label">Excluded:</span> {displayExdates().map(d => new Date(d).toLocaleDateString()).join(', ')}</div>
+                        )}
+                        {displayRdates().length > 0 && (
+                            <div class="detail-row"><span class="detail-label">Additional:</span> {displayRdates().map(d => new Date(d).toLocaleDateString()).join(', ')}</div>
+                        )}
+                    </Fragment>
+                ) : null}
+
+                {!allDay && reminderMinutes > 0 && !editing ? (
+                    <div class="detail-row"><span class="detail-label">Reminder:</span> {displayReminder()}</div>
+                ) : null}
+
                 {editing ? (
                     <Fragment>
                         {!hasMapProvider && (
@@ -787,150 +931,6 @@ export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSa
                         })()}
                     </Fragment>
                 )}
-
-                {!isInstanceEdit && editing ? (
-                    <Fragment>
-                        <div class="form-row">
-                            <label>
-                                Repeat
-                                <select value={recurrenceFreq}
-                                        onChange={(e: Event) => setRecurrenceFreq((e.target as HTMLSelectElement).value)}>
-                                    <option value="">None</option>
-                                    <option value="DAILY">Daily</option>
-                                    <option value="WEEKLY">Weekly</option>
-                                    <option value="MONTHLY">Monthly</option>
-                                    <option value="YEARLY">Yearly</option>
-                                </select>
-                            </label>
-                            {!allDay && (
-                                <label>
-                                    Reminder
-                                    <select value={reminderMinutes}
-                                            onChange={(e: Event) => setReminderMinutes(parseInt((e.target as HTMLSelectElement).value) || 0)}>
-                                        <option value="0">None</option>
-                                        <option value="5">5 min before</option>
-                                        <option value="10">10 min before</option>
-                                        <option value="15">15 min before</option>
-                                        <option value="30">30 min before</option>
-                                        <option value="60">1 hour before</option>
-                                    </select>
-                                </label>
-                            )}
-                        </div>
-                        {recurrenceFreq && (
-                            <Fragment>
-                                <label>
-                                    Every
-                                    <div class="interval-row">
-                                        <input type="number" min="1" max="99" value={recurrenceInterval}
-                                               class="input-narrow"
-                                               onInput={(e: Event) => setRecurrenceInterval(parseInt((e.target as HTMLInputElement).value) || 1)} />
-                                        <span>{({DAILY:'day(s)',WEEKLY:'week(s)',MONTHLY:'month(s)',YEARLY:'year(s)'} as Record<string,string>)[recurrenceFreq]}</span>
-                                    </div>
-                                </label>
-                                {recurrenceFreq === 'WEEKLY' && (
-                                    <div class="byday-picker">
-                                        <span>On days</span>
-                                        <div class="byday-buttons">
-                                            {WEEKDAYS.map(wd => (
-                                                <button type="button"
-                                                        class={`byday-btn ${recurrenceByDay.split(',').includes(wd.key) ? 'active' : ''}`}
-                                                        onClick={() => toggleByDay(wd.key)}>
-                                                    {wd.label}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                                {recurrenceFreq === 'MONTHLY' && (
-                                    <div class="monthly-options">
-                                        <label class="radio-label">
-                                            <input type="radio" name="monthly-mode" value="bymonthday"
-                                                   checked={monthlyMode === 'bymonthday'}
-                                                   onChange={() => {
-                                                       setMonthlyMode('bymonthday');
-                                                       setRecurrenceByDay('');
-                                                       if (startDate) {
-                                                           setRecurrenceByMonthDay(String(startDate.getDate()));
-                                                       }
-                                                   }} />
-                                            On day {startDate ? startDate.getDate() : '...'}
-                                        </label>
-                                        <label class="radio-label">
-                                            <input type="radio" name="monthly-mode" value="byday"
-                                                   checked={monthlyMode === 'byday'}
-                                                   onChange={() => {
-                                                       setMonthlyMode('byday');
-                                                       setRecurrenceByMonthDay('');
-                                                       if (startDate) {
-                                                           const nth = getNthWeekdayOfMonth(startDate);
-                                                           const dayAbbr = getWeekdayAbbr(startDate);
-                                                           setRecurrenceByDay(`${nth}${dayAbbr}`);
-                                                       }
-                                                   }} />
-                                            On the {startDate ? ordinalLabel(getNthWeekdayOfMonth(startDate)) : '...'} {startDate ? WEEKDAYS.find(w => w.key === getWeekdayAbbr(startDate))?.label : '...'}
-                                        </label>
-                                    </div>
-                                )}
-                                <label>
-                                    Occurrences (0 = unlimited)
-                                    <input type="number" min="0" value={recurrenceCount}
-                                           onInput={(e: Event) => setRecurrenceCount(parseInt((e.target as HTMLInputElement).value) || 0)} />
-                                </label>
-                                <label>
-                                    Until date (optional)
-                                    <input type="date" value={recurrenceUntil}
-                                           onInput={(e: Event) => setRecurrenceUntil((e.target as HTMLInputElement).value)} />
-                                </label>
-                                {displayExdates().length > 0 && (
-                                    <div class="exdates-section">
-                                        <span>Excluded dates</span>
-                                        <div class="exdates-list">
-                                            {displayExdates().map(exd => (
-                                                <div class="exdate-item" key={exd}>
-                                                    <span>{new Date(exd).toLocaleDateString()}</span>
-                                                    <button type="button" class="small-btn" onClick={() => handleRestoreExdate(exd)}>Restore</button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                                <div class="rdates-section">
-                                    <span>Additional dates</span>
-                                    <div class="rdate-add-row">
-                                        <input type="date" value={newRdate}
-                                               onInput={(e: Event) => setNewRdate((e.target as HTMLInputElement).value)} />
-                                        <button type="button" class="small-btn" onClick={handleAddRdate}>Add</button>
-                                    </div>
-                                    {displayRdates().length > 0 && (
-                                        <div class="rdates-list">
-                                            {displayRdates().map(rd => (
-                                                <div class="rdate-item" key={rd}>
-                                                    <span>{new Date(rd).toLocaleDateString()}</span>
-                                                    <button type="button" class="small-btn danger" onClick={() => handleRemoveRdate(rd)}>Remove</button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            </Fragment>
-                        )}
-                    </Fragment>
-                ) : !isInstanceEdit && recurrenceFreq && !editing ? (
-                    <Fragment>
-                        <div class="detail-row"><span class="detail-label">Repeat:</span> {displayRecurrence()}</div>
-                        {displayExdates().length > 0 && (
-                            <div class="detail-row"><span class="detail-label">Excluded:</span> {displayExdates().map(d => new Date(d).toLocaleDateString()).join(', ')}</div>
-                        )}
-                        {displayRdates().length > 0 && (
-                            <div class="detail-row"><span class="detail-label">Additional:</span> {displayRdates().map(d => new Date(d).toLocaleDateString()).join(', ')}</div>
-                        )}
-                    </Fragment>
-                ) : null}
-
-                {!allDay && reminderMinutes > 0 && !editing ? (
-                    <div class="detail-row"><span class="detail-label">Reminder:</span> {displayReminder()}</div>
-                ) : null}
 
                 {editing ? (
                     <label>
