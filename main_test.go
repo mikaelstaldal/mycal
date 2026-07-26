@@ -9,30 +9,32 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDeriveMymailURL(t *testing.T) {
+func TestDeriveSiblingURLs(t *testing.T) {
 	tests := []struct {
-		name      string
-		publicURL string
-		want      string
+		name        string
+		publicURL   string
+		wantMymail  string
+		wantMynotes string
 	}{
-		{"empty", "", ""},
-		{"no path", "https://example.com", ""},
-		{"root path only", "https://example.com/", ""},
-		{"with path", "https://example.com/cal", "https://example.com/mymail"},
-		{"query and fragment dropped", "https://example.com/cal?a=b#c", "https://example.com/mymail"},
-		{"port preserved", "http://localhost:8089/cal", "http://localhost:8089/mymail"},
-		{"unparsable", "://nope", ""},
+		{"empty", "", "", ""},
+		{"no path", "https://example.com", "", ""},
+		{"root path only", "https://example.com/", "", ""},
+		{"with path", "https://example.com/cal", "https://example.com/mymail", "https://example.com/mynotes"},
+		{"query and fragment dropped", "https://example.com/cal?a=b#c", "https://example.com/mymail", "https://example.com/mynotes"},
+		{"port preserved", "http://localhost:8089/cal", "http://localhost:8089/mymail", "http://localhost:8089/mynotes"},
+		{"unparsable", "://nope", "", ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, deriveMymailURL(tt.publicURL))
+			assert.Equal(t, tt.wantMymail, deriveMymailURL(tt.publicURL))
+			assert.Equal(t, tt.wantMynotes, deriveMynotesURL(tt.publicURL))
 		})
 	}
 }
 
-// The derived MyMail URL originates from the operator-supplied -public-url flag
-// and is spliced into index.html inside an inline <script>. Nothing in it may be
-// able to close that element or otherwise inject markup.
+// The derived sibling URLs originate from the operator-supplied -public-url flag
+// and are spliced into index.html inside an inline <script>. Nothing in them may
+// be able to close that element or otherwise inject markup.
 func TestServerConfigScriptCannotEscapeScriptElement(t *testing.T) {
 	hostile := []string{
 		`https://example.com/</script><img src=x onerror=alert(1)>`,
@@ -43,11 +45,12 @@ func TestServerConfigScriptCannotEscapeScriptElement(t *testing.T) {
 	}
 	for _, publicURL := range hostile {
 		t.Run(publicURL, func(t *testing.T) {
-			script := serverConfigScript(deriveMymailURL(publicURL))
+			script := serverConfigScript(deriveMymailURL(publicURL), deriveMynotesURL(publicURL))
 			assert.NotContains(t, script, "<")
 			assert.NotContains(t, script, ">")
 			assert.True(t, strings.HasPrefix(script, "window.__serverConfig={mymailUrl:"),
 				"unexpected script shape: %s", script)
+			assert.Contains(t, script, ",mynotesUrl:")
 		})
 	}
 }
@@ -61,7 +64,7 @@ func TestBuildIndexHTMLInjectsConfigScript(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotContains(t, string(unchanged), "<script>")
 
-	script := serverConfigScript("https://example.com/mymail")
+	script := serverConfigScript("https://example.com/mymail", "https://example.com/mynotes")
 	injected, err := buildIndexHTML(fsys, script)
 	require.NoError(t, err)
 	assert.Contains(t, string(injected), "<script>"+script+"</script>")

@@ -99,6 +99,11 @@ Go backend with embedded Preact+JSX frontend. TypeScript source in `web/ts/`, co
 - iCalendar (RFC 5545) feed at `/calendar.ics` and `/api/v1/events.ics` — `internal/ical` package encodes events, no external dependency
 - The REST API is mounted at the specific `/api/v1/` prefix (not the broader `/api/`) so the compiled frontend module served at `/api/client.js` (from the `web/ts/api/` source dir) falls through to the static file handler. Keep this mount narrow.
 
+**Sibling app integrations (MyMail, MyNotes):**
+- Both assume the sibling runs on the **same origin** behind the same auth realm. `main.go` derives their base URLs from `-public-url` (`deriveSiblingURL`) and injects them as `window.__serverConfig`; Settings can override. All calls are browser-side with `credentials: 'include'` — no server-to-server traffic.
+- MyNotes: an event links one note through `note_slug` (schema v2 migration in `internal/repository/db.go`). `web/ts/util/mynotes.ts` is the API client; `web/ts/components/NotePanel.tsx` frames the **MyNotes render kit** (`<mynotesUrl>/render/`) and drives its `render()` / `setTheme()` API.
+- Never re-implement the MyNotes Markdown dialect here — the render kit is the single renderer, shared with the MyNotes web UI and the Android app. The kit's output carries root-relative links and image sources (it has no `<base>`); `NotePanel` resolves them against the MyNotes base URL and forces links into a new tab. MyCal's CSP needs `frame-src 'self'`, and MyNotes serves `/render/` with `frame-ancestors 'self'`.
+
 ## Go development
 
 Always run `go mod tidy` after modifying the `go.mod` file.

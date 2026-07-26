@@ -16,6 +16,9 @@ In addition to the built-in web interface, there is also
 - iCalendar (RFC 5545) import and feed for subscribing from other calendar apps
 - JSON REST API for future native clients
 - Single binary with embedded frontend — no bundler, no npm install to build
+- Sibling-app integrations: share an event by email through
+  [MyMail](https://github.com/mikaelstaldal/mymail), and link a note from
+  [MyNotes](https://github.com/mikaelstaldal/mynotes) to an event — see below
 
 ## Getting Started
 
@@ -55,6 +58,28 @@ When enabled, all endpoints (UI, API, and iCalendar feed) require valid credenti
 ## API
 
 See the [OpenAPI specification](openapi.yaml).
+
+## MyMail and MyNotes integrations
+
+Both integrations assume the sibling app runs on the **same origin** as mycal,
+behind the same authentication realm, so the browser's existing credentials
+carry over and no CORS, token exchange or server-to-server call is involved.
+Their base URLs are derived from `-public-url` by replacing its path — a mycal
+at `https://example.com/mycal` looks for MyMail at `https://example.com/mymail`
+and MyNotes at `https://example.com/mynotes` — and injected into the page as
+`window.__serverConfig`. A mycal served from the origin root derives nothing;
+either URL can also be set by hand under Settings.
+
+- **MyMail** — the *Share* button in the event dialog mails the event as an
+  `.ics` attachment.
+- **MyNotes** — an event can link one note (stored as `note_slug` on the event).
+  In edit mode a title search picks the note; in view mode the dialog shows the
+  note's content, rendered by MyNotes' own **render kit** (`/mynotes/render/`)
+  loaded in an iframe and driven through its `render()` / `setTheme()` API. The
+  full MyNotes Markdown dialect — callouts, wikilinks, tables, math, Mermaid
+  diagrams, icons — therefore renders exactly as it does in MyNotes, and mycal
+  never parses Markdown itself. MyNotes serves that page with
+  `frame-ancestors 'self'`, so the two must share an origin for this to work.
 
 ## iCalendar Feed
 

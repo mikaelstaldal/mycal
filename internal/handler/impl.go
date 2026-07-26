@@ -145,6 +145,9 @@ func modelEventToAPI(e *model.Event) *api.Event {
 		ae.Categories = api.NewOptString(e.Categories)
 	}
 	ae.URL = toOptURI(e.URL)
+	if e.NoteSlug != "" {
+		ae.NoteSlug = api.NewOptString(e.NoteSlug)
+	}
 	if e.ReminderMinutes != 0 {
 		ae.ReminderMinutes = api.NewOptInt(e.ReminderMinutes)
 	}

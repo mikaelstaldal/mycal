@@ -790,6 +790,14 @@ components:
           format: uri
           maxLength: 2000
           description: Reference URL (must start with http:// or https://)
+        note_slug:
+          type: string
+          maxLength: 100
+          pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          description: >
+            Slug of a MyNotes note linked to this event, or absent when none.
+            Resolved against the MyNotes instance the client is configured with;
+            MyCal stores it without verifying that the note exists.
         reminder_minutes:
           type: integer
           minimum: 0
@@ -893,6 +901,11 @@ components:
           type: string
           format: uri
           maxLength: 2000
+        note_slug:
+          type: string
+          maxLength: 100
+          pattern: "^$|^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          description: Slug of a MyNotes note to link to this event. The empty string unlinks.
         reminder_minutes:
           type: integer
           minimum: 0
@@ -972,6 +985,11 @@ components:
           type: string
           format: uri
           maxLength: 2000
+        note_slug:
+          type: string
+          maxLength: 100
+          pattern: "^$|^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          description: Slug of a MyNotes note to link to this event. The empty string unlinks.
         reminder_minutes:
           type: integer
           minimum: 0

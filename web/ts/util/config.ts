@@ -7,6 +7,7 @@ export interface AppConfig {
     googleMapsApiKey: string;
     calendarColors?: Record<number, string>;
     mymailUrl?: string;
+    mynotesUrl?: string;
 }
 
 const STORAGE_KEY = 'mycal-settings';
@@ -91,7 +92,11 @@ function sanitize(parsed: unknown, localeWeekStart: number): AppConfig {
         ? p.mymailUrl
         : undefined;
 
-    return { defaultView, dayStartHour, weekStartDay, defaultEventColor, mapProvider, googleMapsApiKey, ...(calendarColors !== undefined && { calendarColors }), ...(mymailUrl !== undefined && { mymailUrl }) };
+    const mynotesUrl = typeof p.mynotesUrl === 'string' && URL_RE.test(p.mynotesUrl)
+        ? p.mynotesUrl
+        : undefined;
+
+    return { defaultView, dayStartHour, weekStartDay, defaultEventColor, mapProvider, googleMapsApiKey, ...(calendarColors !== undefined && { calendarColors }), ...(mymailUrl !== undefined && { mymailUrl }), ...(mynotesUrl !== undefined && { mynotesUrl }) };
 }
 
 export function getConfig(): AppConfig {

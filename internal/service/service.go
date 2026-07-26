@@ -216,6 +216,7 @@ func (s *EventService) Create(req *api.CreateEventRequest) (*model.Event, error)
 		RDates:               req.Rdates.Or(""),
 		Duration:             req.Duration.Or(""),
 		Categories:           sanitize.HTML(req.Categories.Or("")),
+		NoteSlug:             req.NoteSlug.Or(""),
 		ReminderMinutes:      req.ReminderMinutes.Or(0),
 		Location:             sanitize.HTML(req.Location.Or("")),
 	}
@@ -297,6 +298,9 @@ func (s *EventService) Update(id int64, req *api.UpdateEventRequest) (*model.Eve
 	}
 	if req.URL.Set {
 		existing.URL = req.URL.Value.String()
+	}
+	if req.NoteSlug.Set {
+		existing.NoteSlug = req.NoteSlug.Value
 	}
 	if req.ReminderMinutes.Set {
 		existing.ReminderMinutes = req.ReminderMinutes.Value
@@ -411,6 +415,7 @@ func (s *EventService) CreateOrUpdateOverride(parentID int64, instanceStart stri
 		Duration:                parent.Duration,
 		Categories:              parent.Categories,
 		URL:                     parent.URL,
+		NoteSlug:                parent.NoteSlug,
 		ReminderMinutes:         parent.ReminderMinutes,
 		Location:                parent.Location,
 		Latitude:                parent.Latitude,
@@ -469,6 +474,9 @@ func (s *EventService) CreateOrUpdateOverride(parentID int64, instanceStart stri
 	}
 	if req.URL.Set {
 		override.URL = req.URL.Value.String()
+	}
+	if req.NoteSlug.Set {
+		override.NoteSlug = req.NoteSlug.Value
 	}
 	if req.ReminderMinutes.Set {
 		override.ReminderMinutes = req.ReminderMinutes.Value

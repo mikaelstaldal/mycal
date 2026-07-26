@@ -26,7 +26,7 @@ type CalendarMeta = components['schemas']['Calendar'];
 
 declare global {
     interface Window {
-        __serverConfig?: { mymailUrl?: string };
+        __serverConfig?: { mymailUrl?: string; mynotesUrl?: string };
     }
 }
 
@@ -521,7 +521,9 @@ function App() {
                            copiedEvent={copiedEvent}
                            onSave={handleSave} onDelete={handleDelete} onClose={handleClose}
                            onCopy={selectedEvent ? handleCopy : undefined}
-                           config={config} mymailUrl={config.mymailUrl || window.__serverConfig?.mymailUrl || ''} />
+                           config={config} mymailUrl={config.mymailUrl || window.__serverConfig?.mymailUrl || ''}
+                           mynotesUrl={config.mynotesUrl || window.__serverConfig?.mynotesUrl || ''}
+                           darkMode={darkMode} />
             )}
             {showImportSingle && (
                 <ImportSingleForm onImported={() => { setShowImportSingle(false); loadEvents(); }}

@@ -29,6 +29,10 @@ func OpenDB(path string, busyTimeout int, extraPragmas ...string) (*sql.DB, erro
 	return db, nil
 }
 
+// currentSchemaVersion is the PRAGMA user_version a fully migrated database
+// carries. Bump it when adding a migration block to initSchema.
+const currentSchemaVersion = 2
+
 // execQuerier is satisfied by both *sql.DB and *sql.Tx so migration helpers can
 // run against either.
 type execQuerier interface {
@@ -95,6 +99,32 @@ func initSchema(db *sql.DB) error {
 
 		if err := tx.Commit(); err != nil {
 			return fmt.Errorf("commit migration to v1: %w", err)
+		}
+	}
+
+	if version < 2 {
+		// v2 adds events.note_slug, the link to a MyNotes note. A fresh database
+		// gets it here too: schemaV1 is left as the historical v1 schema and is
+		// never edited, so every database reaches the current shape the same way.
+		// Guarded by columnExists so re-running is harmless.
+		tx, err := db.Begin()
+		if err != nil {
+			return fmt.Errorf("begin migration to v2: %w", err)
+		}
+		defer tx.Rollback()
+
+		if !columnExists(tx, "events", "note_slug") {
+			if _, err := tx.Exec(`ALTER TABLE events ADD COLUMN note_slug TEXT NOT NULL DEFAULT ''`); err != nil {
+				return fmt.Errorf("schema v2 add note_slug: %w", err)
+			}
+		}
+
+		if _, err := tx.Exec(fmt.Sprintf("PRAGMA user_version = %d", currentSchemaVersion)); err != nil {
+			return fmt.Errorf("set user_version = %d: %w", currentSchemaVersion, err)
+		}
+
+		if err := tx.Commit(); err != nil {
+			return fmt.Errorf("commit migration to v2: %w", err)
 		}
 	}
 

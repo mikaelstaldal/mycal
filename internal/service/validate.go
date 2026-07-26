@@ -60,6 +60,11 @@ func ValidateCreateEventRequest(req *api.CreateEventRequest) (startTime, endTime
 			return "", "", err
 		}
 	}
+	if req.NoteSlug.Set {
+		if err := model.ValidateNoteSlug(req.NoteSlug.Value); err != nil {
+			return "", "", err
+		}
+	}
 	if req.Color.Set {
 		if err := model.ValidateColor(req.Color.Value); err != nil {
 			return "", "", err
@@ -230,6 +235,11 @@ func ValidateUpdateEventRequest(req *api.UpdateEventRequest) error {
 	}
 	if req.URL.Set {
 		if err := model.ValidateURL(req.URL.Value.String()); err != nil {
+			return err
+		}
+	}
+	if req.NoteSlug.Set {
+		if err := model.ValidateNoteSlug(req.NoteSlug.Value); err != nil {
 			return err
 		}
 	}

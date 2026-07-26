@@ -35,9 +35,12 @@ import (
 
 const databaseName = "mycal.sqlite"
 
-// deriveMymailURL returns the MyMail base URL derived from publicURL by replacing
-// its path with "/mymail". Returns empty string if publicURL is empty or has no path segment.
-func deriveMymailURL(publicURL string) string {
+// deriveSiblingURL returns the base URL of a sibling app served from the same
+// origin, derived from publicURL by replacing its path with siblingPath.
+// Returns empty string if publicURL is empty or has no path segment — a MyCal
+// deployed at the origin root leaves no room for siblings, so nothing is
+// assumed about them.
+func deriveSiblingURL(publicURL, siblingPath string) string {
 	if publicURL == "" {
 		return ""
 	}
@@ -45,20 +48,31 @@ func deriveMymailURL(publicURL string) string {
 	if err != nil || strings.Trim(u.Path, "/") == "" {
 		return ""
 	}
-	u.Path = "/mymail"
+	u.Path = siblingPath
 	u.RawQuery = ""
 	u.Fragment = ""
 	return u.String()
 }
 
+// deriveMymailURL returns the MyMail base URL derived from publicURL.
+func deriveMymailURL(publicURL string) string {
+	return deriveSiblingURL(publicURL, "/mymail")
+}
+
+// deriveMynotesURL returns the MyNotes base URL derived from publicURL.
+func deriveMynotesURL(publicURL string) string {
+	return deriveSiblingURL(publicURL, "/mynotes")
+}
+
 // serverConfigScript returns an inline JS snippet that sets window.__serverConfig.
-// The snippet is spliced into index.html verbatim, so the value must not be able
+// The snippet is spliced into index.html verbatim, so the values must not be able
 // to terminate the surrounding <script> element. json.Marshal emits <, > and &
 // as Unicode escapes (HTML escaping is on by default), which makes that
 // impossible — do not replace it with an encoder that has SetEscapeHTML(false).
-func serverConfigScript(mymailURL string) string {
-	b, _ := json.Marshal(mymailURL)
-	return "window.__serverConfig={mymailUrl:" + string(b) + "};"
+func serverConfigScript(mymailURL, mynotesURL string) string {
+	mymail, _ := json.Marshal(mymailURL)
+	mynotes, _ := json.Marshal(mynotesURL)
+	return "window.__serverConfig={mymailUrl:" + string(mymail) + ",mynotesUrl:" + string(mynotes) + "};"
 }
 
 // inlineScriptCSPHash returns the CSP sha256 hash token for an inline script.
@@ -230,6 +244,10 @@ func main() {
 	if resolvedMymailURL != "" {
 		log.Printf("mycal: MyMail URL configured as %s", resolvedMymailURL)
 	}
+	resolvedMynotesURL := deriveMynotesURL(*publicURL)
+	if resolvedMynotesURL != "" {
+		log.Printf("mycal: MyNotes URL configured as %s", resolvedMynotesURL)
+	}
 
 	importMapHash, err := commonweb.ImportMapCSPHash(web.Static)
 	if err != nil {
@@ -237,8 +255,8 @@ func main() {
 	}
 
 	var configScript, configScriptHash string
-	if resolvedMymailURL != "" {
-		configScript = serverConfigScript(resolvedMymailURL)
+	if resolvedMymailURL != "" || resolvedMynotesURL != "" {
+		configScript = serverConfigScript(resolvedMymailURL, resolvedMynotesURL)
 		configScriptHash = inlineScriptCSPHash(configScript)
 	}
 	indexHTML, err := buildIndexHTML(web.Static, configScript)
@@ -292,7 +310,9 @@ func main() {
 		" img-src 'self' data: https://*.tile.openstreetmap.org https://maps.googleapis.com https://maps.gstatic.com;" +
 		" connect-src 'self' https://maps.googleapis.com https://*.tile.openstreetmap.org;" +
 		" font-src 'self';" +
-		" frame-src 'none';" +
+		// The MyNotes render kit (/mynotes/render/) is framed to display a
+		// linked note; it is served from this same origin, so 'self' covers it.
+		" frame-src 'self';" +
 		" object-src 'none';" +
 		" frame-ancestors 'none'"
 	hsts := ""

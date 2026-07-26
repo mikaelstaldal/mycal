@@ -7,7 +7,7 @@ import type { AppConfig } from '../util/config.js';
 
 declare global {
     interface Window {
-        __serverConfig?: { mymailUrl?: string };
+        __serverConfig?: { mymailUrl?: string; mynotesUrl?: string };
     }
 }
 
@@ -163,6 +163,18 @@ export function Settings({ config, onConfigChange }: SettingsProps): VNode | nul
                                }} />
                         {!config.mymailUrl && window.__serverConfig?.mymailUrl && (
                             <span class="settings-hint">Auto-configured: {window.__serverConfig.mymailUrl}</span>
+                        )}
+                    </label>
+                    <label>
+                        MyNotes URL
+                        <input type="url" value={config.mynotesUrl || ''}
+                               placeholder={window.__serverConfig?.mynotesUrl || 'https://example.com/mynotes'}
+                               onInput={(e: Event) => {
+                                   const v = (e.target as HTMLInputElement).value.trim();
+                                   handleChange('mynotesUrl', v || undefined);
+                               }} />
+                        {!config.mynotesUrl && window.__serverConfig?.mynotesUrl && (
+                            <span class="settings-hint">Auto-configured: {window.__serverConfig.mynotesUrl}</span>
                         )}
                     </label>
                     <div class="dialog-actions">

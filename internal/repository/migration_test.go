@@ -76,7 +76,7 @@ func TestMigrateLegacyDatabase(t *testing.T) {
 
 	var version int
 	require.NoError(t, db.QueryRow("PRAGMA user_version").Scan(&version))
-	assert.Equal(t, 1, version, "should be stamped at v1")
+	assert.Equal(t, currentSchemaVersion, version, "should be stamped at the current version")
 
 	// calendar_name dropped from both tables.
 	assert.False(t, columnExists(db, "events", "calendar_name"))
@@ -84,6 +84,7 @@ func TestMigrateLegacyDatabase(t *testing.T) {
 	assert.True(t, columnExists(db, "events", "ics_uid"))
 	assert.True(t, columnExists(db, "events", "calendar_id"))
 	assert.True(t, columnExists(db, "feeds", "calendar_id"))
+	assert.True(t, columnExists(db, "events", "note_slug"))
 
 	// The "Work" calendar was created and the event points at it.
 	var calID int64
@@ -108,7 +109,8 @@ func TestMigrateLegacyDatabase(t *testing.T) {
 	assert.Zero(t, prefCount)
 }
 
-// TestFreshDatabaseIsVersioned verifies a brand-new database lands at v1.
+// TestFreshDatabaseIsVersioned verifies a brand-new database lands at the
+// current schema version, carrying every column added by later migrations.
 func TestFreshDatabaseIsVersioned(t *testing.T) {
 	db, err := OpenDB(filepath.Join(t.TempDir(), "fresh.sqlite"), 5000)
 	require.NoError(t, err)
@@ -116,7 +118,8 @@ func TestFreshDatabaseIsVersioned(t *testing.T) {
 
 	var version int
 	require.NoError(t, db.QueryRow("PRAGMA user_version").Scan(&version))
-	assert.Equal(t, 1, version)
+	assert.Equal(t, currentSchemaVersion, version)
+	assert.True(t, columnExists(db, "events", "note_slug"))
 
 	// WAL mode is active on a file-backed database.
 	var mode string

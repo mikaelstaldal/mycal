@@ -224,12 +224,16 @@ body {
 }
 
 /* Dialog */
+/* The `* { margin: 0 }` reset above cancels the UA's `margin: auto`, so the
+   dialog is top-anchored; overriding the UA `max-height: calc(100% - 38px)`
+   lets it use the full viewport height before it starts scrolling. */
 .event-dialog {
     border: none;
     border-radius: 8px;
     padding: 24px;
     width: 90%;
     max-width: 560px;
+    max-height: 100dvh;
     box-shadow: 0 8px 32px rgba(0,0,0,0.2);
     background: var(--surface);
     color: var(--text);
@@ -243,7 +247,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
 }
 
 .dialog-header h2 {
@@ -262,7 +266,7 @@ body {
 
 .event-dialog label {
     display: block;
-    margin-bottom: 8px;
+    margin-bottom: 5px;
     font-size: 0.85rem;
     color: var(--text-muted);
 }
@@ -288,7 +292,7 @@ body {
 }
 
 .color-picker {
-    margin-bottom: 12px;
+    margin-bottom: 8px;
     font-size: 0.85rem;
     color: var(--text-muted);
 }
@@ -296,7 +300,7 @@ body {
 .color-options {
     display: flex;
     gap: 6px;
-    margin-top: 6px;
+    margin-top: 4px;
     flex-wrap: wrap;
 }
 
@@ -599,7 +603,7 @@ body {
     flex-direction: row !important;
     align-items: center;
     gap: 8px;
-    margin-bottom: 8px;
+    margin-bottom: 5px;
     font-size: 0.85rem;
     color: var(--text-muted);
     cursor: pointer;
@@ -1430,7 +1434,8 @@ body {
     font-family: inherit;
     font-size: 0.95rem;
     min-height: 80px;
-    max-height: 200px;
+    /* Kept short so a long description does not push the note picker below the fold */
+    max-height: 95px;
     overflow-y: auto;
     background: var(--surface);
     color: var(--text);
@@ -2194,4 +2199,93 @@ body {
     color: var(--danger, #d32f2f);
     font-size: 0.85em;
     margin-top: 4px;
+}
+
+/* MyNotes integration: note picker (edit mode) and the render-kit frame that
+   shows the linked note's content (view mode). */
+.note-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.note-picker > span {
+    font-size: 0.85em;
+    color: var(--text-muted);
+}
+
+.note-picker-selected {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.note-picker-results {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 180px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px;
+}
+
+.note-picker-results button {
+    width: 100%;
+    text-align: left;
+}
+
+.note-picker-empty {
+    font-size: 0.85em;
+    color: var(--text-faint);
+}
+
+.note-picker-error,
+.note-panel-error {
+    font-size: 0.85em;
+    color: var(--error-color);
+}
+
+/* A note is worth reading at full size, so the dialog runs the whole viewport
+   height whenever one is on screen and the frame claims every pixel the rest
+   of the form leaves over. `min-height` rather than `height` on the form so a
+   form too tall for the viewport still overflows into the dialog's scroll. */
+.event-dialog:has(.note-panel) {
+    height: 100dvh;
+}
+
+.event-dialog:has(.note-panel) > form {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+}
+
+.note-panel {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    padding: 8px 0 4px;
+    border-top: 1px solid var(--border);
+    margin-top: 4px;
+}
+
+.note-panel-header {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+
+/* Sized by the flex column above, not by the framed document's content. */
+.note-panel-frame {
+    width: 100%;
+    flex: 1;
+    min-height: 120px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--surface);
 }

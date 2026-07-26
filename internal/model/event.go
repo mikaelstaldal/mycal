@@ -32,6 +32,7 @@ type Event struct {
 	Duration                string
 	Categories              string
 	URL                     string
+	NoteSlug                string
 	ReminderMinutes         int
 	Location                string
 	Latitude                *float64

@@ -5,8 +5,11 @@ import { toLocalDatetimeValue, fromLocalDatetimeValue, formatTime, toLocalDateVa
 import { api } from '../api/client.js';
 import { MapPicker } from './MapPicker.js';
 import { RichEditor } from './RichEditor.js';
+import { NotePanel } from './NotePanel.js';
 import { showConfirm } from '../util/confirm.js';
 import { COLORS } from '../util/colors.js';
+import { searchNotes, noteUrl } from '../util/mynotes.js';
+import type { NoteSummary } from '../util/mynotes.js';
 import type { components } from '../api/types.js';
 import type { AppConfig } from '../util/config.js';
 type CalendarEvent = components['schemas']['Event'];
@@ -46,9 +49,11 @@ interface EventFormProps {
     onCopy?: () => void;
     config: AppConfig;
     mymailUrl?: string;
+    mynotesUrl?: string;
+    darkMode?: boolean;
 }
 
-export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSave, onDelete, onClose, onCopy, config, mymailUrl }: EventFormProps): VNode | null {
+export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSave, onDelete, onClose, onCopy, config, mymailUrl, mynotesUrl, darkMode }: EventFormProps): VNode | null {
     const dialogRef = useRef<HTMLDialogElement | null>(null);
     const titleRef = useRef<HTMLInputElement | null>(null);
     const isInstanceEdit = event && event._editInstance;
@@ -81,6 +86,11 @@ export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSa
     const [durationMinutes, setDurationMinutes] = useState(0);
     const [categories, setCategories] = useState('');
     const [eventURL, setEventURL] = useState('');
+    const [noteSlug, setNoteSlug] = useState('');
+    const [noteQuery, setNoteQuery] = useState('');
+    const [noteResults, setNoteResults] = useState<NoteSummary[] | null>(null);
+    const [noteSearchError, setNoteSearchError] = useState('');
+    const noteSearchTimer = useRef<number | null>(null);
     const [showShare, setShowShare] = useState(false);
     const [shareRecipient, setShareRecipient] = useState('');
     const [shareSending, setShareSending] = useState(false);
@@ -113,6 +123,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSa
         setShowMap(src.latitude != null && src.longitude != null);
         setCategories(src.categories || '');
         setEventURL(src.url || '');
+        setNoteSlug(src.note_slug || '');
         if (src.duration) {
             setUseDuration(true);
             const parsed = parseDurationString(src.duration);
@@ -181,10 +192,18 @@ export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSa
             setDurationMinutes(0);
             setCategories('');
             setEventURL('');
+            setNoteSlug('');
             setEditing(true);
         }
         setError('');
+        setNoteQuery('');
+        setNoteResults(null);
+        setNoteSearchError('');
     }, [event, copiedEvent, defaultDate]);
+
+    useEffect(() => () => {
+        if (noteSearchTimer.current) clearTimeout(noteSearchTimer.current);
+    }, []);
 
     useEffect(() => {
         const dialog = dialogRef.current;
@@ -283,6 +302,8 @@ export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSa
         const extraFields: any = {};
         if (categories) extraFields.categories = categories;
         if (eventURL) extraFields.url = eventURL;
+        // Always sent: the empty string is how an existing note link is removed.
+        extraFields.note_slug = noteSlug;
 
         const recurrenceFields = isInstanceEdit ? {} : {
             recurrence_freq: recurrenceFreq,
@@ -385,6 +406,37 @@ export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSa
         } finally {
             setShareSending(false);
         }
+    }
+
+    // Title-prefix search against MyNotes, debounced while typing.
+    function handleNoteSearch(query: string) {
+        setNoteQuery(query);
+        setNoteSearchError('');
+        if (noteSearchTimer.current) clearTimeout(noteSearchTimer.current);
+        if (!mynotesUrl || !query.trim()) {
+            setNoteResults(null);
+            return;
+        }
+        noteSearchTimer.current = window.setTimeout(() => {
+            searchNotes(mynotesUrl, query.trim())
+                .then(setNoteResults)
+                .catch((err: Error) => {
+                    setNoteResults(null);
+                    setNoteSearchError(err.message || 'Could not search notes');
+                });
+        }, 250);
+    }
+
+    function handleNoteSelect(slug: string) {
+        setNoteSlug(slug);
+        setNoteQuery('');
+        setNoteResults(null);
+    }
+
+    function handleNoteUnlink() {
+        setNoteSlug('');
+        setNoteQuery('');
+        setNoteResults(null);
     }
 
     function handleRestoreExdate(exdate: string) {
@@ -521,18 +573,6 @@ export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSa
                 ) : (
                     <h3 class="event-title-display">{title}</h3>
                 )}
-
-                {editing ? (
-                    <label>
-                        Description
-                        <RichEditor value={description} onChange={(v: string) => setDescription(v)} />
-                    </label>
-                ) : description ? (
-                    <label>
-                        Description
-                        <div class="description-display" dangerouslySetInnerHTML={{ __html: description }} />
-                    </label>
-                ) : null}
 
                 {editing && (
                     <label class="checkbox-label">
@@ -892,6 +932,52 @@ export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSa
                 {!allDay && reminderMinutes > 0 && !editing ? (
                     <div class="detail-row"><span class="detail-label">Reminder:</span> {displayReminder()}</div>
                 ) : null}
+
+                {editing ? (
+                    <label>
+                        Description
+                        <RichEditor value={description} onChange={(v: string) => setDescription(v)} />
+                    </label>
+                ) : description ? (
+                    <label>
+                        Description
+                        <div class="description-display" dangerouslySetInnerHTML={{ __html: description }} />
+                    </label>
+                ) : null}
+
+                {mynotesUrl && (editing ? (
+                    <div class="note-picker">
+                        <span id="note-picker-label">Note</span>
+                        {noteSlug ? (
+                            <div class="note-picker-selected">
+                                <a href={noteUrl(mynotesUrl, noteSlug)} target="_blank" rel="noopener noreferrer"
+                                   class="url-link">{noteSlug} &#x2197;</a>
+                                <button type="button" class="small-btn danger" onClick={handleNoteUnlink}>Unlink</button>
+                            </div>
+                        ) : (
+                            <Fragment>
+                                <input type="search" value={noteQuery} aria-labelledby="note-picker-label"
+                                       placeholder="Search notes by title…"
+                                       onInput={(e: Event) => handleNoteSearch((e.target as HTMLInputElement).value)} />
+                                {noteSearchError && <div class="note-picker-error">{noteSearchError}</div>}
+                                {noteResults && (noteResults.length > 0 ? (
+                                    <ul class="note-picker-results">
+                                        {noteResults.map(n => (
+                                            <li key={n.slug}>
+                                                <button type="button" class="small-btn"
+                                                        onClick={() => handleNoteSelect(n.slug)}>{n.title}</button>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : (
+                                    <div class="note-picker-empty">No matching notes</div>
+                                ))}
+                            </Fragment>
+                        )}
+                    </div>
+                ) : noteSlug ? (
+                    <NotePanel mynotesUrl={mynotesUrl} slug={noteSlug} darkMode={!!darkMode} />
+                ) : null)}
 
             </form>
         </dialog>

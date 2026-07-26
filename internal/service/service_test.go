@@ -470,7 +470,64 @@ func TestCreate_HTMLSanitization(t *testing.T) {
 	assert.Equal(t, "<b>bold</b>", created.Description)
 }
 
+func TestCreate_NoteSlug(t *testing.T) {
+	var created *model.Event
+	repo := &mockRepo{
+		createFn: func(event *model.Event) error {
+			created = event
+			return nil
+		},
+	}
+	svc := NewEventService(repo, &mockCalRepo{})
+	req := &api.CreateEventRequest{
+		Title:     "Test",
+		NoteSlug:  optString("project-kickoff"),
+		StartTime: optDateTime("2026-02-15T10:00:00Z"),
+		EndTime:   optDateTime("2026-02-15T11:00:00Z"),
+	}
+	_, err := svc.Create(req)
+	require.NoError(t, err)
+	assert.Equal(t, "project-kickoff", created.NoteSlug)
+}
+
+func TestCreate_InvalidNoteSlug(t *testing.T) {
+	svc := NewEventService(&mockRepo{}, &mockCalRepo{})
+	req := &api.CreateEventRequest{
+		Title:     "Test",
+		NoteSlug:  optString("Not A Slug"),
+		StartTime: optDateTime("2026-02-15T10:00:00Z"),
+		EndTime:   optDateTime("2026-02-15T11:00:00Z"),
+	}
+	_, err := svc.Create(req)
+	assert.ErrorIs(t, err, ErrValidation)
+}
+
 // --- Update ---
+
+func TestUpdate_NoteSlugCleared(t *testing.T) {
+	repo := &mockRepo{
+		getByIDFn: func(id int64) (*model.Event, error) {
+			return &model.Event{
+				ID:        id,
+				Title:     "Original",
+				NoteSlug:  "project-kickoff",
+				StartTime: "2026-02-15T10:00:00Z",
+				EndTime:   "2026-02-15T11:00:00Z",
+			}, nil
+		},
+		updateFn: func(event *model.Event) error { return nil },
+	}
+	svc := NewEventService(repo, &mockCalRepo{})
+
+	// An omitted note_slug leaves the link alone; the empty string unlinks.
+	e, err := svc.Update(1, &api.UpdateEventRequest{Title: optString("Updated")})
+	require.NoError(t, err)
+	assert.Equal(t, "project-kickoff", e.NoteSlug)
+
+	e, err = svc.Update(1, &api.UpdateEventRequest{NoteSlug: optString("")})
+	require.NoError(t, err)
+	assert.Empty(t, e.NoteSlug)
+}
 
 func TestUpdate_PartialUpdate(t *testing.T) {
 	repo := &mockRepo{
