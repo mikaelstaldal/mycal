@@ -135,6 +135,16 @@ installed and in control before rendering, so the first request cannot escape it
 - **Nothing is hardcoded to the origin root.** `api/client.ts`, `demo-client.ts`
   and the worker's scope matching all resolve against `<base href>`, which
   `-demo-bundle` sets from `-public-url`, so a bundle works under a subpath.
+- **The starting content lives in `demo/seed.ts`** and mirrors no Go package —
+  the real server has no seeding command. It is written by `initialState()` on a
+  fresh store, so the dates are computed at first visit, never at build time: a
+  bundle published once and served for months must still open on *this* week.
+  Events are addressed by weekday within the locale's week (ported from
+  `config.ts`), which keeps them on the week the visitor is actually shown, and
+  every weekday carries something so the day and schedule views are never empty.
+  Rows are built directly rather than posted through the API, so anything a
+  create request would normalise — `sanitizeHTML` on descriptions, UTC timed
+  stamps, UTC-midnight all-day with an exclusive end — has to be applied there.
 
 ## Go development
 

@@ -92,13 +92,18 @@ function storageError(err: unknown): ApiError {
     return new ApiError(500, 'demo storage error: ' + message);
 }
 
-/** A fresh database: the reserved default calendar and nothing else (schemaV1). */
+/**
+ * A fresh database: the reserved default calendar (schemaV1) holding the sample
+ * week from seed.ts. The events are placed relative to the moment this runs, so
+ * a visitor always arrives on a populated current week.
+ */
 function initialState(): DemoState {
+    const events = seedEvents(new Date());
     return {
         version: STATE_VERSION,
-        next_event_id: 1,
+        next_event_id: events.length + 1,
         next_calendar_id: 1,
-        events: [],
+        events,
         calendars: [{ ...DEFAULT_CALENDAR }],
         preferences: {},
     };

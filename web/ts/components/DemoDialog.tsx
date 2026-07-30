@@ -72,8 +72,9 @@ export function DemoDialog({ onClose }: DemoDialogProps): VNode {
                 in this browser only &mdash; nothing is uploaded, and nobody else can see it.
             </p>
             <p>
-                Your changes survive a reload, and clearing this site's data resets the
-                demo to its starting content.
+                It opens on a week of made-up sample events, so there is something to look
+                at. Your changes survive a reload, and clearing this site's data resets the
+                demo to that starting content.
             </p>
             <p>
                 A few features need a real server and are therefore not available here:

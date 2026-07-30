@@ -66,9 +66,11 @@ See the [OpenAPI specification](openapi.yaml).
 Demo mode runs the full web UI with no backend at all. A service worker
 intercepts every `/api/v1` request and answers it from IndexedDB in the browser,
 so events and calendars are created, searched, edited, and deleted exactly as
-they are against the real server — they just never leave the machine. Clearing
-the site's data resets the demo. A modal on the first visit says as much, so
-nobody writes anything they care about into it.
+they are against the real server — they just never leave the machine. It opens on
+a week of made-up sample events, timed and all-day, placed relative to the day of
+the visit rather than the day the bundle was built; clearing the site's data
+resets the demo to those. A modal on the first visit says as much, so nobody
+writes anything they care about into it.
 
 ```bash
 ./mycal -demo-server                 # serve the demo on http://127.0.0.1:8080

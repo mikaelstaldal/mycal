@@ -28,6 +28,7 @@
     "model.ts",
     "sanitize.ts",
     "validate.ts",
+    "seed.ts",
     "store.ts",
     "api.ts",
     "../demo-sw.ts"

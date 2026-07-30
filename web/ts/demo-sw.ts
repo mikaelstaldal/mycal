@@ -21,6 +21,7 @@ importScripts(
     'demo/model.js',
     'demo/sanitize.js',
     'demo/validate.js',
+    'demo/seed.js',
     'demo/store.js',
     'demo/api.js',
 );
