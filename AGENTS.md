@@ -104,6 +104,38 @@ Go backend with embedded Preact+JSX frontend. TypeScript source in `web/ts/`, co
 - MyNotes: an event links one note through `note_slug` (schema v2 migration in `internal/repository/db.go`). `web/ts/util/mynotes.ts` is the API client; `web/ts/components/NotePanel.tsx` frames the **MyNotes render kit** (`<mynotesUrl>/render/`) and drives its `render()` / `setTheme()` API.
 - Never re-implement the MyNotes Markdown dialect here — the render kit is the single renderer, shared with the MyNotes web UI and the Android app. The kit's output carries root-relative links and image sources (it has no `<base>`); `NotePanel` resolves them against the MyNotes base URL and forces links into a new tab. MyCal's CSP needs `frame-src 'self'`, and MyNotes serves `/render/` with `frame-ancestors 'self'`.
 
+## Demo mode
+
+`-demo-server` and `-demo-bundle DIR` build the web UI with **no backend**: a
+service worker (`web/ts/demo-sw.ts` + `web/ts/demo/`) intercepts `/api/v1` and
+answers it from IndexedDB. `main.go` injects `window.__serverConfig={demo:true}`
+(same mechanism as the sibling URLs); `app.tsx` then waits for the worker to be
+installed and in control before rendering, so the first request cannot escape it.
+`-demo-bundle` writes the same thing out as static files, which
+`.github/workflows/pages.yml` publishes to GitHub Pages.
+
+- **Intercepting at the network layer is the point**: the frontend is unchanged
+  between demo and real, so nothing in `views/` or `components/` needs to know.
+- **Parity with the Go server is the contract.** `web/ts/demo/` re-implements
+  `internal/service` plus the relevant parts of `internal/repository`,
+  `internal/model` and `internal/sanitize`; every function names the Go original
+  it mirrors. When you change validation, sanitization, search, or the overlap
+  query on the server, change it there too.
+- **The accepted divergences** are the ones the demo notice lists
+  (`components/DemoDialog.tsx`) — don't add more silently. Today: iCalendar
+  import/export, feed subscriptions, MyMail sharing, MyNotes linking, and
+  **recurring events**, which the emulated backend stores but never expands into
+  occurrences. Each one is hidden in the UI rather than left to fail: see the
+  `demo` guards in `app.tsx`, `Settings.tsx` and `EventForm.tsx`.
+- These sources are **worker code**: excluded from `web/ts/tsconfig.json` and
+  built by `web/ts/demo/tsconfig.json` against the WebWorker lib. They are
+  classic scripts sharing one global scope via `importScripts`, so they use no
+  `import`/`export` — adding one silently turns a file into a module and its
+  declarations vanish from the shared scope.
+- **Nothing is hardcoded to the origin root.** `api/client.ts`, `demo-client.ts`
+  and the worker's scope matching all resolve against `<base href>`, which
+  `-demo-bundle` sets from `-public-url`, so a bundle works under a subpath.
+
 ## Go development
 
 Always run `go mod tidy` after modifying the `go.mod` file.

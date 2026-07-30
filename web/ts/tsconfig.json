@@ -23,6 +23,8 @@
     "**/*.tsx"
   ],
   "exclude": [
-    "vendor/preact"
+    "vendor/preact",
+    "demo",
+    "demo-sw.ts"
   ]
 }

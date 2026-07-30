@@ -3,13 +3,8 @@ import type { VNode } from 'preact';
 import { useState, useRef, useEffect } from 'preact/hooks';
 import { saveConfig } from '../util/config.js';
 import { formatHour } from '../util/date-utils.js';
+import { isDemo, mymailUrl, mynotesUrl } from '../util/serverconfig.js';
 import type { AppConfig } from '../util/config.js';
-
-declare global {
-    interface Window {
-        __serverConfig?: { mymailUrl?: string; mynotesUrl?: string };
-    }
-}
 
 // Google Maps API keys are 39 chars starting with "AIza"
 function isValidGoogleMapsApiKey(key: string) {
@@ -153,30 +148,37 @@ export function Settings({ config, onConfigChange }: SettingsProps): VNode | nul
                             )}
                         </div>
                     )}
-                    <label>
-                        MyMail URL
-                        <input type="url" value={config.mymailUrl || ''}
-                               placeholder={window.__serverConfig?.mymailUrl || 'https://example.com/mymail'}
-                               onInput={(e: Event) => {
-                                   const v = (e.target as HTMLInputElement).value.trim();
-                                   handleChange('mymailUrl', v || undefined);
-                               }} />
-                        {!config.mymailUrl && window.__serverConfig?.mymailUrl && (
-                            <span class="settings-hint">Auto-configured: {window.__serverConfig.mymailUrl}</span>
-                        )}
-                    </label>
-                    <label>
-                        MyNotes URL
-                        <input type="url" value={config.mynotesUrl || ''}
-                               placeholder={window.__serverConfig?.mynotesUrl || 'https://example.com/mynotes'}
-                               onInput={(e: Event) => {
-                                   const v = (e.target as HTMLInputElement).value.trim();
-                                   handleChange('mynotesUrl', v || undefined);
-                               }} />
-                        {!config.mynotesUrl && window.__serverConfig?.mynotesUrl && (
-                            <span class="settings-hint">Auto-configured: {window.__serverConfig.mynotesUrl}</span>
-                        )}
-                    </label>
+                    {/* The sibling apps live on the same origin behind the same
+                        auth realm; a standalone demo has no such neighbours, so
+                        it does not offer to point at one. */}
+                    {!isDemo() && (
+                        <Fragment>
+                            <label>
+                                MyMail URL
+                                <input type="url" value={config.mymailUrl || ''}
+                                       placeholder={mymailUrl() || 'https://example.com/mymail'}
+                                       onInput={(e: Event) => {
+                                           const v = (e.target as HTMLInputElement).value.trim();
+                                           handleChange('mymailUrl', v || undefined);
+                                       }} />
+                                {!config.mymailUrl && mymailUrl() && (
+                                    <span class="settings-hint">Auto-configured: {mymailUrl()}</span>
+                                )}
+                            </label>
+                            <label>
+                                MyNotes URL
+                                <input type="url" value={config.mynotesUrl || ''}
+                                       placeholder={mynotesUrl() || 'https://example.com/mynotes'}
+                                       onInput={(e: Event) => {
+                                           const v = (e.target as HTMLInputElement).value.trim();
+                                           handleChange('mynotesUrl', v || undefined);
+                                       }} />
+                                {!config.mynotesUrl && mynotesUrl() && (
+                                    <span class="settings-hint">Auto-configured: {mynotesUrl()}</span>
+                                )}
+                            </label>
+                        </Fragment>
+                    )}
                     <div class="dialog-actions">
                         <button onClick={handleClose}>Close</button>
                     </div>

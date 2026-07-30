@@ -9,6 +9,7 @@ import { NotePanel } from './NotePanel.js';
 import { showConfirm } from '../util/confirm.js';
 import { COLORS } from '../util/colors.js';
 import { searchNotes, noteUrl } from '../util/mynotes.js';
+import { isDemo } from '../util/serverconfig.js';
 import type { NoteSummary } from '../util/mynotes.js';
 import type { components } from '../api/types.js';
 import type { AppConfig } from '../util/config.js';
@@ -33,6 +34,13 @@ function getNthWeekdayOfMonth(date: Date) {
     return Math.ceil(date.getDate() / 7);
 }
 
+// The demo's in-browser backend stores the recurrence fields but never expands
+// a repeating event into its occurrences, and its event list drops the parent
+// row, so an event given a repeat rule there would simply disappear from the
+// calendar. The repeat UI is therefore absent in demo mode rather than present
+// and quietly broken; the demo notice says so (see DemoDialog.tsx).
+const demo = isDemo();
+
 interface EventFormProps {
     event: (CalendarEvent & { _editInstance?: boolean }) | null;
     defaultDate: Date | null;
@@ -43,7 +51,12 @@ interface EventFormProps {
     onClose: () => void;
     onCopy?: () => void;
     config: AppConfig;
+    /** MyMail base URL, or '' to hide the e-mail share action. Always '' in the
+     *  demo: there is no server to relay a message through, and the .ics the
+     *  share attaches is not emulated either. */
     mymailUrl?: string;
+    /** MyNotes base URL, or '' to hide the note picker and panel. Always '' in
+     *  the demo, which has no sibling app behind the same auth realm. */
     mynotesUrl?: string;
     darkMode?: boolean;
 }
@@ -510,6 +523,10 @@ export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSa
 
     const startDate = getStartDate();
     const hasMapProvider = config.mapProvider === 'openstreetmap' || (config.mapProvider === 'google' && /^AIza[A-Za-z0-9_-]{35}$/.test(config.googleMapsApiKey));
+    // Repeat and Reminder share one row, and either can be absent — the whole
+    // row goes when both are, so the dialog gets no empty gap.
+    const showRepeat = !demo;
+    const showReminder = !allDay;
 
     return (
         <dialog ref={dialogRef} class="event-dialog" onClose={onClose}>
@@ -641,34 +658,38 @@ export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSa
 
                 {!isInstanceEdit && editing ? (
                     <Fragment>
-                        <div class="form-row">
-                            <label>
-                                Repeat
-                                <select value={recurrenceFreq}
-                                        onChange={(e: Event) => setRecurrenceFreq((e.target as HTMLSelectElement).value)}>
-                                    <option value="">None</option>
-                                    <option value="DAILY">Daily</option>
-                                    <option value="WEEKLY">Weekly</option>
-                                    <option value="MONTHLY">Monthly</option>
-                                    <option value="YEARLY">Yearly</option>
-                                </select>
-                            </label>
-                            {!allDay && (
-                                <label>
-                                    Reminder
-                                    <select value={reminderMinutes}
-                                            onChange={(e: Event) => setReminderMinutes(parseInt((e.target as HTMLSelectElement).value) || 0)}>
-                                        <option value="0">None</option>
-                                        <option value="5">5 min before</option>
-                                        <option value="10">10 min before</option>
-                                        <option value="15">15 min before</option>
-                                        <option value="30">30 min before</option>
-                                        <option value="60">1 hour before</option>
-                                    </select>
-                                </label>
-                            )}
-                        </div>
-                        {recurrenceFreq && (
+                        {(showRepeat || showReminder) && (
+                            <div class="form-row">
+                                {showRepeat && (
+                                    <label>
+                                        Repeat
+                                        <select value={recurrenceFreq}
+                                                onChange={(e: Event) => setRecurrenceFreq((e.target as HTMLSelectElement).value)}>
+                                            <option value="">None</option>
+                                            <option value="DAILY">Daily</option>
+                                            <option value="WEEKLY">Weekly</option>
+                                            <option value="MONTHLY">Monthly</option>
+                                            <option value="YEARLY">Yearly</option>
+                                        </select>
+                                    </label>
+                                )}
+                                {showReminder && (
+                                    <label>
+                                        Reminder
+                                        <select value={reminderMinutes}
+                                                onChange={(e: Event) => setReminderMinutes(parseInt((e.target as HTMLSelectElement).value) || 0)}>
+                                            <option value="0">None</option>
+                                            <option value="5">5 min before</option>
+                                            <option value="10">10 min before</option>
+                                            <option value="15">15 min before</option>
+                                            <option value="30">30 min before</option>
+                                            <option value="60">1 hour before</option>
+                                        </select>
+                                    </label>
+                                )}
+                            </div>
+                        )}
+                        {showRepeat && recurrenceFreq && (
                             <Fragment>
                                 <label>
                                     Every
@@ -767,7 +788,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSa
                             </Fragment>
                         )}
                     </Fragment>
-                ) : !isInstanceEdit && recurrenceFreq && !editing ? (
+                ) : showRepeat && !isInstanceEdit && recurrenceFreq && !editing ? (
                     <Fragment>
                         <div class="detail-row"><span class="detail-label">Repeat:</span> {displayRecurrence()}</div>
                         {displayExdates().length > 0 && (

@@ -40,6 +40,8 @@ Open http://localhost:8080 in your browser.
 | `-basic-auth-file`  | *(disabled)*            | enable HTTP basic auth with username and password from given file in htpasswd format (bcrypt only) |
 | `-basic-auth-realm` | `mycal`                 | realm for HTTP basic auth                                                                          |
 | `-export-ics`       |                         | export all events to an .ics file and exit                                                         |
+| `-demo-server`      |                         | run the browser-only demo (no database, no REST API); see [Demo mode](#demo-mode)                  |
+| `-demo-bundle`      |                         | write a static demo site to this new directory and exit                                            |
 
 ### Authentication
 
@@ -58,6 +60,45 @@ When enabled, all endpoints (UI, API, and iCalendar feed) require valid credenti
 ## API
 
 See the [OpenAPI specification](openapi.yaml).
+
+## Demo mode
+
+Demo mode runs the full web UI with no backend at all. A service worker
+intercepts every `/api/v1` request and answers it from IndexedDB in the browser,
+so events and calendars are created, searched, edited, and deleted exactly as
+they are against the real server — they just never leave the machine. Clearing
+the site's data resets the demo. A modal on the first visit says as much, so
+nobody writes anything they care about into it.
+
+```bash
+./mycal -demo-server                 # serve the demo on http://127.0.0.1:8080
+./mycal -demo-bundle /tmp/mycal-demo # or write it out as a static site
+```
+
+Neither mode opens a database, so neither takes `-data` or `-export-ics`.
+
+`-demo-bundle` writes plain files that any web server can host — no backend, no
+build step. It is built for the origin root by default; for a subdirectory, pass
+the same `-public-url` the server would take (`-public-url
+https://example.com/mycal`), which becomes the page's `<base href>`. The path may
+contain only `A-Z a-z 0-9 . _ ~ - /`, since it is injected into that attribute.
+**Service workers need a secure context**, so serve the bundle over HTTPS or from
+`localhost`.
+
+The demo is published to GitHub Pages from `main` by
+[`.github/workflows/pages.yml`](.github/workflows/pages.yml), which builds the
+bundle for whatever URL Pages reports. Enable Pages with **GitHub Actions** as
+its source for that to work.
+
+What the demo does not do, because the browser is the backend:
+
+- Importing and exporting iCalendar files, and subscribing to calendar feeds —
+  all of which need a server to fetch and parse.
+- Sharing an event by e-mail, and linking notes from MyNotes: both assume a
+  sibling app on the same origin behind the same auth realm.
+- **Recurring events.** The in-browser backend stores the recurrence fields but
+  never expands a rule into its occurrences, so the repeat controls are hidden
+  and every event is a single one.
 
 ## MyMail and MyNotes integrations
 

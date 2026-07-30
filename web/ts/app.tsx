@@ -1,4 +1,4 @@
-import { render } from 'preact';
+import { render, Fragment } from 'preact';
 import { useState, useEffect, useCallback, useRef } from 'preact/hooks';
 import { Nav } from './layout/Nav.js';
 import { Calendar } from './views/Calendar.js';
@@ -11,12 +11,14 @@ import { ImportSingleForm, ImportBulkForm } from './components/ImportForm.js';
 import { FeedsDialog } from './components/FeedsDialog.js';
 import { Toast } from './components/Toast.js';
 import { Settings } from './components/Settings.js';
+import { DemoDialog, DemoBadge, demoNoticeSeen } from './components/DemoDialog.js';
 import { CalendarSidebar } from './layout/CalendarSidebar.js';
 import { MiniMonth } from './layout/MiniMonth.js';
 import { api } from './api/client.js';
 import { showToast } from './util/toast.js';
 import { addMonths, addWeeks, startOfWeek, toRFC3339, eventStartStr } from './util/date-utils.js';
 import { getConfig, hasUserDefaultView } from './util/config.js';
+import { isDemo, mymailUrl, mynotesUrl } from './util/serverconfig.js';
 import { checkAndNotify, requestPermission } from './util/notifications.js';
 import { showChoice } from './util/confirm.js';
 import type { components } from './api/types.js';
@@ -24,11 +26,11 @@ import type { AppConfig } from './util/config.js';
 type CalendarEvent = components['schemas']['Event'];
 type CalendarMeta = components['schemas']['Calendar'];
 
-declare global {
-    interface Window {
-        __serverConfig?: { mymailUrl?: string; mynotesUrl?: string };
-    }
-}
+// The demo has no server behind it, so the features that need one — iCalendar
+// import, .ics export by e-mail, and subscribed feeds a browser cannot fetch
+// cross-origin — are not offered at all rather than offered and failing. See
+// AGENTS.md for the full list of divergences.
+const demo = isDemo();
 
 function App() {
     const [darkMode, setDarkMode] = useState(() => localStorage.getItem('darkMode') === 'true');
@@ -43,6 +45,7 @@ function App() {
     const [showImportSingle, setShowImportSingle] = useState(false);
     const [showImportBulk, setShowImportBulk] = useState(false);
     const [showFeeds, setShowFeeds] = useState(false);
+    const [showDemoNotice, setShowDemoNotice] = useState(() => demo && !demoNoticeSeen());
     const [viewMode, setViewMode] = useState<string>(() => {
         if (hasUserDefaultView()) return getConfig().defaultView;
         return window.innerWidth <= 600 ? 'schedule' : 'week';
@@ -391,6 +394,9 @@ function App() {
         if (dragCounter.current === 0) setIsDragging(false);
     }
 
+    // Dropping an .ics file anywhere on the app imports it. The app-level drag
+    // handlers exist only for this, so in demo mode they are not attached at
+    // all: nothing offers a drop target that cannot be served.
     async function handleDrop(e: DragEvent) {
         e.preventDefault();
         dragCounter.current = 0;
@@ -425,8 +431,10 @@ function App() {
 
     return (
         <div class={`app${isDragging ? ' drag-over' : ''}`}
-             onDragOver={handleDragOver} onDragEnter={handleDragEnter}
-             onDragLeave={handleDragLeave} onDrop={handleDrop}>
+             onDragOver={demo ? undefined : handleDragOver}
+             onDragEnter={demo ? undefined : handleDragEnter}
+             onDragLeave={demo ? undefined : handleDragLeave}
+             onDrop={demo ? undefined : handleDrop}>
             <header class="top-bar">
                 <Nav currentDate={currentDate}
                      onPrev={handlePrev} onNext={handleNext} onToday={handleToday}
@@ -441,15 +449,20 @@ function App() {
                     <button class="settings-btn" onClick={() => { loadEvents(); loadCalendars(); }} title="Refresh" aria-label="Refresh">
                         ↻
                     </button>
-                    <button class="settings-btn" onClick={() => setShowImportSingle(true)} title="Import Event" aria-label="Import Event">
-                        ⬇︎
-                    </button>
-                    <button class="settings-btn" onClick={() => setShowImportBulk(true)} title="Bulk Import" aria-label="Bulk Import">
-                        ⇊︎
-                    </button>
-                    <button class="settings-btn" onClick={() => setShowFeeds(true)} title="Feed Subscriptions" aria-label="Feed Subscriptions">
-                        🔗︎
-                    </button>
+                    {!demo && (
+                        <Fragment>
+                            <button class="settings-btn" onClick={() => setShowImportSingle(true)} title="Import Event" aria-label="Import Event">
+                                ⬇︎
+                            </button>
+                            <button class="settings-btn" onClick={() => setShowImportBulk(true)} title="Bulk Import" aria-label="Bulk Import">
+                                ⇊︎
+                            </button>
+                            <button class="settings-btn" onClick={() => setShowFeeds(true)} title="Feed Subscriptions" aria-label="Feed Subscriptions">
+                                🔗︎
+                            </button>
+                        </Fragment>
+                    )}
+                    {demo && <DemoBadge onClick={() => setShowDemoNotice(true)} />}
                     <Settings config={config} onConfigChange={setConfig} />
                 </div>
             </header>
@@ -521,25 +534,43 @@ function App() {
                            copiedEvent={copiedEvent}
                            onSave={handleSave} onDelete={handleDelete} onClose={handleClose}
                            onCopy={selectedEvent ? handleCopy : undefined}
-                           config={config} mymailUrl={config.mymailUrl || window.__serverConfig?.mymailUrl || ''}
-                           mynotesUrl={config.mynotesUrl || window.__serverConfig?.mynotesUrl || ''}
+                           config={config} mymailUrl={demo ? '' : (config.mymailUrl || mymailUrl())}
+                           mynotesUrl={demo ? '' : (config.mynotesUrl || mynotesUrl())}
                            darkMode={darkMode} />
             )}
-            {showImportSingle && (
+            {!demo && showImportSingle && (
                 <ImportSingleForm onImported={() => { setShowImportSingle(false); loadEvents(); }}
                                   onClose={() => setShowImportSingle(false)} />
             )}
-            {showImportBulk && (
+            {!demo && showImportBulk && (
                 <ImportBulkForm onImported={() => { setShowImportBulk(false); loadEvents(); }}
                                 onClose={() => setShowImportBulk(false)} />
             )}
-            {showFeeds && (
+            {!demo && showFeeds && (
                 <FeedsDialog onClose={() => setShowFeeds(false)}
                              onRefreshed={() => { loadEvents(); loadCalendars(); }} />
             )}
+            {showDemoNotice && <DemoDialog onClose={() => setShowDemoNotice(false)} />}
             <Toast />
         </div>
     );
 }
 
-render(<App />, document.getElementById('app')!);
+// In demo mode the backend is a service worker that has to be installed and in
+// control before the app issues its first request, so rendering waits on it.
+// The import is dynamic so a normal build never fetches the demo code at all.
+async function start(root: HTMLElement): Promise<void> {
+    if (isDemo()) {
+        try {
+            const { startDemoBackend } = await import('./demo-client.js');
+            await startDemoBackend();
+        } catch (e) {
+            root.textContent = e instanceof Error ? e.message : 'The demo backend failed to start.';
+            return;
+        }
+    }
+    render(<App />, root);
+}
+
+const appRoot = document.getElementById('app');
+if (appRoot) void start(appRoot);
