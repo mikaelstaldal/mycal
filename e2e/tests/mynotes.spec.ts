@@ -43,7 +43,7 @@ test.describe('MyNotes integration', () => {
     await clearAllEvents(request);
     await stubMynotes(page);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Month' }).click();
+    await page.getByRole('button', { name: 'Month', exact: true }).click();
     await expect(page.locator('.calendar-grid')).toBeVisible();
   });
 
@@ -56,7 +56,7 @@ test.describe('MyNotes integration', () => {
       end_time: `${today}T11:00:00Z`,
     });
     await page.reload();
-    await page.getByRole('button', { name: 'Month' }).click();
+    await page.getByRole('button', { name: 'Month', exact: true }).click();
 
     await page.locator('.event-chip', { hasText: 'Kickoff' }).click();
     const dialog = page.locator('dialog.event-dialog');
@@ -84,7 +84,7 @@ test.describe('MyNotes integration', () => {
       note_slug: NOTE.slug,
     });
     await page.reload();
-    await page.getByRole('button', { name: 'Month' }).click();
+    await page.getByRole('button', { name: 'Month', exact: true }).click();
 
     await page.locator('.event-chip', { hasText: 'Kickoff' }).click();
     const dialog = page.locator('dialog.event-dialog');
@@ -107,7 +107,7 @@ test.describe('MyNotes integration', () => {
       note_slug: NOTE.slug,
     });
     await page.reload();
-    await page.getByRole('button', { name: 'Month' }).click();
+    await page.getByRole('button', { name: 'Month', exact: true }).click();
 
     await page.locator('.event-chip', { hasText: 'Kickoff' }).click();
     const dialog = page.locator('dialog.event-dialog');

@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'preact/hooks';
 import { api } from '../api/client.js';
 import { COLORS } from '../util/colors.js';
 import { showConfirm } from '../util/confirm.js';
+import { Icon } from './Icon.js';
 import type { components } from '../api/types.js';
 type Feed = components['schemas']['Feed'];
 
@@ -86,7 +87,7 @@ export function FeedsDialog({ onClose, onRefreshed }: FeedsDialogProps): VNode |
         <dialog ref={dialogRef} class="event-dialog feeds-dialog" onClose={onClose}>
             <div class="dialog-header">
                 <h2>Feed Subscriptions</h2>
-                <button class="close-btn" onClick={onClose}>&#xd7;</button>
+                <button class="close-btn" onClick={onClose} title="Close" aria-label="Close"><Icon name="x" /></button>
             </div>
             {error && <div class="feed-error">{error}</div>}
             {loading ? (
@@ -112,12 +113,12 @@ export function FeedsDialog({ onClose, onRefreshed }: FeedsDialogProps): VNode |
                                     <div class="feed-item-actions">
                                         <button class="feed-action-btn" onClick={() => handleRefresh(feed.id)}
                                                 disabled={refreshingId === feed.id}
-                                                title="Refresh now">
-                                            {refreshingId === feed.id ? '⏳' : '↻'}
+                                                title="Refresh now" aria-label="Refresh now">
+                                            <Icon name="refresh-cw" class={refreshingId === feed.id ? 'is-spinning' : undefined} />
                                         </button>
                                         <button class="feed-action-btn feed-delete-btn" onClick={() => handleDelete(feed.id)}
-                                                title="Delete">
-                                            &#x2715;
+                                                title="Delete" aria-label="Delete">
+                                            <Icon name="trash-2" />
                                         </button>
                                     </div>
                                 </div>

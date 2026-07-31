@@ -13,6 +13,7 @@ import { Toast } from './components/Toast.js';
 import { Settings } from './components/Settings.js';
 import { DemoDialog, DemoBadge, demoNoticeSeen } from './components/DemoDialog.js';
 import { CalendarSidebar } from './layout/CalendarSidebar.js';
+import { Icon } from './components/Icon.js';
 import { MiniMonth } from './layout/MiniMonth.js';
 import { api } from './api/client.js';
 import { showToast } from './util/toast.js';
@@ -445,21 +446,21 @@ function App() {
                     <input type="search" class="search-input" placeholder="Search events..."
                            value={searchQuery} onInput={handleSearchInput} />
                     <button class="dark-mode-btn" onClick={() => setDarkMode(d => !d)} title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'} aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}>
-                        {darkMode ? '☀︎' : '☾︎'}
+                        <Icon name={darkMode ? 'sun' : 'moon'} />
                     </button>
                     <button class="settings-btn" onClick={() => { loadEvents(); loadCalendars(); }} title="Refresh" aria-label="Refresh">
-                        ↻
+                        <Icon name="rotate-ccw" />
                     </button>
                     {!demo && (
                         <Fragment>
                             <button class="settings-btn" onClick={() => setShowImportSingle(true)} title="Import Event" aria-label="Import Event">
-                                ⬇︎
+                                <Icon name="calendar-plus" />
                             </button>
                             <button class="settings-btn" onClick={() => setShowImportBulk(true)} title="Bulk Import" aria-label="Bulk Import">
-                                ⇊︎
+                                <Icon name="upload" />
                             </button>
                             <button class="settings-btn" onClick={() => setShowFeeds(true)} title="Feed Subscriptions" aria-label="Feed Subscriptions">
-                                🔗︎
+                                <Icon name="rss" />
                             </button>
                         </Fragment>
                     )}
@@ -486,7 +487,7 @@ function App() {
                         <div class="search-results">
                             <div class="search-results-header">
                                 <span>Search results for "{searchQuery}"</span>
-                                <button class="search-clear-btn" onClick={clearSearch} title="Clear search">&#x2715;</button>
+                                <button class="search-clear-btn" onClick={clearSearch} title="Clear search" aria-label="Clear search"><Icon name="x" /></button>
                             </div>
                             {searchResults.length === 0 ? (
                                 <div class="search-empty">No events found</div>

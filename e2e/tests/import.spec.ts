@@ -7,12 +7,12 @@ test.describe('Import', () => {
     await clearAllEvents(request);
     await page.goto('/');
     // Switch to month view for these tests
-    await page.getByRole('button', { name: 'Month' }).click();
+    await page.getByRole('button', { name: 'Month', exact: true }).click();
     await expect(page.locator('.calendar-grid')).toBeVisible();
   });
 
   test('import ICS file successfully', async ({ page }) => {
-    // Click the import event button (⬇ icon)
+    // Click the import event button
     await page.locator('.settings-btn[title="Import Event"]').click();
 
     // Import dialog should open

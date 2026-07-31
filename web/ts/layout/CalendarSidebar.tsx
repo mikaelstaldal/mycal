@@ -1,6 +1,7 @@
 import type { VNode } from 'preact';
 import { useState } from 'preact/hooks';
 import { COLORS } from '../util/colors.js';
+import { Icon } from '../components/Icon.js';
 import type { components } from '../api/types.js';
 type CalendarMeta = components['schemas']['Calendar'];
 
@@ -59,8 +60,8 @@ export function CalendarSidebar({ calendars, selectedCalendarIds, onToggleCalend
                                    onKeyDown={handleKeyDown}
                                    ref={(el: HTMLInputElement | null) => { if (el) setTimeout(() => el.focus(), 0); }} />
                             <div class="calendar-edit-actions">
-                                <button class="calendar-edit-btn" onClick={handleSave} title="Save">&#x2713;</button>
-                                <button class="calendar-edit-btn" onClick={handleCancel} title="Cancel">&#x2717;</button>
+                                <button class="calendar-edit-btn" onClick={handleSave} title="Save" aria-label="Save"><Icon name="check" size={14} /></button>
+                                <button class="calendar-edit-btn" onClick={handleCancel} title="Cancel" aria-label="Cancel"><Icon name="x" size={14} /></button>
                             </div>
                             <div class="calendar-edit-colors">
                                 {COLORS.map(c => (
@@ -80,7 +81,7 @@ export function CalendarSidebar({ calendars, selectedCalendarIds, onToggleCalend
                         <input type="checkbox" checked={isChecked} readOnly />
                         <span class="calendar-dot" style={`background: ${cal.color}`} />
                         <span class="calendar-sidebar-name" title={cal.name}>{cal.name}</span>
-                        <button class="calendar-edit-trigger" onClick={(e: MouseEvent) => startEdit(cal, e)} title="Edit calendar">&#x270E;</button>
+                        <button class="calendar-edit-trigger" onClick={(e: MouseEvent) => startEdit(cal, e)} title="Edit calendar" aria-label="Edit calendar"><Icon name="pencil" size={12} /></button>
                     </label>
                 );
             })}

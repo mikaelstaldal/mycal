@@ -90,7 +90,10 @@ export function WeekView({ currentDate, events, onDayClick, onEventClick, onAllD
     return (
         <div class="week-view">
             <div class="week-header">
-                <div class="time-gutter-header">week {getISOWeekNumber(days[0])}</div>
+                <div class="time-gutter-header">
+                    <span class="week-day-name">week</span>
+                    <span class="week-day-number">{getISOWeekNumber(days[0])}</span>
+                </div>
                 {days.map(date => {
                     const classes = ['week-day-header', isToday(date) && 'today'].filter(Boolean).join(' ');
                     return (

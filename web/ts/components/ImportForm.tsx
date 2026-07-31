@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'preact/hooks';
 import { api } from '../api/client.js';
 import { showToast } from '../util/toast.js';
 import { eventStartStr } from '../util/date-utils.js';
+import { Icon } from './Icon.js';
 
 interface ImportSingleFormProps {
     onImported: () => void;
@@ -51,7 +52,7 @@ export function ImportSingleForm({ onImported, onClose }: ImportSingleFormProps)
         <dialog ref={dialogRef} class="event-dialog import-dialog" onClose={onClose}>
             <div class="dialog-header">
                 <h2>Import Event</h2>
-                <button class="close-btn" onClick={onClose}>&#xd7;</button>
+                <button class="close-btn" onClick={onClose} title="Close" aria-label="Close"><Icon name="x" /></button>
             </div>
             <div class="import-tabs">
                 <button class={`import-tab ${sourceMode === 'file' ? 'active' : ''}`}
@@ -133,7 +134,7 @@ export function ImportBulkForm({ onImported, onClose }: ImportBulkFormProps): VN
         <dialog ref={dialogRef} class="event-dialog import-dialog" onClose={onClose}>
             <div class="dialog-header">
                 <h2>Bulk Import</h2>
-                <button class="close-btn" onClick={onClose}>&#xd7;</button>
+                <button class="close-btn" onClick={onClose} title="Close" aria-label="Close"><Icon name="x" /></button>
             </div>
             <div class="import-tabs">
                 <button class={`import-tab ${sourceMode === 'file' ? 'active' : ''}`}

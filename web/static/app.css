@@ -1,55 +1,88 @@
+/* Palette shared with MyNotes (see its web/static/render/note.css, which owns the
+   canonical variables there). The five names MyNotes exposes — --fg, --muted,
+   --primary, --link, --danger — carry the same values here, so an event
+   description rendered by the MyNotes render kit inside <NotePanel> sits on the
+   same colours as the rest of this UI. The remaining names are MyCal's own,
+   derived from the same Tailwind grey/blue ramp rather than the old neutral
+   greys, so the two apps read as one product.
+
+   --text is kept as an alias of --fg because ~200 rules already reference it. */
 :root {
-    --bg: #f5f5f5;
-    --surface: #fff;
-    --surface-alt: #fafafa;
-    --border: #ddd;
-    --border-light: #eee;
-    --text: #333;
-    --text-muted: #555;
-    --text-subtle: #666;
-    --text-faint: #888;
-    --text-disabled: #999;
-    --text-placeholder: #bbb;
-    --hover-bg: #f0f0f0;
-    --hover-bg-light: #f8f8f8;
-    --accent-hover-bg: #e8f0fe;
-    --week-hover: #f0f4ff;
-    --week-num-hover: #eef;
-    --error-bg: #fce4e4;
-    --error-color: #c62828;
-    --success-bg: #e8f5e9;
-    --success-color: #2e7d32;
-    --tag-bg: #e3f2fd;
-    --tag-color: #1565c0;
-    --feed-disabled-bg: #fce4ec;
-    --feed-disabled-color: #c62828;
+    /* Tells the browser which palette to draw native widgets (form controls,
+       scrollbars, date pickers) from; without it a dark theme still gets
+       light-mode controls. */
+    color-scheme: light;
+
+    /* MyNotes' canonical five */
+    --fg: #1f2937;
+    --muted: #6b7280;
+    --primary: #2563eb;
+    --link: #2563eb;
+    --danger: #dc2626;
+
+    --primary-hover: #1d4ed8;
+    /* Tint of --primary for drop targets and other wash-over-content fills. */
+    --primary-soft: rgba(37, 99, 235, 0.12);
+
+    --bg: #f3f4f6;
+    --surface: #ffffff;
+    --surface-alt: #f9fafb;
+    --border: #e5e7eb;
+    --border-light: #f3f4f6;
+    --text: var(--fg);
+    --text-muted: #4b5563;
+    --text-subtle: #6b7280;
+    --text-faint: #9ca3af;
+    --text-disabled: #9ca3af;
+    --text-placeholder: #d1d5db;
+    --hover-bg: #f3f4f6;
+    --hover-bg-light: #f9fafb;
+    --accent-hover-bg: #eff6ff;
+    --week-hover: #eff6ff;
+    --week-num-hover: #dbeafe;
+    --error-bg: #fee2e2;
+    --error-color: var(--danger);
+    --success-bg: #dcfce7;
+    --success-color: #16a34a;
+    --tag-bg: #dbeafe;
+    --tag-color: #1d4ed8;
+    --feed-disabled-bg: #fee2e2;
+    --feed-disabled-color: var(--danger);
 }
 
 [data-theme="dark"] {
-    --bg: #121212;
-    --surface: #1e1e1e;
-    --surface-alt: #252525;
-    --border: #3a3a3a;
-    --border-light: #2c2c2c;
-    --text: #e0e0e0;
-    --text-muted: #bbb;
-    --text-subtle: #999;
-    --text-faint: #777;
-    --text-disabled: #666;
-    --text-placeholder: #555;
-    --hover-bg: #2c2c2c;
-    --hover-bg-light: #262626;
-    --accent-hover-bg: #1c2f50;
-    --week-hover: #1c2a3c;
-    --week-num-hover: #1c2a3c;
-    --error-bg: #3c1515;
-    --error-color: #f48a8a;
-    --success-bg: #1a3c1a;
-    --success-color: #81c784;
-    --tag-bg: #1a3050;
-    --tag-color: #90caf9;
-    --feed-disabled-bg: #3c1520;
-    --feed-disabled-color: #f48a8a;
+    color-scheme: dark;
+
+    --fg: #f3f4f6;
+    --muted: #9ca3af;
+    --primary: #3b82f6;
+    --link: #60a5fa;
+    --danger: #ef4444;
+
+    --primary-hover: #60a5fa;
+    --primary-soft: rgba(59, 130, 246, 0.18);
+
+    --bg: #111827;
+    --surface: #1f2937;
+    --surface-alt: #273549;
+    --border: #374151;
+    --border-light: #2b3644;
+    --text-muted: #d1d5db;
+    --text-subtle: #9ca3af;
+    --text-faint: #6b7280;
+    --text-disabled: #6b7280;
+    --text-placeholder: #4b5563;
+    --hover-bg: #374151;
+    --hover-bg-light: #273549;
+    --accent-hover-bg: #1e3a5f;
+    --week-hover: #1c2a44;
+    --week-num-hover: #1e3a5f;
+    --error-bg: #3f1d1d;
+    --success-bg: #14321f;
+    --success-color: #22c55e;
+    --tag-bg: #1e3a5f;
+    --tag-color: #93c5fd;
+    --feed-disabled-bg: #3f1d1d;
 }
 
 * {
@@ -59,9 +92,18 @@
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
     background: var(--bg);
     color: var(--text);
+    line-height: 1.5;
+}
+
+/* Lucide icons are always the whole content of an icon-only button (the
+   buttons that carry a label are text alone). Centring them keeps the SVG's
+   baseline from leaving a descender gap under the glyph. */
+.lucide {
+    vertical-align: middle;
+    flex-shrink: 0;
 }
 
 .app {
@@ -74,14 +116,14 @@ body {
     content: 'Drop .ics file to import';
     position: fixed;
     inset: 0;
-    background: rgba(66, 133, 244, 0.12);
-    border: 3px dashed #4285f4;
+    background: var(--primary-soft);
+    border: 3px dashed var(--primary);
     border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 1.3rem;
-    color: #4285f4;
+    color: var(--primary);
     font-weight: 500;
     z-index: 999;
     pointer-events: none;
@@ -122,13 +164,16 @@ body {
 }
 
 .nav button {
-    padding: 6px 14px;
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
     border: 1px solid var(--border);
     background: var(--surface);
     color: var(--text);
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
     font-size: 0.9rem;
+    font-family: inherit;
 }
 
 .nav button:hover {
@@ -160,7 +205,7 @@ body {
     gap: 1px;
     background: var(--border);
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: 6px;
     overflow: hidden;
 }
 
@@ -176,7 +221,7 @@ body {
 
 .week-number:hover {
     background: var(--week-num-hover);
-    color: #4285f4;
+    color: var(--primary);
 }
 
 .day {
@@ -198,7 +243,7 @@ body {
 }
 
 .day.today .day-number {
-    background: #4285f4;
+    background: var(--primary);
     color: #fff;
     border-radius: 50%;
     width: 28px;
@@ -223,8 +268,8 @@ body {
 .event-chip {
     font-size: 0.75rem;
     padding: 2px 4px;
-    border-radius: 3px;
-    background: #4285f4;
+    border-radius: 4px;
+    background: var(--primary);
     color: #fff;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -269,12 +314,20 @@ body {
 }
 
 .close-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     background: none;
     border: none;
-    font-size: 1.5rem;
+    border-radius: 6px;
     cursor: pointer;
     color: var(--text-subtle);
-    padding: 0 4px;
+    padding: 4px;
+}
+
+.close-btn:hover {
+    background: var(--hover-bg);
+    color: var(--text);
 }
 
 .event-dialog label {
@@ -291,7 +344,7 @@ body {
     margin-top: 4px;
     padding: 8px;
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: 6px;
     font-size: 0.95rem;
     font-family: inherit;
     background: var(--surface);
@@ -339,55 +392,75 @@ body {
     display: flex;
     gap: 8px;
     align-items: center;
+    flex-wrap: wrap;
 }
 
 .dialog-actions button {
-    padding: 8px 16px;
+    padding: 7px 14px;
     border: 1px solid var(--border);
     background: var(--surface);
     color: var(--text);
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
     font-size: 0.9rem;
+    font-family: inherit;
+}
+
+.dialog-actions button:hover:not(:disabled) {
+    background: var(--hover-bg);
 }
 
 .dialog-actions button[type="submit"] {
-    background: #4285f4;
+    background: var(--primary);
     color: #fff;
-    border-color: #4285f4;
+    border-color: var(--primary);
+}
+
+.dialog-actions button[type="submit"]:hover:not(:disabled) {
+    background: var(--primary-hover);
+    border-color: var(--primary-hover);
 }
 
 .dialog-actions button.danger {
-    color: #ea4335;
-    border-color: #ea4335;
+    color: var(--danger);
+    border-color: var(--danger);
 }
 
-.dialog-actions button:hover {
-    opacity: 0.85;
+.dialog-actions button.danger:hover:not(:disabled) {
+    background: var(--error-bg);
+}
+
+.dialog-actions button:disabled {
+    opacity: 0.6;
+    cursor: default;
 }
 
 .error {
     background: var(--error-bg);
     color: var(--error-color);
     padding: 8px 12px;
-    border-radius: 4px;
+    border-radius: 6px;
     margin-bottom: 12px;
     font-size: 0.85rem;
 }
 
-/* Settings */
+/* Compact ghost icon button for the top-bar actions — the same shape MyNotes
+   uses for its `.btn-icon`, so the two apps' toolbars match. */
 .settings-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     background: none;
     border: 1px solid var(--border);
-    border-radius: 4px;
-    font-size: 1.3rem;
+    border-radius: 6px;
     cursor: pointer;
-    padding: 4px 10px;
+    padding: 6px 9px;
     color: var(--text-subtle);
 }
 
 .settings-btn:hover {
     background: var(--hover-bg);
+    color: var(--text);
 }
 
 .settings-dialog {
@@ -419,7 +492,7 @@ body {
     margin-top: 4px;
     padding: 8px;
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: 6px;
     font-size: 0.95rem;
     font-family: inherit;
     background: var(--surface);
@@ -432,7 +505,7 @@ body {
     margin-top: 4px;
     padding: 8px;
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: 6px;
     font-size: 0.95rem;
     font-family: inherit;
     background: var(--surface);
@@ -452,18 +525,20 @@ body {
 
 /* Dark mode toggle button */
 .dark-mode-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     background: none;
     border: 1px solid var(--border);
-    border-radius: 4px;
-    font-size: 1.1rem;
+    border-radius: 6px;
     cursor: pointer;
-    padding: 4px 10px;
+    padding: 6px 9px;
     color: var(--text-subtle);
-    line-height: 1.4;
 }
 
 .dark-mode-btn:hover {
     background: var(--hover-bg);
+    color: var(--text);
 }
 
 /* Import dialog */
@@ -478,22 +553,27 @@ body {
     border: 1px solid var(--border);
     background: var(--surface);
     color: var(--text);
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
     font-size: 0.9rem;
+    font-family: inherit;
+}
+
+.import-tab:hover:not(.active) {
+    background: var(--hover-bg);
 }
 
 .import-tab.active {
-    background: #4285f4;
+    background: var(--primary);
     color: #fff;
-    border-color: #4285f4;
+    border-color: var(--primary);
 }
 
 .import-success {
     background: var(--success-bg);
     color: var(--success-color);
     padding: 8px 12px;
-    border-radius: 4px;
+    border-radius: 6px;
     margin-bottom: 12px;
     font-size: 0.85rem;
 }
@@ -517,12 +597,14 @@ body {
     pointer-events: none;
 }
 
+/* Inverted surface, as in MyNotes: --fg on --bg, so the toast flips with the
+   theme instead of being a fixed near-black slab. */
 .toast-item {
     display: flex;
     align-items: center;
     gap: 10px;
-    background: #323232;
-    color: #fff;
+    background: var(--fg);
+    color: var(--bg);
     padding: 12px 16px;
     border-radius: 6px;
     font-size: 0.9rem;
@@ -532,11 +614,12 @@ body {
 }
 
 .toast-error {
-    background: #c62828;
+    background: var(--danger);
+    color: #fff;
 }
 
 .toast-persistent {
-    border-left: 3px solid #c62828;
+    border-left: 3px solid var(--danger);
 }
 
 @keyframes toast-in {
@@ -555,7 +638,7 @@ body {
 
 .toast-retry-btn {
     padding: 3px 9px;
-    background: dodgerblue;
+    background: var(--primary);
     color: #fff;
     border: none;
     border-radius: 6px;
@@ -563,18 +646,22 @@ body {
     font-weight: 600;
     cursor: pointer;
 }
-.toast-retry-btn:hover { background: #1a7fd4; }
+.toast-retry-btn:hover { background: var(--primary-hover); }
 
+/* The toast paints its own inverted surface, so these follow the toast's text
+   colour rather than the page's. */
 .toast-close-btn {
+    display: inline-flex;
+    align-items: center;
     background: none;
     border: none;
-    color: rgba(255,255,255,0.6);
+    color: inherit;
+    opacity: 0.65;
     cursor: pointer;
-    font-size: 14px;
     line-height: 1;
     padding: 2px 4px;
 }
-.toast-close-btn:hover { color: #fff; }
+.toast-close-btn:hover { opacity: 1; }
 
 /* View toggle */
 .view-toggle {
@@ -590,10 +677,11 @@ body {
     color: var(--text);
     cursor: pointer;
     font-size: 0.85rem;
+    font-family: inherit;
 }
 
 .view-toggle button:first-child {
-    border-radius: 4px 0 0 4px;
+    border-radius: 6px 0 0 6px;
 }
 
 .view-toggle button + button {
@@ -601,13 +689,13 @@ body {
 }
 
 .view-toggle button:last-child {
-    border-radius: 0 4px 4px 0;
+    border-radius: 0 6px 6px 0;
 }
 
 .view-toggle button.active {
-    background: #4285f4;
+    background: var(--primary);
     color: #fff;
-    border-color: #4285f4;
+    border-color: var(--primary);
 }
 
 .view-toggle button:hover:not(.active) {
@@ -634,7 +722,7 @@ body {
 /* Week view */
 .week-view {
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: 6px;
     background: var(--surface);
     display: flex;
     flex-direction: column;
@@ -650,6 +738,9 @@ body {
 
 .time-gutter-header {
     border-right: 1px solid var(--border);
+    text-align: center;
+    padding: 8px 4px;
+    font-size: 0.85rem;
 }
 
 .week-day-header {
@@ -665,7 +756,7 @@ body {
 }
 
 .week-day-header.today .week-day-number {
-    background: #4285f4;
+    background: var(--primary);
     color: #fff;
     border-radius: 50%;
     width: 28px;
@@ -752,7 +843,7 @@ body {
 
 .week-event {
     position: absolute;
-    border-radius: 3px;
+    border-radius: 4px;
     padding: 2px 4px;
     color: #fff;
     font-size: 0.7rem;
@@ -786,7 +877,7 @@ body {
     right: 0;
     height: 6px;
     cursor: ns-resize;
-    border-radius: 0 0 3px 3px;
+    border-radius: 0 0 4px 4px;
     opacity: 0;
 }
 
@@ -849,12 +940,12 @@ body {
 .allday-toggle {
     cursor: pointer;
     font-size: 0.6rem;
-    color: #4285f4;
+    color: var(--primary);
     margin-top: 2px;
 }
 
 .allday-toggle:hover {
-    color: #1a5fd4;
+    color: var(--primary-hover);
 }
 
 .allday-more {
@@ -865,7 +956,7 @@ body {
 }
 
 .allday-more:hover {
-    color: #4285f4;
+    color: var(--primary);
 }
 
 .allday-cell {
@@ -885,8 +976,8 @@ body {
 .allday-event {
     font-size: 0.7rem;
     padding: 2px 4px;
-    border-radius: 3px;
-    background: #4285f4;
+    border-radius: 4px;
+    background: var(--primary);
     color: #fff;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -913,7 +1004,7 @@ body {
 /* Day view */
 .day-view {
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: 6px;
     background: var(--surface);
     display: flex;
     flex-direction: column;
@@ -936,7 +1027,7 @@ body {
 }
 
 .day-view-day-header.today .day-view-day-number {
-    background: #4285f4;
+    background: var(--primary);
     color: #fff;
     border-radius: 50%;
     width: 28px;
@@ -1019,7 +1110,7 @@ body {
 .year-month {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: 6px;
     overflow: hidden;
 }
 
@@ -1034,7 +1125,7 @@ body {
 
 .year-month-header:hover {
     background: var(--accent-hover-bg);
-    color: #1a73e8;
+    color: var(--link);
 }
 
 .year-month-grid {
@@ -1071,7 +1162,7 @@ body {
 
 .year-week-number:hover {
     background: var(--accent-hover-bg);
-    color: #1a73e8;
+    color: var(--link);
 }
 
 .year-day {
@@ -1087,7 +1178,7 @@ body {
 }
 
 .year-day-today {
-    background: #4285f4;
+    background: var(--primary);
     color: #fff;
     font-weight: 600;
     width: 24px;
@@ -1102,7 +1193,7 @@ body {
 
 .year-day-has-events:not(.year-day-today) {
     font-weight: 700;
-    color: #1a73e8;
+    color: var(--link);
 }
 
 .year-day-has-events:not(.year-day-today)::after {
@@ -1111,7 +1202,7 @@ body {
     width: 3px;
     height: 3px;
     border-radius: 50%;
-    background: #4285f4;
+    background: var(--primary);
     position: absolute;
     bottom: -1px;
     left: 50%;
@@ -1161,7 +1252,7 @@ body {
 
 .schedule-date-header:hover {
     background: var(--accent-hover-bg);
-    color: #1a73e8;
+    color: var(--link);
 }
 
 .schedule-event {
@@ -1211,7 +1302,7 @@ body {
 .search-input {
     padding: 6px 12px;
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: 6px;
     font-size: 0.9rem;
     font-family: inherit;
     width: 200px;
@@ -1222,13 +1313,13 @@ body {
 
 .search-input:focus {
     outline: none;
-    border-color: #4285f4;
+    border-color: var(--primary);
 }
 
 .search-results {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: 6px;
     overflow: hidden;
 }
 
@@ -1244,13 +1335,14 @@ body {
 }
 
 .search-clear-btn {
+    display: inline-flex;
+    align-items: center;
     background: none;
     border: none;
     cursor: pointer;
-    font-size: 1rem;
     color: var(--text-faint);
-    padding: 2px 6px;
-    border-radius: 4px;
+    padding: 4px;
+    border-radius: 6px;
 }
 
 .search-clear-btn:hover {
@@ -1375,9 +1467,9 @@ body {
         font-size: 0.8rem;
         padding: 4px 8px;
     }
-    .settings-btn {
-        padding: 4px 8px;
-        font-size: 1.1rem;
+    .settings-btn,
+    .dark-mode-btn {
+        padding: 5px 7px;
     }
     .left-sidebar {
         display: none;
@@ -1419,7 +1511,7 @@ body {
     padding: 8px;
     background: var(--bg);
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: 6px;
     font-size: 0.95rem;
     line-height: 1.5;
     overflow-wrap: break-word;
@@ -1439,19 +1531,19 @@ body {
 }
 
 .description-display a {
-    color: #4285f4;
+    color: var(--primary);
 }
 
 /* Rich text editor (Quill) overrides */
 .event-dialog .ql-toolbar {
-    border-radius: 4px 4px 0 0;
+    border-radius: 6px 6px 0 0;
     border-color: var(--border);
     font-family: inherit;
     background: var(--surface);
 }
 
 .event-dialog .ql-container {
-    border-radius: 0 0 4px 4px;
+    border-radius: 0 0 6px 6px;
     border-color: var(--border);
     font-family: inherit;
     font-size: 0.95rem;
@@ -1483,11 +1575,11 @@ body {
 }
 [data-theme="dark"] .ql-toolbar button:hover .ql-stroke,
 [data-theme="dark"] .ql-toolbar button.ql-active .ql-stroke {
-    stroke: #4285f4;
+    stroke: var(--primary);
 }
 [data-theme="dark"] .ql-toolbar button:hover .ql-fill,
 [data-theme="dark"] .ql-toolbar button.ql-active .ql-fill {
-    fill: #4285f4;
+    fill: var(--primary);
 }
 
 .form-row {
@@ -1504,7 +1596,7 @@ body {
     margin-top: 4px;
     padding: 8px;
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: 6px;
     font-size: 0.95rem;
     font-family: inherit;
     background: var(--surface);
@@ -1542,21 +1634,22 @@ body {
 .byday-btn {
     padding: 4px 8px;
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: 6px;
     background: var(--surface);
     color: var(--text);
     cursor: pointer;
     font-size: 0.8rem;
+    font-family: inherit;
     min-width: 36px;
     text-align: center;
 }
 .byday-btn.active {
-    background: #4285f4;
+    background: var(--primary);
     color: #fff;
-    border-color: #4285f4;
+    border-color: var(--primary);
 }
 .byday-btn:hover {
-    border-color: #4285f4;
+    border-color: var(--primary);
 }
 
 .monthly-options {
@@ -1591,7 +1684,7 @@ body {
     justify-content: space-between;
     padding: 4px 8px;
     background: var(--bg);
-    border-radius: 4px;
+    border-radius: 6px;
     font-size: 0.85rem;
 }
 .rdate-add-row {
@@ -1604,10 +1697,11 @@ body {
     flex: 1;
 }
 .small-btn {
-    padding: 2px 8px;
+    padding: 3px 8px;
     font-size: 0.8rem;
+    font-family: inherit;
     border: 1px solid var(--border);
-    border-radius: 3px;
+    border-radius: 6px;
     background: var(--surface);
     color: var(--text);
     cursor: pointer;
@@ -1616,11 +1710,17 @@ body {
     background: var(--hover-bg);
 }
 .small-btn.danger {
-    color: #d32f2f;
-    border-color: #d32f2f;
+    color: var(--danger);
+    border-color: var(--danger);
 }
 .small-btn.danger:hover {
     background: var(--error-bg);
+}
+
+/* A Lucide glyph spun in place — used on the feed refresh button while its
+   request is in flight. */
+.is-spinning {
+    animation: spin 1s linear infinite;
 }
 
 /* Import spinner */
@@ -1642,8 +1742,8 @@ body {
     animation: event-highlight 2s ease-out;
 }
 @keyframes event-highlight {
-    0%, 20% { box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.7); }
-    100% { box-shadow: 0 0 0 3px rgba(26, 115, 232, 0); }
+    0%, 20% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 70%, transparent); }
+    100% { box-shadow: 0 0 0 3px transparent; }
 }
 
 /* Past events */
@@ -1667,7 +1767,7 @@ body {
 
 .tz-label {
     font-size: 0.85em;
-    color: var(--color-text-secondary, #888);
+    color: var(--text-faint);
     white-space: nowrap;
 }
 
@@ -1751,20 +1851,24 @@ body {
     flex-shrink: 0;
 }
 .feed-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     background: none;
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
-    padding: 4px 8px;
-    font-size: 1em;
-    color: var(--text);
+    padding: 5px 7px;
+    color: var(--text-subtle);
 }
 .feed-action-btn:hover {
     background: var(--hover-bg);
+    color: var(--text);
 }
 .feed-delete-btn:hover {
     background: var(--feed-disabled-bg);
     border-color: var(--error-color);
+    color: var(--error-color);
 }
 .feed-error {
     color: var(--error-color);
@@ -1830,30 +1934,40 @@ body {
 }
 
 .confirm-btn {
-    padding: 8px 16px;
+    padding: 7px 14px;
     border: 1px solid var(--border);
     background: var(--surface);
     color: var(--text);
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
     font-size: 0.9rem;
     font-family: inherit;
 }
 
 .confirm-btn:hover {
-    opacity: 0.85;
+    background: var(--hover-bg);
 }
 
 .confirm-btn-primary {
-    background: #4285f4;
+    background: var(--primary);
     color: #fff;
-    border-color: #4285f4;
+    border-color: var(--primary);
+}
+
+.confirm-btn-primary:hover {
+    background: var(--primary-hover);
+    border-color: var(--primary-hover);
 }
 
 .confirm-btn-danger {
-    background: #ea4335;
+    background: var(--danger);
     color: #fff;
-    border-color: #ea4335;
+    border-color: var(--danger);
+}
+
+.confirm-btn-danger:hover {
+    background: var(--danger);
+    opacity: 0.85;
 }
 
 /* App layout with sidebar */
@@ -1873,7 +1987,7 @@ body {
 .calendar-sidebar {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: 6px;
     padding: 8px;
 }
 
@@ -1901,7 +2015,7 @@ body {
 }
 
 .calendar-sidebar-toggle-all:hover {
-    color: #1a73e8;
+    color: var(--link);
 }
 
 .calendar-sidebar-toggle-all input[type="checkbox"] {
@@ -1920,7 +2034,7 @@ body {
 }
 
 .calendar-sidebar-item:hover {
-    color: #1a73e8;
+    color: var(--link);
 }
 
 .calendar-sidebar-item input[type="checkbox"] {
@@ -1947,18 +2061,18 @@ body {
     background: none;
     border: none;
     cursor: pointer;
-    font-size: 0.75rem;
     color: var(--text-disabled);
     padding: 0 2px;
     flex-shrink: 0;
 }
 
 .calendar-sidebar-item:hover .calendar-edit-trigger {
-    display: inline;
+    display: inline-flex;
+    align-items: center;
 }
 
 .calendar-edit-trigger:hover {
-    color: #1a73e8;
+    color: var(--link);
 }
 
 .calendar-sidebar-edit {
@@ -1975,7 +2089,7 @@ body {
     font-size: 0.8rem;
     padding: 2px 4px;
     border: 1px solid var(--border);
-    border-radius: 3px;
+    border-radius: 4px;
     background: var(--surface);
     color: var(--text);
 }
@@ -1987,17 +2101,18 @@ body {
 }
 
 .calendar-edit-btn {
+    display: inline-flex;
+    align-items: center;
     background: none;
     border: none;
     cursor: pointer;
-    font-size: 0.85rem;
     padding: 0 2px;
     color: var(--text-muted);
     flex-shrink: 0;
 }
 
 .calendar-edit-btn:hover {
-    color: #1a73e8;
+    color: var(--link);
 }
 
 .calendar-edit-colors {
@@ -2038,7 +2153,7 @@ body {
 .mini-month {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: 6px;
     overflow: hidden;
 }
 
@@ -2058,22 +2173,23 @@ body {
 }
 
 .mini-month-title:hover {
-    color: #1a73e8;
+    color: var(--link);
 }
 
 .mini-month-nav {
+    display: inline-flex;
+    align-items: center;
     background: none;
     border: none;
     cursor: pointer;
-    font-size: 0.6rem;
-    padding: 2px 4px;
+    padding: 2px;
     color: var(--text-muted);
-    border-radius: 3px;
+    border-radius: 4px;
 }
 
 .mini-month-nav:hover {
     background: var(--accent-hover-bg);
-    color: #1a73e8;
+    color: var(--link);
 }
 
 .mini-month-grid {
@@ -2117,7 +2233,7 @@ body {
 }
 
 .mini-month-day-today {
-    background: #4285f4;
+    background: var(--primary);
     color: #fff;
     font-weight: 600;
     width: 20px;
@@ -2150,11 +2266,11 @@ body {
 .map-link {
     display: inline-block;
     margin: 4px 0 8px;
-    color: #4285f4;
+    color: var(--primary);
 }
 
 .url-link {
-    color: #4285f4;
+    color: var(--primary);
     word-break: break-all;
     margin-left: 4px;
 }
@@ -2212,13 +2328,13 @@ body {
 }
 
 .share-success {
-    color: #2a7a2a;
+    color: var(--success-color);
     font-size: 0.85em;
     margin-top: 4px;
 }
 
 .share-error {
-    color: var(--danger, #d32f2f);
+    color: var(--danger);
     font-size: 0.85em;
     margin-top: 4px;
 }
@@ -2251,7 +2367,7 @@ body {
     max-height: 180px;
     overflow-y: auto;
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: 6px;
     padding: 4px;
 }
 
@@ -2308,7 +2424,7 @@ body {
     flex: 1;
     min-height: 120px;
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: 6px;
     background: var(--surface);
 }
 
@@ -2318,7 +2434,7 @@ body {
     background: var(--tag-bg);
     color: var(--tag-color);
     border: 1px solid var(--tag-color);
-    border-radius: 4px;
+    border-radius: 6px;
     font-size: 0.8rem;
     font-weight: 500;
     letter-spacing: 0.04em;

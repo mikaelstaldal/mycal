@@ -1,5 +1,6 @@
 import type { VNode } from 'preact';
 import { useRef, useEffect } from 'preact/hooks';
+import { Icon } from './Icon.js';
 
 // The demo's one piece of demo-only UI: a first-visit notice explaining that
 // there is no server behind this calendar, and a badge that keeps saying so and
@@ -64,7 +65,7 @@ export function DemoDialog({ onClose }: DemoDialogProps): VNode {
         <dialog ref={dialogRef} class="demo-dialog" onClose={handleClose}>
             <div class="dialog-header">
                 <h2>This is a demo</h2>
-                <button class="close-btn" onClick={handleClose}>&#xd7;</button>
+                <button class="close-btn" onClick={handleClose} title="Close" aria-label="Close"><Icon name="x" /></button>
             </div>
             <p>
                 There is no server behind this calendar. A service worker in your browser

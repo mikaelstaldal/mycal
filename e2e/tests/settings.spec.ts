@@ -6,7 +6,7 @@ test.describe('Settings', () => {
   });
 
   test('open and close settings dialog', async ({ page }) => {
-    // Click settings button (⚙ icon)
+    // Click settings button
     await page.locator('.settings-btn[title="Settings"]').click();
 
     const dialog = page.locator('dialog');
@@ -14,7 +14,7 @@ test.describe('Settings', () => {
     await expect(dialog.getByRole('heading', { name: 'Settings' })).toBeVisible();
 
     // Close with the Close button
-    await dialog.getByRole('button', { name: 'Close' }).click();
+    await dialog.locator('.dialog-actions').getByRole('button', { name: 'Close' }).click();
     await expect(dialog).not.toBeVisible();
   });
 
@@ -29,7 +29,7 @@ test.describe('Settings', () => {
     await dialog.getByRole('combobox', { name: 'Week starts on' }).selectOption('Sunday');
 
     // Close settings
-    await dialog.getByRole('button', { name: 'Close' }).click();
+    await dialog.locator('.dialog-actions').getByRole('button', { name: 'Close' }).click();
 
     // Check that the week view header starts with Sun
     const firstWeekday = page.locator('.week-day-header .week-day-name').first();

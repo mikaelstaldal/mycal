@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'preact/hooks';
 import { saveConfig } from '../util/config.js';
 import { formatHour } from '../util/date-utils.js';
 import { isDemo, mymailUrl, mynotesUrl } from '../util/serverconfig.js';
+import { Icon } from './Icon.js';
 import type { AppConfig } from '../util/config.js';
 
 // Google Maps API keys are 39 chars starting with "AIza"
@@ -82,14 +83,14 @@ export function Settings({ config, onConfigChange }: SettingsProps): VNode | nul
 
     return (
         <Fragment>
-            <button class="settings-btn" onClick={() => setOpen(true)} title="Settings">
-                &#x2699;
+            <button class="settings-btn" onClick={() => setOpen(true)} title="Settings" aria-label="Settings">
+                <Icon name="settings" />
             </button>
             {open && (
                 <dialog ref={dialogRef} class="settings-dialog" onClose={handleClose}>
                     <div class="dialog-header">
                         <h2>Settings</h2>
-                        <button class="close-btn" onClick={handleClose}>&#xd7;</button>
+                        <button class="close-btn" onClick={handleClose} title="Close" aria-label="Close"><Icon name="x" /></button>
                     </div>
                     <label>
                         Default view

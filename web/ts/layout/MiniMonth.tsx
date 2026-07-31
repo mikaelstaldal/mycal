@@ -1,6 +1,7 @@
 import type { VNode } from 'preact';
 import { useState, useMemo } from 'preact/hooks';
 import { getCalendarDays, getWeekdays, isToday } from '../util/date-utils.js';
+import { Icon } from '../components/Icon.js';
 import type { AppConfig } from '../util/config.js';
 
 interface MiniMonthProps {
@@ -37,11 +38,11 @@ export function MiniMonth({ currentDate, onDayClick, onMonthClick, config }: Min
     return (
         <div class="mini-month">
             <div class="mini-month-header">
-                <button class="mini-month-nav" onClick={() => setOffset(o => o - 1)} title="Previous month">&#x25C0;</button>
+                <button class="mini-month-nav" onClick={() => setOffset(o => o - 1)} title="Previous month" aria-label="Previous month"><Icon name="chevron-left" size={14} /></button>
                 <span class="mini-month-title" role="button" tabIndex={0} onClick={() => onMonthClick && onMonthClick(month)} onKeyDown={(ev: KeyboardEvent) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); onMonthClick && onMonthClick(month); } }}>
                     {monthName}
                 </span>
-                <button class="mini-month-nav" onClick={() => setOffset(o => o + 1)} title="Next month">&#x25B6;</button>
+                <button class="mini-month-nav" onClick={() => setOffset(o => o + 1)} title="Next month" aria-label="Next month"><Icon name="chevron-right" size={14} /></button>
             </div>
             <div class="mini-month-grid">
                 <div class="mini-month-weekday-row">

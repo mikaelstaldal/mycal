@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Maintainer-only script. Fetches the pinned upstream sources for the vendored
-# browser libraries (Preact, Leaflet, Quill) via npm and copies each into
+# browser libraries (Preact, Leaflet, Quill, Lucide) via npm and copies each into
 # web/static/vendor/ under a version-stamped filename, plus Preact's prebuilt ESM
 # modules and .d.ts type stubs.
 #
@@ -13,13 +13,19 @@
 #   - web/ts/components/MapPicker.tsx   (vendor/leaflet.js, vendor/leaflet.css)
 #   - web/ts/components/RichEditor.tsx  (vendor/quill.js, vendor/quill.snow.css)
 #
+# The Lucide bundle is the one generated asset here: gen-lucide.mjs (committed,
+# fs-only, no network) trims lucide-static's icon set down to the icons the UI
+# actually names. Add an icon to its ICONS list before referencing it from a
+# component.
+#
 # NOT invoked by build.sh or CI. Run this by hand only when adding or updating a
 # vendored library, then commit the regenerated files.
 #
 # npm only ever touches a throwaway node_modules here, installed with
 # --ignore-scripts (no install-time lifecycle scripts). Leaflet and Quill ship
 # browser-ready builds and Preact ships prebuilt ESM, so nothing is bundled — the
-# assets are copied verbatim and build.sh / CI need neither npm nor this script.
+# assets are copied verbatim (Lucide's is emitted by a plain node script), and
+# build.sh / CI need neither npm nor this script.
 #
 # Requires on $PATH: npm, node.
 set -euo pipefail
@@ -45,6 +51,7 @@ npm ci --ignore-scripts
 PREACT_VER="$(pkgver preact)"
 LEAFLET_VER="$(pkgver leaflet)"
 QUILL_VER="$(pkgver quill)"
+LUCIDE_VER="$(pkgver lucide-static)"
 
 WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "$WORK_DIR"' EXIT
@@ -110,6 +117,19 @@ QUILL_SRC="$VENDOR_DIR/node_modules/quill/dist"
 cp "$QUILL_SRC/quill.js"       "$BROWSER_OUT/quill-$QUILL_VER.js"
 cp "$QUILL_SRC/quill.snow.css" "$BROWSER_OUT/quill-$QUILL_VER.snow.css"
 
+# --- Lucide: icon geometry for the <Icon> component ------------------------
+#
+# lucide-static ships the whole collection as data (icon-nodes.json: each icon's
+# SVG child elements as [tag, attrs] pairs). MyCal has no icon picker, so
+# gen-lucide.mjs emits only the icons its ICONS list names — a few kB rather than
+# the ~600 kB full set — as a plain ESM module exporting LUCIDE_ICON_NODES, which
+# web/ts/components/Icon.tsx imports as "lucide-icons".
+rm -f "$BROWSER_OUT"/lucide-*.js
+node "$VENDOR_DIR/gen-lucide.mjs" \
+  "$VENDOR_DIR/node_modules/lucide-static/icon-nodes.json" \
+  "$BROWSER_OUT/lucide-$LUCIDE_VER.js" \
+  "$LUCIDE_VER"
+
 # --- Reminder: keep the hand-written references in sync ---------------------
 cat <<EOF
 
@@ -121,12 +141,14 @@ Wrote version-stamped vendored assets under $BROWSER_OUT/:
   leaflet-$LEAFLET_VER.css
   quill-$QUILL_VER.js
   quill-$QUILL_VER.snow.css
+  lucide-$LUCIDE_VER.js
 
 Reminder: these filenames are referenced by hand — update on a version bump:
   web/static/index.html (import map)
     preact             -> ./vendor/preact/preact-$PREACT_VER.module.js
     preact/hooks       -> ./vendor/preact/hooks-$PREACT_VER.module.js
     preact/jsx-runtime -> ./vendor/preact/jsx-runtime-$PREACT_VER.module.js
+    lucide-icons       -> ./vendor/lucide-$LUCIDE_VER.js
   web/ts/components/MapPicker.tsx
     vendor/leaflet.css -> vendor/leaflet-$LEAFLET_VER.css
     vendor/leaflet.js  -> vendor/leaflet-$LEAFLET_VER.js

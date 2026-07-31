@@ -1,5 +1,6 @@
 import type { VNode } from 'preact';
 import { formatMonthYear, formatWeekRange, formatDayHeading } from '../util/date-utils.js';
+import { Icon } from '../components/Icon.js';
 
 interface NavProps {
     currentDate: Date;
@@ -25,8 +26,8 @@ export function Nav({ currentDate, onPrev, onNext, onToday, viewMode, onViewChan
     return (
         <nav class="nav">
             <button onClick={onToday}>Today</button>
-            <button onClick={onPrev} aria-label="Previous">&#x25C0;</button>
-            <button onClick={onNext} aria-label="Next">&#x25B6;</button>
+            <button onClick={onPrev} aria-label="Previous" title="Previous"><Icon name="chevron-left" /></button>
+            <button onClick={onNext} aria-label="Next" title="Next"><Icon name="chevron-right" /></button>
             <div class="view-toggle">
                 <button class={viewMode === 'year' ? 'active' : ''} onClick={() => onViewChange('year')}>Year</button>
                 <button class={viewMode === 'month' ? 'active' : ''} onClick={() => onViewChange('month')}>Month</button>

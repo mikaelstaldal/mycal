@@ -6,7 +6,7 @@ test.describe('Event CRUD', () => {
     await clearAllEvents(request);
     await page.goto('/');
     // Switch to month view for these tests
-    await page.getByRole('button', { name: 'Month' }).click();
+    await page.getByRole('button', { name: 'Month', exact: true }).click();
     await expect(page.locator('.calendar-grid')).toBeVisible();
   });
 
@@ -39,7 +39,7 @@ test.describe('Event CRUD', () => {
     });
 
     await page.reload();
-    await page.getByRole('button', { name: 'Month' }).click();
+    await page.getByRole('button', { name: 'Month', exact: true }).click();
     await expect(page.locator('.calendar-grid')).toBeVisible();
 
     // Click the event chip
@@ -61,7 +61,7 @@ test.describe('Event CRUD', () => {
     });
 
     await page.reload();
-    await page.getByRole('button', { name: 'Month' }).click();
+    await page.getByRole('button', { name: 'Month', exact: true }).click();
     await expect(page.locator('.calendar-grid')).toBeVisible();
 
     // Click the event
@@ -94,7 +94,7 @@ test.describe('Event CRUD', () => {
     });
 
     await page.reload();
-    await page.getByRole('button', { name: 'Month' }).click();
+    await page.getByRole('button', { name: 'Month', exact: true }).click();
     await expect(page.locator('.calendar-grid')).toBeVisible();
 
     // Click the event
@@ -143,7 +143,7 @@ test.describe('Event CRUD', () => {
     });
 
     await page.reload();
-    await page.getByRole('button', { name: 'Month' }).click();
+    await page.getByRole('button', { name: 'Month', exact: true }).click();
     await expect(page.locator('.calendar-grid')).toBeVisible();
 
     await page.locator('.event-chip', { hasText: 'Linked Event' }).click();
