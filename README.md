@@ -1,6 +1,8 @@
-# mycal
+# MyCal
 
 A personal calendar application with iCalendar support. Go backend, SQLite storage, REST API, and a built-in Preact web frontend.
+
+See live demo at <https://mikaelstaldal.github.io/mycal/>.
 
 ## Clients
 
