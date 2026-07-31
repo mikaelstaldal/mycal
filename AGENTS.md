@@ -130,7 +130,7 @@ answers it from IndexedDB. `main.go` injects `window.__serverConfig={demo:true}`
 (same mechanism as the sibling URLs); `app.tsx` then waits for the worker to be
 installed and in control before rendering, so the first request cannot escape it.
 `-demo-bundle` writes the same thing out as static files, which
-`.github/workflows/pages.yml` publishes to GitHub Pages.
+`.github/workflows/main.yml` publishes to GitHub Pages.
 
 - **Intercepting at the network layer is the point**: the frontend is unchanged
   between demo and real, so nothing in `views/` or `components/` needs to know.
