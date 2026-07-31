@@ -436,6 +436,7 @@ function App() {
              onDragLeave={demo ? undefined : handleDragLeave}
              onDrop={demo ? undefined : handleDrop}>
             <header class="top-bar">
+                <div class="brand">MyCal</div>
                 <Nav currentDate={currentDate}
                      onPrev={handlePrev} onNext={handleNext} onToday={handleToday}
                      viewMode={viewMode} onViewChange={handleViewChange}
