@@ -550,7 +550,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSa
                                 )}
                             </Fragment>
                         )}
-                        <button type="button" onClick={handleClose}>Cancel</button>
+                        <button type="button" onClick={handleClose}>{editing ? "Cancel" : "Close"}</button>
                     </div>
                 </div>
 
