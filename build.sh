@@ -33,6 +33,10 @@ run tsc --project web/ts/tsconfig.json
 # The demo service worker is worker code, not DOM code, so it compiles against
 # lib.webworker in its own project (see web/ts/demo/tsconfig.json).
 run tsc --project web/ts/demo/tsconfig.json
+# Frontend tests: node:test files under web/ts/ exercising the compiled output
+# in web/static/, so they must run after tsc. No package manager is involved —
+# `node` is the only prerequisite.
+run node --test web/ts/date-utils.test.mjs
 run go generate ./...
 run go build -trimpath -buildvcs=true -tags netgo -o "$OUTPUT_DIR/mycal" .
 run go test ./...

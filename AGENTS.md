@@ -16,7 +16,7 @@ There is also an Android (Kotlin/Compose) app using the same REST API in another
 ./mycal -port 3000 -data /path/to/data  # custom address and data path
 ```
 
-`ogen`, `tsc` and `openapi-typescript` must be on `$PATH`
+`ogen`, `tsc`, `openapi-typescript` and `node` must be on `$PATH`
 
 ## Code generation
 
@@ -44,6 +44,33 @@ go test ./...                           # all tests
 go test ./internal/repository/ -v       # repository tests only
 go test ./internal/repository/ -run TestList  # single test
 ```
+
+## Frontend tests
+
+Frontend unit tests are `*.test.mjs` files directly under `web/ts/`, written
+against Node's built-in `node:test` and `node:assert/strict` — no test runner,
+no package manager, nothing to install beyond `node` itself. `build.sh` runs
+them after `tsc`.
+
+```bash
+node --test web/ts/date-utils.test.mjs   # one file
+node --test web/ts/*.test.mjs            # all of them
+```
+
+- **They import the compiled output**, `web/static/…`, not the `.ts` source, so
+  `tsc` must have run first. The test files stay plain `.mjs` — `tsc` only
+  picks up `*.ts`/`*.tsx`, so they are never compiled or type-checked.
+- **A test names the module it covers** in a header comment, along with what is
+  under test and why it is worth pinning.
+- **The module under test is pulled in with a top-level `await import(…)`,**
+  not a static `import`. Static imports are hoisted above the file body, so
+  anything the module needs in place at load time — a `window`/`document` on
+  `globalThis`, the `process.env.TZ` `date-utils.test.mjs` sets — has to be
+  arranged first, and only a dynamic import runs after it.
+- **Nothing may depend on the machine running the test.** `date-utils.test.mjs`
+  fixes the zone rather than inheriting it, and asserts no output of
+  `toLocaleDateString`/`toLocaleTimeString`, since that would pin the host's
+  ICU locale rather than this code.
 
 ## E2E Tests
 
