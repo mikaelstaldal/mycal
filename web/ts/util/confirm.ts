@@ -95,7 +95,9 @@ export function showConfirm(message: string, options: ConfirmOptions = {}): Prom
 
         document.body.appendChild(dialog);
         dialog.showModal();
-        okBtn.focus();
+        // Focus the dismissing button, not the confirming one: a stray Enter on a
+        // destructive prompt should keep, not delete.
+        cancelBtn.focus();
     });
 }
 

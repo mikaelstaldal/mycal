@@ -369,6 +369,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSa
         const confirmed = await showConfirm('Delete this event?', {
             title: 'Delete Event',
             okText: 'Delete',
+            cancelText: 'Keep',
             danger: true
         });
         if (confirmed) {

@@ -43,6 +43,7 @@ export function FeedsDialog({ onClose, onRefreshed }: FeedsDialogProps): VNode |
         const confirmed = await showConfirm('Delete this feed subscription?', {
             title: 'Delete Feed',
             okText: 'Delete',
+            cancelText: 'Keep',
             danger: true
         });
         if (!confirmed) return;
