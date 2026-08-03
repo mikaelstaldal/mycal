@@ -384,7 +384,12 @@ export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSa
 
     async function shareViaEmail(e: Event) {
         e.preventDefault();
-        if (!event?.id || !mymailUrl || !shareRecipient.trim()) return;
+        const recipient = shareRecipient.trim();
+        if (!event?.id || !mymailUrl || !recipient) return;
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
+            setShareError('Enter a valid email address');
+            return;
+        }
         setShareSending(true);
         setShareError('');
         try {
@@ -393,7 +398,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSa
             const safeTitle = event.title.replace(/[^\w\s-]/g, '').trim() || 'event';
             const formData = new FormData();
             formData.append('message', JSON.stringify({
-                to_addr: shareRecipient.trim(),
+                to_addr: recipient,
                 subject: `Invitation: ${event.title}`,
                 body_text: `You are invited to: ${event.title}`,
             }));
@@ -559,7 +564,9 @@ export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSa
 
                 {showShare && event && !editing && (
                     <div class="share-form">
-                        <form onSubmit={shareViaEmail}>
+                        {/* noValidate: a bad address is reported inline via shareError,
+                            not through the browser's native validation bubble. */}
+                        <form onSubmit={shareViaEmail} noValidate>
                             <label>
                                 Share via email
                                 <div class="share-input-row">

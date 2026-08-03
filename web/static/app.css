@@ -395,7 +395,10 @@ body {
     flex-wrap: wrap;
 }
 
-.dialog-actions button {
+/* The share row's Send/Cancel share this styling so they read as the same kind
+   of button as the dialog header's Edit/Copy/Share/Delete/Close. */
+.dialog-actions button,
+.share-input-row button {
     padding: 7px 14px;
     border: 1px solid var(--border);
     background: var(--surface);
@@ -406,7 +409,8 @@ body {
     font-family: inherit;
 }
 
-.dialog-actions button:hover:not(:disabled) {
+.dialog-actions button:hover:not(:disabled),
+.share-input-row button:hover:not(:disabled) {
     background: var(--hover-bg);
 }
 
@@ -430,7 +434,8 @@ body {
     background: var(--error-bg);
 }
 
-.dialog-actions button:disabled {
+.dialog-actions button:disabled,
+.share-input-row button:disabled {
     opacity: 0.6;
     cursor: default;
 }
@@ -2318,13 +2323,23 @@ body {
 
 .share-input-row {
     display: flex;
-    gap: 6px;
+    gap: 8px;
     margin-top: 4px;
+    align-items: center;
 }
 
 .share-input-row input[type="email"] {
     flex: 1;
     min-width: 0;
+    /* The row already carries the gap below the label. */
+    margin-top: 0;
+}
+
+/* The input takes the slack; the buttons keep their natural width rather than
+   being squeezed to the label ("Send" is short, and swaps to "Sending…"). */
+.share-input-row button {
+    flex: 0 0 auto;
+    white-space: nowrap;
 }
 
 .share-success {
