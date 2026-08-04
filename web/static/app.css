@@ -565,24 +565,6 @@ body {
     min-width: 0;
 }
 
-/* Dark mode toggle button */
-.dark-mode-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: none;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    cursor: pointer;
-    padding: 6px 9px;
-    color: var(--text-subtle);
-}
-
-.dark-mode-btn:hover {
-    background: var(--hover-bg);
-    color: var(--text);
-}
-
 /* Import dialog */
 .import-tabs {
     display: flex;
@@ -1509,12 +1491,25 @@ body {
         font-size: 0.8rem;
         padding: 4px 8px;
     }
-    .settings-btn,
-    .dark-mode-btn {
+    .settings-btn {
         padding: 5px 7px;
     }
+    /* No room for the sidebar's calendars, but the footer's two buttons still
+       have to be reachable — the column collapses to just the footer, stacked
+       below the main content. */
+    .app-layout {
+        flex-direction: column;
+    }
     .left-sidebar {
+        width: auto;
+        order: 1;
+    }
+    .left-sidebar > :not(.sidebar-footer) {
         display: none;
+    }
+    .sidebar-footer {
+        position: static;
+        margin-top: 0;
     }
 }
 
@@ -2181,14 +2176,58 @@ body {
     opacity: 0.8;
 }
 
-/* Left sidebar wrapper */
+/* Left sidebar wrapper. Stretched rather than hugging its content so the footer
+   below can be pushed to the bottom of the column. */
 .left-sidebar {
     width: 180px;
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
     gap: 8px;
-    align-self: flex-start;
+    align-self: stretch;
+}
+
+/* Light/dark toggle and Settings, pinned to the bottom of the left column — the
+   same footer MyNotes puts them in (see its .sidebar-footer). `margin-top: auto`
+   pushes it down; `position: sticky` keeps it on screen when the main content is
+   taller than the viewport, so the two buttons are always one click away. */
+.sidebar-footer {
+    margin-top: auto;
+    position: sticky;
+    bottom: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+    background: var(--bg);
+}
+
+.sidebar-footer-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+/* Unlike the icon-only buttons elsewhere in the UI, these carry a label next to
+   the glyph — the shape MyNotes uses for the same two actions. */
+.sidebar-footer-btn {
+    /* Grow to fill the row so that, in a sidebar too narrow for both, the two
+       wrap into a tidy stack of equal-width buttons rather than a ragged one. */
+    flex: 1 1 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    padding: 4px 8px;
+    font-family: inherit;
+    font-size: 0.8rem;
+    color: var(--text-subtle);
+}
+
+.sidebar-footer-btn:hover {
+    background: var(--hover-bg);
+    color: var(--text);
 }
 
 /* Mini month calendar */

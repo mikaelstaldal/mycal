@@ -449,9 +449,6 @@ function App() {
                 <div class="top-bar-actions">
                     <input type="search" class="search-input" placeholder="Search events..."
                            value={searchQuery} onInput={handleSearchInput} />
-                    <button class="dark-mode-btn" onClick={() => setDarkMode(d => !d)} title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'} aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}>
-                        <Icon name={darkMode ? 'sun' : 'moon'} />
-                    </button>
                     <button class="settings-btn" onClick={() => { loadEvents(); loadCalendars(); }} title="Refresh" aria-label="Refresh">
                         <Icon name="rotate-ccw" />
                     </button>
@@ -469,7 +466,6 @@ function App() {
                         </Fragment>
                     )}
                     {demo && <DemoBadge onClick={() => setShowDemoNotice(true)} />}
-                    <Settings config={config} onConfigChange={setConfig} />
                 </div>
             </header>
             <div class="app-layout">
@@ -485,6 +481,23 @@ function App() {
                                          onToggleAll={handleToggleAll}
                                          onEditCalendar={handleEditCalendar} />
                     ) : null}
+                    {/* Pinned to the bottom of the left column, the same place
+                        MyNotes puts its light/dark toggle and Settings. */}
+                    <div class="sidebar-footer">
+                        <div class="sidebar-footer-actions">
+                            <button class="sidebar-footer-btn" onClick={() => setDarkMode(d => !d)}
+                                    title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+                                    aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+                                    aria-pressed={darkMode}>
+                                <Icon name={darkMode ? 'sun' : 'moon'} size={16} />
+                                {/* Just "Light"/"Dark" — the full "…mode" is on the
+                                    title and aria-label; the short label is what
+                                    fits beside Settings in a 180px sidebar. */}
+                                <span>{darkMode ? 'Light' : 'Dark'}</span>
+                            </button>
+                            <Settings config={config} onConfigChange={setConfig} />
+                        </div>
+                    </div>
                 </div>
                 <main class="app-main">
                     {searchResults !== null ? (

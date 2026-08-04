@@ -83,8 +83,9 @@ export function Settings({ config, onConfigChange }: SettingsProps): VNode | nul
 
     return (
         <Fragment>
-            <button class="settings-btn" onClick={() => setOpen(true)} title="Settings" aria-label="Settings">
-                <Icon name="settings" />
+            <button class="sidebar-footer-btn" onClick={() => setOpen(true)} title="Settings" aria-label="Settings">
+                <Icon name="settings" size={16} />
+                <span>Settings</span>
             </button>
             {open && (
                 <dialog ref={dialogRef} class="settings-dialog" onClose={handleClose}>

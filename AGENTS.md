@@ -128,7 +128,9 @@ Go backend with embedded Preact+JSX frontend. TypeScript source in `web/ts/`, co
 - **A button is either an icon or a label, never both.** Buttons that show text (Save, Delete,
   Close, Add Feed, …) stay text-only; `<Icon>` is for the buttons that would otherwise be a bare
   glyph — the top-bar actions, the nav and mini-month arrows, dialog dismiss ✕, the calendar
-  sidebar's edit controls, the feed row actions.
+  sidebar's edit controls, the feed row actions. The one exception is the left sidebar's footer
+  (`.sidebar-footer-btn`: the light/dark toggle and Settings), which pairs icon and label to match
+  the same two buttons in MyNotes' sidebar footer.
 - An icon-only button needs `title` **and** `aria-label`: the SVG is `aria-hidden`, so without one
   the button has no accessible name. Keep those names distinct from the visible labels elsewhere on
   the page — the e2e suite locates buttons by accessible name, and Playwright matches substrings.

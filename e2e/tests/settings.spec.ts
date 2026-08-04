@@ -7,7 +7,7 @@ test.describe('Settings', () => {
 
   test('open and close settings dialog', async ({ page }) => {
     // Click settings button
-    await page.locator('.settings-btn[title="Settings"]').click();
+    await page.locator('.sidebar-footer-btn[title="Settings"]').click();
 
     const dialog = page.locator('dialog');
     await expect(dialog).toBeVisible();
@@ -20,7 +20,7 @@ test.describe('Settings', () => {
 
   test('change week start day persists on reload', async ({ page }) => {
     // Open settings
-    await page.locator('.settings-btn[title="Settings"]').click();
+    await page.locator('.sidebar-footer-btn[title="Settings"]').click();
 
     const dialog = page.locator('dialog');
     await expect(dialog).toBeVisible();
