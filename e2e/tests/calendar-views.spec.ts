@@ -7,6 +7,11 @@ test.describe('Calendar Views', () => {
     await page.goto('/');
   });
 
+  test('app shell renders the brand mark and label', async ({ page }) => {
+    await expect(page.locator('.brand-name')).toHaveText('MyCal');
+    await expect(page.locator('.brand-logo svg')).toBeVisible();
+  });
+
   test('shows week view by default with correct heading', async ({ page }) => {
     const heading = page.locator('nav h1');
     await expect(heading).toBeVisible();

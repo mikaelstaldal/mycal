@@ -134,16 +134,53 @@ body {
     display: flex;
     align-items: center;
     margin-bottom: 16px;
+    /* .brand is centred here, so the bar's height sets how far the logo sits
+       from the top of the viewport. 40px puts the 28px badge's top edge at
+       8px (.app padding) + 6px = 14px — the same offset MyMail's sidebar
+       header gives its own badge via padding-top: 14px. Without this the bar
+       collapses to ~34px and the mark rides 3px higher than MyMail's. */
+    min-height: 40px;
 }
 
-/* Brand label, sized to match the left sidebar so the nav lines up with .app-main */
+/* Brand mark + label, sized to match the left sidebar so the nav lines up with
+   .app-main */
 .brand {
     width: 180px;
     margin-right: 12px;
     flex-shrink: 0;
-    font-size: 1.3rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.1rem;
     font-weight: 600;
     color: var(--text);
+}
+
+/* The app mark (components/Logo.tsx, the favicon glyph) on a --primary square.
+   Box, radius and glyph size are MyMail's .logo-icon verbatim, so the badge
+   before "MyCal" here and the one before "MyMail" there are the same size. The
+   glyph carries no width/height of its own, so both are set here. */
+.brand-logo {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--primary);
+    color: #fff;
+    border-radius: 6px;
+}
+
+.brand-logo svg {
+    width: 17px;
+    height: 17px;
+}
+
+.brand-name {
+    /* overflow zeroes the automatic minimum size, so the label ellipsizes
+       instead of forcing .brand past its 180px. */
+    min-width: 0;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

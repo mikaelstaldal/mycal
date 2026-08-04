@@ -14,6 +14,7 @@ import { Settings } from './components/Settings.js';
 import { DemoDialog, DemoBadge, demoNoticeSeen } from './components/DemoDialog.js';
 import { CalendarSidebar } from './layout/CalendarSidebar.js';
 import { Icon } from './components/Icon.js';
+import { Logo } from './components/Logo.js';
 import { MiniMonth } from './layout/MiniMonth.js';
 import { api } from './api/client.js';
 import { showToast } from './util/toast.js';
@@ -437,7 +438,10 @@ function App() {
              onDragLeave={demo ? undefined : handleDragLeave}
              onDrop={demo ? undefined : handleDrop}>
             <header class="top-bar">
-                <div class="brand">MyCal</div>
+                <div class="brand">
+                    <span class="brand-logo"><Logo /></span>
+                    <span class="brand-name">MyCal</span>
+                </div>
                 <Nav currentDate={currentDate}
                      onPrev={handlePrev} onNext={handleNext} onToday={handleToday}
                      viewMode={viewMode} onViewChange={handleViewChange}

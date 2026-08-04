@@ -120,6 +120,11 @@ Go backend with embedded Preact+JSX frontend. TypeScript source in `web/ts/`, co
   `web/ts/vendor/gen-lucide.mjs` — to use a new one, add its kebab-case name there, re-run
   `web/ts/vendor/rebuild.sh`, and commit the regenerated `web/static/vendor/lucide-<version>.js`.
   `<Icon>` silently renders nothing for a name that is not in the bundle.
+- The one deliberate exception is `components/Logo.tsx`, the app mark in the top bar's
+  `.brand-logo` badge. It is MyCal's own glyph, not a Lucide icon, so it is hand-written inline
+  SVG and must **not** be routed through the Lucide bundle. It shares its geometry with
+  `web/static/favicon.svg` — differing only in that it draws in `currentColor` to invert onto the
+  blue badge — so a change to either belongs in both.
 - **A button is either an icon or a label, never both.** Buttons that show text (Save, Delete,
   Close, Add Feed, …) stay text-only; `<Icon>` is for the buttons that would otherwise be a bare
   glyph — the top-bar actions, the nav and mini-month arrows, dialog dismiss ✕, the calendar
