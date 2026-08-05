@@ -64,4 +64,34 @@ test.describe('Calendar Views', () => {
     await expect(page.locator('.year-view')).toBeVisible();
     await expect(page.locator('.year-month')).toHaveCount(12);
   });
+
+  // The three views that scroll internally are sized by flexing to the bottom of
+  // a viewport-height .app. They used to be capped with a max-height offset that
+  // guessed the chrome above them, which left dead space under the view in some
+  // and overflowed the page in others — hence both halves of this assertion.
+  for (const [name, selector] of [
+    ['Week', '.week-view'],
+    ['Day', '.day-view'],
+    ['Schedule', '.schedule-view'],
+  ] as const) {
+    test(`${name} view fills the viewport without scrolling the page`, async ({ page }) => {
+      await page.getByRole('button', { name, exact: true }).click();
+      await expect(page.locator(selector)).toBeVisible();
+
+      const { viewBottom, innerHeight, scrollHeight, clientHeight } = await page.evaluate((sel) => {
+        const el = document.querySelector(sel)!;
+        return {
+          viewBottom: el.getBoundingClientRect().bottom,
+          innerHeight: window.innerHeight,
+          scrollHeight: document.documentElement.scrollHeight,
+          clientHeight: document.documentElement.clientHeight,
+        };
+      }, selector);
+
+      // No dead space: the view reaches .app's 8px bottom padding.
+      expect(innerHeight - viewBottom).toBeLessThanOrEqual(10);
+      // ...and does not push past it either.
+      expect(scrollHeight).toBeLessThanOrEqual(clientHeight);
+    });
+  }
 });

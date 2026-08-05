@@ -750,7 +750,9 @@ body {
     background: var(--surface);
     display: flex;
     flex-direction: column;
-    max-height: calc(100vh - 100px);
+    /* Fills the flex column .app becomes for this view; .week-body scrolls. */
+    flex: 1;
+    min-height: 0;
 }
 
 .week-header {
@@ -1032,7 +1034,9 @@ body {
     background: var(--surface);
     display: flex;
     flex-direction: column;
-    max-height: calc(100vh - 100px);
+    /* Fills the flex column .app becomes for this view; .day-view-body scrolls. */
+    flex: 1;
+    min-height: 0;
 }
 
 .day-view-header {
@@ -1233,19 +1237,33 @@ body {
     transform: translateX(-50%);
 }
 
-/* Schedule view: app becomes a flex column so the view fills remaining space */
-.app:has(.schedule-view) {
+/* The views that scroll internally (schedule, week, day) turn the app into a
+   flex column so they fill the remaining space exactly, down to .app's bottom
+   padding. Sizing them with a max-height offset instead would have to guess the
+   height of the top bar, which differs per view (the day view's title wraps to
+   a second row) and per breakpoint, and any slack left over shows up as dead
+   space under the view. */
+.app:has(.schedule-view, .week-view, .day-view) {
     display: flex;
     flex-direction: column;
     height: 100dvh;
     overflow: hidden;
 }
 
-.app:has(.schedule-view) .app-main {
+.app:has(.schedule-view, .week-view, .day-view) .app-main {
     display: flex;
     flex-direction: column;
     min-height: 0;
     overflow: hidden;
+}
+
+/* .app is the viewport here and does not scroll, so a left column taller than
+   it — enough calendars under the mini month — would be clipped with nowhere to
+   scroll. Give the column its own scrollport; .sidebar-footer stays pinned to
+   the bottom of it. */
+.app:has(.schedule-view, .week-view, .day-view) .left-sidebar {
+    overflow-y: auto;
+    min-height: 0;
 }
 
 .schedule-view {
@@ -2189,8 +2207,10 @@ body {
 
 /* Light/dark toggle and Settings, pinned to the bottom of the left column — the
    same footer MyNotes puts them in (see its .sidebar-footer). `margin-top: auto`
-   pushes it down; `position: sticky` keeps it on screen when the main content is
-   taller than the viewport, so the two buttons are always one click away. */
+   pushes it down; `position: sticky` keeps it on screen when the column scrolls
+   past it — the page in the month and year views, the left column's own
+   scrollport in the three that fill the viewport — so the two buttons are
+   always one click away. */
 .sidebar-footer {
     margin-top: auto;
     position: sticky;
