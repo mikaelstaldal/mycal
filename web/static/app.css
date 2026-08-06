@@ -1242,7 +1242,8 @@ body {
    padding. Sizing them with a max-height offset instead would have to guess the
    height of the top bar, which differs per view (the day view's title wraps to
    a second row) and per breakpoint, and any slack left over shows up as dead
-   space under the view. */
+   space under the view. A fourth view that scrolls its own body belongs in the
+   selector list of all four rules below, not just this one. */
 .app:has(.schedule-view, .week-view, .day-view) {
     display: flex;
     flex-direction: column;
@@ -1260,10 +1261,19 @@ body {
 /* .app is the viewport here and does not scroll, so a left column taller than
    it — enough calendars under the mini month — would be clipped with nowhere to
    scroll. Give the column its own scrollport; .sidebar-footer stays pinned to
-   the bottom of it. */
+   the bottom of it. Note this makes the column a scrollport horizontally too:
+   anything put in it has to fit 180px or clip itself, the way
+   .calendar-sidebar-name ellipsizes. */
 .app:has(.schedule-view, .week-view, .day-view) .left-sidebar {
     overflow-y: auto;
     min-height: 0;
+}
+
+/* That scrollport ends at .app's bottom padding, which is the gap the sticky
+   inset below is there to keep. Keeping the inset as well would double it and
+   lift the two buttons above the bottom edge of the view beside them. */
+.app:has(.schedule-view, .week-view, .day-view) .sidebar-footer {
+    bottom: 0;
 }
 
 .schedule-view {
@@ -2044,6 +2054,9 @@ body {
     border: 1px solid var(--border);
     border-radius: 6px;
     padding: 8px;
+    /* See .mini-month: the left column scrolls rather than squeezing the two
+       panels in it. */
+    flex-shrink: 0;
 }
 
 .calendar-sidebar-header {
@@ -2210,7 +2223,10 @@ body {
    pushes it down; `position: sticky` keeps it on screen when the column scrolls
    past it — the page in the month and year views, the left column's own
    scrollport in the three that fill the viewport — so the two buttons are
-   always one click away. */
+   always one click away. It keeps the page's --bg rather than the --surface of
+   the panels that now scroll under it: the footer belongs to the column, not to
+   the panel above it, and --bg is what it sits on when nothing scrolls, which
+   is the usual case. */
 .sidebar-footer {
     margin-top: auto;
     position: sticky;
@@ -2256,6 +2272,12 @@ body {
     border: 1px solid var(--border);
     border-radius: 6px;
     overflow: hidden;
+    /* `overflow: hidden` zeroes the automatic minimum size a flex item would
+       otherwise get, so in the views where the left column is height-bound this
+       would shrink away to its two borders rather than push the column into its
+       own scrollbar. .calendar-sidebar is held to its content for the same
+       reason — the column scrolls, its contents do not compress. */
+    flex-shrink: 0;
 }
 
 .mini-month-header {

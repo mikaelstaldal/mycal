@@ -67,31 +67,61 @@ test.describe('Calendar Views', () => {
 
   // The three views that scroll internally are sized by flexing to the bottom of
   // a viewport-height .app. They used to be capped with a max-height offset that
-  // guessed the chrome above them, which left dead space under the view in some
-  // and overflowed the page in others — hence both halves of this assertion.
-  for (const [name, selector] of [
-    ['Week', '.week-view'],
-    ['Day', '.day-view'],
-    ['Schedule', '.schedule-view'],
+  // guessed the chrome above them, which left dead space under one and pushed
+  // another off the bottom of the page — hence measuring the gap from both
+  // sides. These assume the two-column layout: below 600px the media query
+  // stacks the sidebar under the view and the gap is the sidebar's height.
+  for (const [name, viewSelector, bodySelector] of [
+    ['Week', '.week-view', '.week-body'],
+    ['Day', '.day-view', '.day-view-body'],
+    ['Schedule', '.schedule-view', '.schedule-view'],
   ] as const) {
     test(`${name} view fills the viewport without scrolling the page`, async ({ page }) => {
       await page.getByRole('button', { name, exact: true }).click();
-      await expect(page.locator(selector)).toBeVisible();
+      await expect(page.locator(viewSelector)).toBeVisible();
 
-      const { viewBottom, innerHeight, scrollHeight, clientHeight } = await page.evaluate((sel) => {
-        const el = document.querySelector(sel)!;
-        return {
-          viewBottom: el.getBoundingClientRect().bottom,
+      const { viewBottom, footerBottom, bodyHeight, innerHeight } = await page.evaluate(
+        ([view, body]) => ({
+          viewBottom: document.querySelector(view)!.getBoundingClientRect().bottom,
+          footerBottom: document.querySelector('.sidebar-footer')!.getBoundingClientRect().bottom,
+          bodyHeight: document.querySelector(body)!.clientHeight,
           innerHeight: window.innerHeight,
-          scrollHeight: document.documentElement.scrollHeight,
-          clientHeight: document.documentElement.clientHeight,
-        };
-      }, selector);
+        }),
+        [viewSelector, bodySelector],
+      );
 
-      // No dead space: the view reaches .app's 8px bottom padding.
+      // The view ends at .app's 8px bottom padding: no dead space under it, and
+      // no overhang past it either.
+      expect(innerHeight - viewBottom).toBeGreaterThanOrEqual(0);
       expect(innerHeight - viewBottom).toBeLessThanOrEqual(10);
-      // ...and does not push past it either.
-      expect(scrollHeight).toBeLessThanOrEqual(clientHeight);
+      // The sidebar's footer buttons line up with that same edge.
+      expect(Math.abs(footerBottom - viewBottom)).toBeLessThanOrEqual(1);
+      // What fills the view is the scrollable body, not chrome squeezing it out.
+      expect(bodyHeight).toBeGreaterThan(200);
     });
   }
+
+  // The left column is height-bound in those views, so its panels have to hold
+  // their size and let the column scroll instead. A .mini-month squeezed to its
+  // borders is the failure this pins; a short window is the cheap way to force
+  // the overflow, but a long enough calendar list does it at any height.
+  test('left sidebar scrolls rather than squeezing the mini month', async ({ page }) => {
+    await expect(page.locator('.week-view')).toBeVisible();
+    const miniHeight = () =>
+      page.evaluate(() => document.querySelector('.mini-month')!.getBoundingClientRect().height);
+
+    // Measured with room to spare, so the assertion below is against this
+    // machine's own rendering rather than a hardcoded pixel count.
+    const relaxed = await miniHeight();
+    expect(relaxed).toBeGreaterThan(0);
+
+    await page.setViewportSize({ width: 1280, height: 300 });
+    const { scrollHeight, clientHeight } = await page.evaluate(() => {
+      const sidebar = document.querySelector('.left-sidebar')!;
+      return { scrollHeight: sidebar.scrollHeight, clientHeight: sidebar.clientHeight };
+    });
+
+    expect(await miniHeight()).toBeCloseTo(relaxed, 0);
+    expect(scrollHeight).toBeGreaterThan(clientHeight);
+  });
 });
