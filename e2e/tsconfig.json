@@ -1,10 +1,38 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
+    "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
     "strict": true,
-    "noEmit": true
+    "noEmit": true,
+    // Playwright transpiles the specs without type-checking them, so this file
+    // is only worth anything if `tsc -p e2e/tsconfig.json` actually runs clean —
+    // otherwise a real error in a spec is indistinguishable from the noise and
+    // nobody looks. Measured in this tree, at target ES2020 without
+    // skipLibCheck: **100 errors, 96 of them in playwright-core's own .d.ts and
+    // 4 in tests/**. Those four were real and had been sitting there unread,
+    // which is the whole argument for this change.
+    //
+    // Count the whole output of a `-p` run. Passing file arguments makes tsc
+    // ignore this file entirely and resolve libs differently — a different
+    // program, not a shorter run of the same one — and piping through `head`
+    // reports the lines that fitted rather than the errors that exist. Both
+    // have produced a wrong number in a comment like this one before.
+    //
+    // The noise is entirely playwright-core's own types: they reference Node
+    // globals (Buffer, fs, stream, child_process) that need @types/node, and
+    // Symbol.asyncDispose, which needs a lib above ES2020. skipLibCheck drops
+    // the first set, ES2022 the second — neither weakens checking of tests/**,
+    // which was verified by breaking a spec on purpose and watching tsc catch
+    // it, not by reading the flag's documentation.
+    //
+    // @types/node is deliberately not a dependency, as in MyMail and MyNotes:
+    // it would be a second entry in a lockfile whose being single-dependency is
+    // the reason it is reviewable. MyCal is the one of the three whose suite
+    // actually reached for Node globals — `path`, `__dirname` and `Buffer`,
+    // three of the four errors above — so keeping that rule cost something
+    // here. See the comments in tests/import.spec.ts for what replaced them.
+    "skipLibCheck": true
   },
   "include": ["tests/**/*.ts"]
 }

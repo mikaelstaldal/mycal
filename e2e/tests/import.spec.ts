@@ -1,6 +1,12 @@
 import { test, expect } from '@playwright/test';
 import { clearAllEvents } from './helpers';
-import path from 'path';
+
+// Fixtures are addressed through `test.info().project.testDir` rather than
+// `path.resolve(__dirname, …)`. Both are independent of the working directory,
+// which is the property that matters; this one is also independent of Node's
+// globals, and those are the only reason this suite would need @types/node —
+// see e2e/tsconfig.json for why it does not have it.
+const fixture = (name: string) => `${test.info().project.testDir}/fixtures/${name}`;
 
 test.describe('Import', () => {
   test.beforeEach(async ({ page, request }) => {
@@ -21,7 +27,7 @@ test.describe('Import', () => {
 
     // Upload the fixture file
     const fileInput = dialog.locator('input[type="file"]');
-    await fileInput.setInputFiles(path.resolve(__dirname, 'fixtures/single-event.ics'));
+    await fileInput.setInputFiles(fixture('single-event.ics'));
 
     // Click Import Event button
     await dialog.getByRole('button', { name: 'Import Event' }).click();
@@ -57,13 +63,13 @@ test.describe('Import', () => {
     const dialog = page.locator('dialog.import-dialog');
     await expect(dialog).toBeVisible();
 
-    // Upload invalid ICS content
+    // Upload invalid ICS content. A fixture on disk rather than an inline
+    // FilePayload: that API's `buffer` field is typed `Buffer`, and naming
+    // Buffer is the other thing that would drag @types/node in. A Uint8Array
+    // type-checks in its place and does not survive the round trip — tried,
+    // and the test failed.
     const fileInput = dialog.locator('input[type="file"]');
-    await fileInput.setInputFiles({
-      name: 'invalid.ics',
-      mimeType: 'text/calendar',
-      buffer: Buffer.from('This is not valid ICS content'),
-    });
+    await fileInput.setInputFiles(fixture('invalid.ics'));
 
     await dialog.getByRole('button', { name: 'Import Event' }).click();
 

@@ -508,14 +508,24 @@ test.describe('Sidebar footer contract', () => {
       // parseRgb as something bogus and could produce a meaningless pass.
       // null means the walk found nothing opaque, which is a broken measurement
       // rather than a failing one — distinguish it from a bad colour value.
-      expect(s.backdrop, 'no opaque backdrop found above the control').not.toBeNull();
-      expect(s.backdrop).toMatch(/^rgb\(/);
+      //
+      // A throw rather than `expect(s.backdrop).not.toBeNull()`, which is what
+      // this was. Two reasons, and the type error was the smaller one: an expect
+      // does not narrow `string | null` for tsc, and it can be softened into
+      // something that records a failure and lets the run continue — into
+      // parseRgb(null), which is the meaningless pass this paragraph exists to
+      // prevent. A broken measurement should stop the test where it broke.
+      const { backdrop } = s;
+      if (backdrop === null) {
+        throw new Error('no opaque backdrop found above the control');
+      }
+      expect(backdrop).toMatch(/^rgb\(/);
       expect(s.outlineColor).toMatch(/^rgb\(/);
       expect(s.outlineStyle).toBe('solid');
       expect(parseFloat(s.outlineWidth)).toBeGreaterThanOrEqual(2);
       // Offset clear of the button's border — this is what lifts dark past 3:1.
       expect(parseFloat(s.outlineOffset)).toBeGreaterThanOrEqual(2);
-      expect(contrast(parseRgb(s.outlineColor), parseRgb(s.backdrop))).toBeGreaterThanOrEqual(3);
+      expect(contrast(parseRgb(s.outlineColor), parseRgb(backdrop))).toBeGreaterThanOrEqual(3);
     });
   }
 
