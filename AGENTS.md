@@ -193,9 +193,14 @@ Go backend with embedded Preact+JSX frontend. TypeScript source in `web/ts/`, co
     its backdrop* (1.000:1). Those two aliases are light-only deviations and exist because
     MyCal's light `--bg` is `#f3f4f6`, which is also its `--hover-bg`.
   - collapsing those aliases into one unscoped pair — caught by *the dark aliases name the
-    shared tokens*, and by nothing else. Verified: the six ratio assertions stayed green,
-    because dark `--border` and dark `--hover-bg` are both `#374151`, so the wrong token
-    resolves to the right colour today. A CSSOM read is the only thing that can see it.
+    shared tokens*, and inside this repo by nothing else: the six ratio assertions stayed
+    green when it was applied. The two halves are not equally exposed, though, and it is
+    worth knowing which is which. Deleting the **label** alias makes dark resolve
+    `--text-muted` `#d1d5db`, a genuinely different colour, so the cross-repo guard catches
+    it too (verified — `FAIL §5.1 resting text [dark]`). Deleting the **fill** alias makes
+    dark resolve `--border`, which *is* `#374151`, the same hex as `--hover-bg` — so the
+    wrong token yields the right colour and the guard passes clean (also verified). The
+    CSSOM assertion is the only check anywhere that holds that half.
   - measuring any of the above against a server you did not restart after `./build.sh` — a
     stale binary makes a broken change look fine. `./test-e2e.sh` refuses to run in that
     state; a hand-started server does not.

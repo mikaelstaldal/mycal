@@ -1657,11 +1657,16 @@ body {
     /* No room for the sidebar's calendars, but the footer's two buttons still
        have to be reachable — the column collapses to just the footer, stacked
        below the main content. The footer keeps its negative margin-left here,
-       so the buttons stay 8px from the window's left edge while the column's
-       right edge stays where the narrower gutter puts it: 8px on the left,
-       16px on the right. That asymmetry is deliberate — the MySuite rule is
-       about the left edge, which is the one the eye and the other two apps
-       line up on.
+       so the buttons stay 8px from the window's left edge. The footer itself is
+       full-bleed on both sides here — measured 0→375 at a 375px viewport —
+       because the rule below cancels .app's padding on the right as well. What
+       matters for the contract is the buttons' 8px on the left, which is the
+       edge the eye and the other two apps line up on.
+
+       (This paragraph claimed "8px on the left, 16px on the right, and that
+       asymmetry is deliberate" until the measurement above was taken. It was
+       describing the layout as it would be *without* the margin-right below,
+       which has been there the whole time.)
 
        The *vertical* half of that rule does not survive this breakpoint: .app's
        padding drops to 4px, so the buttons sit 4px from the window's bottom
@@ -1690,11 +1695,12 @@ body {
         position: static;
         margin-top: 0;
         /* Full-bleed on both sides here, so the band ends on the window rather
-           than in mid-air, and no border is needed to terminate it — that border
-           only earns its place in the two-column layout, where the footer stops
-           at the column's edge with page either side. */
+           than in mid-air. There is no border-right to cancel any more — the
+           base rule's went with the fill in 8719695, so `border-right: none`
+           lived on here as a no-op overriding nothing. Removed rather than kept
+           "in case": a cancellation with nothing to cancel reads as evidence
+           that the thing it names is still there. */
         margin-right: calc(-1 * var(--app-padding-x));
-        border-right: none;
     }
 }
 
@@ -2411,9 +2417,12 @@ body {
    deliberate divergence from the MySuite spec, made on the owner's instruction
    after seeing the footer in Firefox: the two controls sit directly on the left
    column's background, and the three apps are accepted to differ in the colour
-   immediately behind them. §5.3 of the shared spec pins that backdrop to
-   --surface, so this repo no longer satisfies it and the cross-repo guard
-   reports MyCal as a disagreement. That is the sanctioned state, not drift.
+   immediately behind them. §5.3 used to pin that backdrop to --surface for all
+   three; it was withdrawn and rewritten to record a backdrop per app and theme,
+   so --bg here is MyCal's *recorded* value rather than an unmet requirement. The
+   cross-repo guard is green on it. The obligation did not lapse with the colour:
+   the backdrop must still be opaque, still written down before it is changed,
+   and everything drawn on it still verified against it.
 
    THE DECLARATION IS STILL LOAD-BEARING, AND NOW IT LOOKS REDUNDANT. Painting
    --bg is not the same as painting nothing. This footer is sticky, and in the
@@ -2579,8 +2588,9 @@ body {
 
    --surface was the other candidate and was rejected upstream, not here. It is
    the arithmetically better one — #ffffff on #f3f4f6 is the mandated pair with
-   the roles swapped, and contrast is symmetric, so it preserves the suite's
-   1.101:1 exactly where #e5e7eb makes MyCal a third figure. It lost on two
+   the roles swapped, and contrast is symmetric, so it preserves 1.101:1 exactly
+   where #e5e7eb makes MyCal a third figure. 1.101 is MyCal's and MyMail's figure,
+   not the suite's — MyNotes ships 1.053, so there was never one number here. It lost on two
    non-numeric grounds: a white fill paints a small white box in the footer the
    owner had just asked to stop being a white box, and it would make MyCal's hover
    *lighten* where MyMail's and MyNotes' darken — a difference in how the control
@@ -2617,9 +2627,10 @@ body {
    still clear. Light fell (5.169 → 4.696) and dark rose (3.991 → 4.823), so the
    binding case is no longer dark. It also means MyCal's dark margin is no longer
    the suite's: MyMail and MyNotes still sit at 3.991 against --surface, roughly
-   one point over the 3:1 floor with none to spend, and this repo's 1.823 is its
-   own. Do not copy this number back into the shared spec, and do not treat the
-   extra room here as room the other two have.
+   one point of margin over the 3:1 floor with none to spend, where this repo now
+   has 1.823 points of margin. Both of those are margins, not ratios — MyCal's
+   ratio is the 4.823:1 above. Do not copy this repo's figure back into the
+   shared spec, and do not treat the extra room here as room the other two have.
 
    It also removes the forced-colors problem rather than patching it: an outline
    is painted under forced colours, a box-shadow is not. Do not add `outline:

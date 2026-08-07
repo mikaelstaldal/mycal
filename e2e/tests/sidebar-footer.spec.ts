@@ -430,17 +430,26 @@ test.describe('Sidebar footer contract', () => {
   // interval, and throw if it never settles. A timeout that returned the last
   // value read would be a measurement of the transition reported as a
   // measurement of the colour — the same failure, quieter.
+  // Two equal reads are necessary but not sufficient on their own: the transition
+  // interpolates in 8-bit channels, so a slow segment can serialise to the same
+  // rgb() twice in a row while still running, and the poll would return a colour
+  // that is on its way somewhere. So also require that no transition is in flight
+  // — getAnimations() reports CSS transitions, and an element with none pending
+  // returns an empty list, which is the ordinary case here.
   const settledStyle = async (page: Page, selector: string, prop: 'color' | 'backgroundColor') => {
     const read = () =>
       page.locator(selector).first().evaluate(
-        (el, p) => getComputedStyle(el)[p as 'color' | 'backgroundColor'],
+        (el, p) => ({
+          value: getComputedStyle(el)[p as 'color' | 'backgroundColor'],
+          running: el.getAnimations().length,
+        }),
         prop,
       );
     let prev = await read();
     for (let i = 0; i < 40; i++) {
       await page.waitForTimeout(25);
       const now = await read();
-      if (now === prev) return now;
+      if (now.value === prev.value && now.running === 0) return now.value;
       prev = now;
     }
     throw new Error(`${prop} of ${selector} never settled`);
@@ -519,9 +528,12 @@ test.describe('Sidebar footer contract', () => {
   for (const dark of [false, true]) {
     const mode = dark ? 'dark' : 'light';
 
-    // MyCal diverges from the shared contract here, on the owner's instruction:
+    // MyCal's backdrop is a recorded deviation, made on the owner's instruction:
     // the controls sit on the page background rather than on a --surface panel,
-    // and the three apps are accepted to differ in this one colour. Asserted
+    // and the three apps are accepted to differ in this one colour. The shared
+    // rule was rewritten to record a backdrop per app rather than name one for
+    // all three, so this is the contract's value for MyCal, not a departure from
+    // it — the cross-repo guard is green on it. Asserted
     // against the token rather than a literal so the palette stays the single
     // source of the value — the ratios below are what pin the value itself.
     test(`controls sit on the page background, not a panel, in ${mode} mode`, async ({ page }) => {

@@ -74,22 +74,45 @@ done
 # Prove the server is serving the build under test. A green suite run against a
 # stale binary is not evidence, and it fails in the reassuring direction: the
 # tests pass, describing a version of the app that is not the one on disk.
-# Hash the JS as well as the CSS: a change confined to web/ts/** leaves app.css
-# byte-identical, so checking only the stylesheet would pass a server that is
-# serving stale JavaScript — the same failure this guard exists to prevent,
-# entered by a different door.
-for asset in app.css app.js; do
+#
+# Every emitted asset, not a sample of them. This used to hash app.css and
+# app.js alone, on the reasoning that a change to web/ts/** shows up in the JS —
+# but tsc emits one module per source file, and there are ~40 of them under
+# web/static/. Editing views/MonthView.ts leaves BOTH hashed files byte-identical,
+# so the check passed a server serving 39 stale modules. A guard that samples the
+# assets is not a guard against staleness; it is a guard against staleness in the
+# two files nobody was going to edit alone.
+#
+# vendor/ is excluded because it is committed rather than emitted, and the demo
+# worker's output is included — it is served the same way and goes stale the
+# same way.
+stale=0
+checked=0
+while IFS= read -r path; do
+    asset=${path#web/static/}
     if ! served=$(curl -sf "http://localhost:${PORT}/${asset}" | md5sum | cut -d' ' -f1); then
         echo "Could not fetch /${asset} from the test server." >&2
         exit 1
     fi
-    ondisk=$(md5sum "web/static/${asset}" | cut -d' ' -f1)
+    ondisk=$(md5sum "$path" | cut -d' ' -f1)
     if [ "$served" != "$ondisk" ]; then
         echo "Server is serving a stale ${asset} (served $served, on disk $ondisk)." >&2
-        echo "The binary embeds web/static/ — rebuild with ./build.sh and try again." >&2
-        exit 1
+        stale=$((stale + 1))
     fi
-done
+    checked=$((checked + 1))
+done < <(find web/static \( -name '*.js' -o -name '*.css' \) -not -path '*/vendor/*' | sort)
+
+# A find that matches nothing would report zero stale files and read as a pass —
+# the empty-set failure this suite has been bitten by before.
+if [ "$checked" -eq 0 ]; then
+    echo "Freshness check found no assets to compare — is web/static/ built?" >&2
+    exit 1
+fi
+if [ "$stale" -gt 0 ]; then
+    echo "${stale} of ${checked} assets are stale." >&2
+    echo "The binary embeds web/static/ — rebuild with ./build.sh and try again." >&2
+    exit 1
+fi
 
 cd e2e
 # `playwright-test` is a local wrapper for exactly this command and is the
