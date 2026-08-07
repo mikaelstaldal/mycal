@@ -56,7 +56,31 @@ if (exec 3<>"/dev/tcp/127.0.0.1/${PORT}") 2>/dev/null; then
 fi
 
 # -public-url must match the baseURL origin in e2e/playwright.config.ts, or CSRF
-# rejects every mutating request with 403 and every write test fails.
+# rejects mutating requests with 403.
+#
+# **Not "every mutating request", and not "every write test fails"**, which is
+# what this said until it was measured. go-server-common's csrf.Middleware allows
+# a non-GET carrying *neither* Origin nor Referer — "native client, allow", in
+# its own doc comment (v1.8.0, csrf/csrf.go). Measured here, against a server
+# started with a deliberately mismatched -public-url:
+#
+#     curl, no Origin and no Referer      201
+#     curl, Origin: http://localhost:PORT 403
+#     curl, Referer only                  403
+#     curl, Origin: null                  403
+#     Playwright `request` fixture        201
+#     in-page fetch()                     403
+#
+# The last two are the ones that decide it. Everything this suite does through
+# the `request` fixture — clearAllEvents in the helpers, every API-level setup
+# step — sails through a mismatched flag; anything the browser issues from the
+# page is stamped with the page's Origin and is rejected. So the flag is still
+# required, and it would bite the moment a spec clicked Save rather than posting
+# its fixture.
+#
+# The wrong rationale mattered because it predicts a 403 for exactly the calls
+# that are in fact allowed: someone debugging a write failure would come here,
+# see the flag already correct, and rule out the right cause.
 "$BINARY" -port "$PORT" -data "$DATA_DIR" -public-url "http://localhost:${PORT}" &
 SERVER_PID=$!
 
