@@ -136,17 +136,21 @@ End-to-end tests use [Playwright](https://playwright.dev/) and live in the `e2e/
 
 ```bash
 # Install dependencies (first time)
-cd e2e && npm install && npx playwright install chromium && cd ..
+cd e2e && npm ci && npx playwright install chromium && cd ..
 
-# Start the server on port 8089
-go build -tags netgo -v . && ./mycal -port 8089 -data /tmp/ &
+# Build, then run. test-e2e.sh starts the server itself on a fresh database,
+# checks it is serving the assets you just built, and tears both down after.
+./build.sh && ./test-e2e.sh
 
-# Run tests
-cd e2e && bash playwright-test
-
-# Run headed (visible browser)
-cd e2e && bash playwright-test --headed
+# It forwards its arguments to Playwright
+./test-e2e.sh --headed
+./test-e2e.sh tests/sidebar-footer.spec.ts
 ```
+
+Start the server by hand only if you have a reason to. The binary embeds `web/static/`, so one
+started before a rebuild serves the old assets and the tests then measure something other than
+what you changed; and `-public-url` has to match the tests' base URL (`http://localhost:8089`)
+or CSRF rejects every write with a 403. `test-e2e.sh` handles both.
 
 ## Tech Stack
 

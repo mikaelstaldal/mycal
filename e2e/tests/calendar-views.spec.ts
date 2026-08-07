@@ -120,11 +120,12 @@ test.describe('Calendar Views', () => {
     await page.setViewportSize({ width: 1280, height: 300 });
     // .sidebar-content is the scrollport, not .left-sidebar: the footer is its
     // sibling so that a scrollbar here cannot narrow the footer's buttons.
-    const { scrollHeight, clientHeight, footerInsideScrollport } = await page.evaluate(() => {
+    const { scrollHeight, clientHeight, footerExists, footerInsideScrollport } = await page.evaluate(() => {
       const content = document.querySelector('.sidebar-content')!;
       return {
         scrollHeight: content.scrollHeight,
         clientHeight: content.clientHeight,
+        footerExists: !!document.querySelector('.sidebar-footer'),
         footerInsideScrollport: content.contains(document.querySelector('.sidebar-footer')!),
       };
     });
@@ -137,6 +138,10 @@ test.describe('Calendar Views', () => {
     // out-measure the column thanks to its negative margin) and has no teeth at
     // all under the overlay scrollbars this headless Chromium uses. Containment
     // is the actual invariant and it is deterministic on every platform.
+    // Node.contains(null) is false, so without this the assertion below would
+    // pass if the footer vanished entirely — absent and outside-the-scrollport
+    // are different results and only one of them is the invariant.
+    expect(footerExists).toBe(true);
     expect(footerInsideScrollport).toBe(false);
   });
 

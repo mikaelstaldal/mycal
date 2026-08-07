@@ -63,6 +63,12 @@ test.describe('Sidebar footer contract', () => {
     // width rather than hardcoded: a literal would pin this machine's system-ui
     // metrics, which the CSS comment warns are not portable.
     expect(settings.x).toBeCloseTo(theme.x + theme.width + 6, 0);
+
+    // The footer's own left edge, not just the buttons'. The CSS warns that
+    // giving .app a border-left would clip the footer while the buttons' 8px
+    // still measured correct — this is the assertion that would catch it.
+    const footer = (await page.locator('.sidebar-footer').boundingBox())!;
+    expect(footer.x).toBeCloseTo(0, 0);
   });
 
   // B has to be the same in every view. Month and Year lay out differently from
@@ -384,7 +390,30 @@ test.describe('Sidebar footer contract', () => {
         outlineWidth: cs.outlineWidth,
         outlineOffset: cs.outlineOffset,
         outlineColor: cs.outlineColor,
-        backdrop: getComputedStyle(document.querySelector('.sidebar-footer')!).backgroundColor,
+        // The colour actually painted behind the control: walk up to the first
+        // ancestor with a non-transparent background. Not the footer's own
+        // background — that is right in MyCal only because the footer happens to
+        // declare one, and it would read rgba(0,0,0,0) in MyNotes, whose footer
+        // is transparent and inherits its sidebar's paint. The contract (§5.3)
+        // is about the resolved backdrop, not about which element supplies it,
+        // so this is the method it names. Same number here either way; this is
+        // the version that is not carrying a MyCal-shaped assumption.
+        // Starts at the PARENT: an element's own background is not its backdrop.
+        // Starting at the button is correct today only because these carry
+        // `background: none`, so the loop walks straight past them — nothing in
+        // the contract guarantees that. Used in a hover context it would return
+        // the button's own --hover-bg as the "backdrop" and every figure derived
+        // from it would be wrong while looking entirely plausible.
+        backdrop: (() => {
+          for (let n: Element | null = el.parentElement; n; n = n.parentElement) {
+            const c = getComputedStyle(n).backgroundColor;
+            if (c && c !== 'rgba(0, 0, 0, 0)' && c !== 'transparent') return c;
+          }
+          // Distinguishable from a colour, deliberately: a walk that finds
+          // nothing must not fall through to a default, or it becomes a run
+          // that measured nothing and looks like a pass.
+          return null;
+        })(),
       };
     });
   };
@@ -401,6 +430,9 @@ test.describe('Sidebar footer contract', () => {
 
       // Guard both parses: an rgba()/oklch()/color() value would fall out of
       // parseRgb as something bogus and could produce a meaningless pass.
+      // null means the walk found nothing opaque, which is a broken measurement
+      // rather than a failing one — distinguish it from a bad colour value.
+      expect(s.backdrop, 'no opaque backdrop found above the control').not.toBeNull();
       expect(s.backdrop).toMatch(/^rgb\(/);
       expect(s.outlineColor).toMatch(/^rgb\(/);
       expect(s.outlineStyle).toBe('solid');

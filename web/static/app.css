@@ -1630,16 +1630,29 @@ body {
     .app-layout {
         flex-direction: column;
     }
-    .left-sidebar {
+    /* `.app-layout` qualifies these only to out-specify the base rules, which
+       sit later in the file — at equal specificity source order wins and this
+       whole block was silently doing nothing but the `display: none` below.
+       That was harmless while the footer painted --bg with no right border. It
+       stopped being harmless when it started painting --surface: the column
+       stayed 200px, so the footer rendered as a white stub two-thirds across a
+       phone screen with its right border hanging in mid-air. */
+    .app-layout .left-sidebar {
         width: auto;
         order: 1;
     }
     .left-sidebar > :not(.sidebar-footer) {
         display: none;
     }
-    .sidebar-footer {
+    .app-layout .sidebar-footer {
         position: static;
         margin-top: 0;
+        /* Full-bleed on both sides here, so the band ends on the window rather
+           than in mid-air, and no border is needed to terminate it — that border
+           only earns its place in the two-column layout, where the footer stops
+           at the column's edge with page either side. */
+        margin-right: calc(-1 * var(--app-padding-x));
+        border-right: none;
     }
 }
 
@@ -2350,10 +2363,23 @@ body {
    `flex: 1` instead there is no free space left and the footer simply follows
    it. `position: sticky` keeps it on screen while the *page* scrolls in the
    month and year views — the three that fill the viewport scroll inside
-   .sidebar-content, which the footer is no longer part of. It keeps the page's
-   --bg rather than the --surface of the panels that scroll beside it: the
-   footer belongs to the column, not to the panel above it, and --bg is what it
-   sits on when nothing scrolls, which is the usual case.
+   .sidebar-content, which the footer is no longer part of.
+
+   It paints --surface, and that is a contract requirement rather than a local
+   choice: what has to be --surface is the colour resolved immediately behind
+   the two buttons, whichever element supplies it. MyNotes' footer is
+   transparent and inherits it from the sidebar panel; MyCal's and MyMail's
+   declare it, because a sticky footer needs an opaque background anyway or the
+   content scrolling under it shows through. Two rules meet in this one
+   declaration.
+
+   It used to paint --bg, on the reasoning that the footer belongs to the column
+   rather than to the panels above it. That was wrong on contrast: --bg is
+   #f3f4f6 in light, and the resting label at #6b7280 measured 4.393:1 against
+   it where WCAG 1.4.3 wants 4.5:1 for normal text. It also made the hover fill
+   invisible, since the mandated fill is #f3f4f6 too — the same colour painting
+   over itself. --surface fixes both at once (4.834:1, and the fill becomes
+   visible at 1.101:1), which is why the two defects were fixed together.
 
    The padding is 8px on three sides and zero on the bottom, and it is measured
    against the WINDOW, not this column — see the margin-left comment below and
@@ -2394,7 +2420,14 @@ body {
        down even though the buttons must. */
     padding: 8px 8px 0;
     border-top: 1px solid var(--border);
-    background: var(--bg);
+    background: var(--surface);
+    /* The band is full-bleed to the window on the left but stops at the column's
+       right edge, so without this it terminates against the page background with
+       no edge — invisible while it painted --bg, a visible seam now that it does
+       not. MyMail's and MyNotes' sidebars carry a border-right and their footers
+       span to it, so a bordered right edge is what the other two already show.
+       Costs 1px of the row's slack (26 → 25) and moves neither L nor B. */
+    border-right: 1px solid var(--border);
 }
 
 /* nowrap: the two are content-sized and must stay on one row. See the width
@@ -2469,19 +2502,16 @@ body {
     transition: background 0.12s, color 0.12s, border-color 0.12s;
 }
 
-/* Two collisions to know about here, both real, neither a mistake.
-
-   The hover border is deliberately not the resting --border: in the dark theme
+/* The hover border is deliberately not the resting --border: in the dark theme
    --hover-bg and --border are the same #374151, so keeping it would erase the
-   outline exactly when the button lights up.
+   button's outline exactly when it lights up.
 
-   And in the *light* theme --hover-bg is #f3f4f6, which is also --bg — what the
-   footer paints. So the background declaration below is a no-op in light mode:
-   the fill is drawn, it is simply the colour already there. Hover is carried by
-   the border and text colour, which both change in both themes. The fill is
-   kept because the MySuite spec mandates this colour and the dark theme does
-   need it; do not "fix" it by picking a different token here without changing
-   MyMail and MyNotes too. */
+   The fill used to be invisible in light — --hover-bg is #f3f4f6, and so was
+   the --bg the footer painted, so it drew that colour over itself. The footer
+   paints --surface now and the fill measures 1.101:1 against it, which is
+   faint but real. Do not change this colour to strengthen it without changing
+   MyMail and MyNotes: it is mandated, and the fill being weak in all three is
+   recorded upstream as a known limitation rather than a MyCal defect. */
 .sidebar-footer-btn:hover {
     background: var(--hover-bg);
     color: var(--text);
@@ -2496,7 +2526,12 @@ body {
    neighbour is --border, and in the dark theme --primary vs --border is
    2.803:1 — a ceiling no amount of opacity can lift. Offsetting by 2px moves
    the indicator clear of the border so both of its neighbours are the footer's
-   own --bg, measured 4.696:1 light and 4.823:1 dark.
+   own --surface, measured 5.169:1 light and 3.991:1 dark.
+
+   Dark has about one point of headroom over the 3:1 floor, and that figure is
+   now the same in all three apps — so it is the suite's margin, not MyCal's,
+   and there is none to spend. Anything that would reduce it is a change to the
+   shared contract, not a local one.
 
    It also removes the forced-colors problem rather than patching it: an outline
    is painted under forced colours, a box-shadow is not. Do not add `outline:
