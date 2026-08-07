@@ -74,29 +74,34 @@ node --test web/ts/*.test.mjs            # all of them
 
 ## E2E Tests
 
-Playwright end-to-end tests live in `e2e/`. The server must be running on port 8089 before running them.
+Playwright end-to-end tests live in `e2e/`. **Run them with `./build.sh && ./test-e2e.sh`** — that
+script is what CI runs, and it starts the server itself on a fresh database, checks the server is
+actually serving the assets on disk, and tears both down afterwards. It takes the same arguments
+as `playwright test`, so `./test-e2e.sh tests/sidebar-footer.spec.ts -g "focus"` works.
 
-**Restart the server after every rebuild.** `web/embed.go` bakes `web/static/` into the binary, so
-a running `./mycal` keeps serving the CSS and JS it started with — `./build.sh` alone changes
-nothing it serves. A stale server makes the suite pass or fail against assets that are not the ones
-you edited, silently. When a measurement disagrees with the source, check this first:
+Prefer it over starting a server by hand. The two things it exists to prevent are easy to hit and
+neither announces itself:
 
-```bash
-curl -s http://localhost:8089/app.css | md5sum   # must match
-md5sum web/static/app.css
-```
+- **A stale server.** `web/embed.go` bakes `web/static/` into the binary, so a running `./mycal`
+  keeps serving the CSS and JS it started with — `./build.sh` alone changes nothing it serves. The
+  suite then passes or fails against assets that are not the ones you edited. When a measurement
+  disagrees with the source, check this first:
+  ```bash
+  curl -s http://localhost:8089/app.css | md5sum   # must match
+  md5sum web/static/app.css
+  ```
+- **A stale database, or someone else's server on the port.** Reusing a data directory is how an
+  "empty" run silently becomes a run against whatever the last one left behind; and if something
+  already holds 8089, a hand-started server exits on bind failure while the tests run happily
+  against the squatter.
 
-```bash
-# Start server for E2E tests (use a separate DB to avoid interference)
-# -public-url must match the test baseURL origin (http://localhost:8089) or CSRF
-# rejects every mutating request (POST/PATCH/DELETE) with 403 and those tests fail.
-./mycal -port 8089 -public-url http://localhost:8089 -data /tmp/claude/ &
+If you do start one by hand, `-public-url` must match the test baseURL origin
+(`http://localhost:8089`) or CSRF rejects every mutating request with 403 and every write test
+fails.
 
-# Run tests
-cd e2e && playwright-test
-```
-
-*Important:* Use the `playwright-test` command to run the e2e tests and nothing else.
+*Important:* interactively, use the `playwright-test` command from `e2e/` and nothing else —
+do not invent variants. `test-e2e.sh` falls back to `./node_modules/.bin/playwright test` when
+that wrapper is absent, which is the case in CI; that fallback is sanctioned and is the only one.
 
 ## Verification
 
@@ -150,32 +155,48 @@ Go backend with embedded Preact+JSX frontend. TypeScript source in `web/ts/`, co
   from the shared spec on purpose: the person about to edit this CSS is exactly the person who
   may never open a pointer.
 
-  **Edits that break it silently.** Each of these is an ordinary tidy-up, each leaves the
-  build and the Go tests green, and none of them fails anything unless a person runs the
-  Playwright suite by hand:
-  - normalising `font-size: 0.80rem` to `0.8rem` — a formatter will do this unprompted, and
-    the computed value is identical, so only a cross-repo `grep` would ever notice
+  **Edits that break it silently.** Each is an ordinary tidy-up that leaves `./build.sh` and
+  the Go tests green. Each was applied deliberately to find out which assertion fires, so the
+  annotations below are measured rather than assumed:
+  - normalising `font-size: 0.80rem` to `0.8rem` — **nothing catches this.** The computed and
+    serialised values are identical, so no test can distinguish them; the shared spec says so
+    too (§2.1). A convention held by review, not by CI.
   - deleting a "redundant" `flex-shrink: 0`, `text-align: center`, `font-weight: 400` or
-    `font-style: normal` from `.sidebar-footer-btn` — they are no-ops *here* and pinned
-    precisely because the three apps arrive at them by three different routes
-  - adding `font-weight` (or any `font` shorthand) to a generic `button` rule, which would
-    move these controls in this repo only
-  - folding `.sidebar-footer-btn` into a shared icon-button class
+    `font-style: normal` — caught by *the pinned declarations are actually declared*, which
+    reads the rule out of the CSSOM. It has to: the first three are no-ops in **this** repo,
+    so nothing about MyCal's rendering changes when they go missing.
+  - folding `.sidebar-footer-btn` into a shared icon-button class — caught by the same test,
+    which looks up the rule by selector
   - restoring `outline: none` on `:focus-visible`, or shrinking the 2px outline or its offset
-  - renaming `.sidebar-footer-btn` or changing `title="Settings"` — `e2e/tests/` pins both
-  - changing `--sidebar-width` without re-measuring `.brand`, which shares it
-  - removing `.sidebar-footer`'s negative `margin-left`, or giving `.app` a left border —
-    either one moves or clips the footer while the buttons' own 8px still measures correct
-  - measuring any of the above against a server you did not restart after `./build.sh`
-    (see E2E Tests above) — a stale binary makes a broken change look fine
+    — caught by the three focus tests
+  - changing the padding, border, radius or gap — caught by *the pinned declarations resolve
+    to the contract values*
+  - renaming `.sidebar-footer-btn` or changing `title="Settings"` — every test in
+    `sidebar-footer.spec.ts` locates through one or the other, so this fails loudly
+  - changing `--sidebar-width` without re-measuring `.brand`, which shares it — caught by
+    `calendar-views.spec.ts`, which pins Reload's right edge to the column's
+  - removing `.sidebar-footer`'s negative `margin-left` — caught by the (8, 8) tests. Giving
+    `.app` a `border-left` would clip the footer instead, and **nothing catches that**: the
+    buttons' own 8px still measures correct.
+  - measuring any of the above against a server you did not restart after `./build.sh` — a
+    stale binary makes a broken change look fine. `./test-e2e.sh` refuses to run in that
+    state; a hand-started server does not.
 
   What is MyCal's own, and therefore lives here:
   - `e2e/tests/sidebar-footer.spec.ts` is this repo's half of the contract, and the only
-    machine-checkable statement of it anywhere — MyMail and MyNotes have no e2e suite at all.
-    **It does not run in CI.** `.github/workflows/main.yml` runs `./build.sh` only, and
-    `build.sh` does not invoke Playwright, so nothing checks this contract unless a person
-    runs it. Treat "the tests pass" as a claim someone has to make deliberately, not one CI
-    makes for you. Read the file alongside the spec; it encodes the parts that are checkable.
+    automated check it has anywhere — MyMail and MyNotes have no e2e suite at all. It runs in
+    CI (`.github/workflows/main.yml` → `./test-e2e.sh`) and gates publishing. Note what that
+    does and does not mean: the workflow triggers on `push` to `main`, so a breaking commit is
+    already on `main` by the time the suite is red — what the gate prevents is a broken
+    contract reaching Pages or the rolling release, not the commit landing. Read the suite
+    alongside the spec; the annotations above say which assertion covers what.
+  - Two assertions do most of that work and they check different things: one reads the
+    *computed* values, the other reads the *declarations* out of the CSSOM. The second exists
+    because MyCal's `<button>` already inherits `font-weight: 400` and `text-align: center`
+    from the UA, so deleting those pins changes nothing observable **here** while breaking the
+    match with MyNotes, whose `button { font: inherit }` sends it to `body` instead. The app
+    where a value is already right is the app whose rendering cannot detect the pin going
+    missing.
   - App-wide focus indicators are a known deferred gap, not an oversight — see the shared
     spec's open-items section. `.search-input:focus` still carries the `outline: none` pattern
     this contract removed from the footer, and its own rule says so.

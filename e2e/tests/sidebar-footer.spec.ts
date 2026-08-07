@@ -29,7 +29,11 @@ test.describe('Sidebar footer contract', () => {
   // By attribute rather than `.first()`: the spec mandates toggle-then-Settings,
   // but a positional locator would silently repoint if a third control ever
   // joined the row, and every assertion here would keep passing about the wrong
-  // element.
+  // element. This matches in *both* theme states because Preact renders
+  // aria-pressed={false} as the string "false" rather than dropping the
+  // attribute — true of hyphenated attribute names, not of every prop. If that
+  // ever changes this selector starts missing half the time rather than
+  // failing outright, so it is worth knowing why it works.
   const THEME = '.sidebar-footer-btn[aria-pressed]';
 
   const boxes = async (page: Page) => ({
@@ -110,6 +114,107 @@ test.describe('Sidebar footer contract', () => {
       await expect(page.locator(SETTINGS)).toBeVisible();
     });
   }
+
+  // ---------------------------------------------------------------------------
+  // The pinned declarations
+  // ---------------------------------------------------------------------------
+
+  // Geometry assertions only catch a violation that *moves something*, and
+  // several of the contract's pins deliberately do not: `font-weight: 400` is
+  // what the UA button rule already gives, `flex-shrink: 0` does nothing until
+  // the row is under pressure, `text-align: center` is a button's default. They
+  // are pinned because the three apps reach those values by three different
+  // routes and an ordinary edit in one repo would break the match invisibly —
+  // which means the geometry tests cannot be what protects them.
+  //
+  // So assert the computed values themselves. This is font-independent and
+  // platform-independent: it reads what the cascade resolved, not what the text
+  // measured. It is also the only assertion here that would survive the labels
+  // changing.
+  test('the pinned declarations resolve to the contract values', async ({ page }) => {
+    for (const selector of [THEME, SETTINGS]) {
+      const cs = await page.locator(selector).evaluate(el => {
+        const s = getComputedStyle(el);
+        return {
+          fontSize: s.fontSize, lineHeight: s.lineHeight, fontWeight: s.fontWeight,
+          fontStyle: s.fontStyle, textAlign: s.textAlign, flexShrink: s.flexShrink,
+          whiteSpace: s.whiteSpace, display: s.display, borderTopWidth: s.borderTopWidth,
+          borderRadius: s.borderTopLeftRadius, padding: s.padding, columnGap: s.columnGap,
+        };
+      });
+      // 0.80rem at a 16px root, on a 1.5 line box — the 29.2px acceptance height
+      // is these two plus 8px padding and 2px border.
+      expect(cs.fontSize, selector).toBe('12.8px');
+      expect(cs.lineHeight, selector).toBe('19.2px');
+      expect(cs.padding, selector).toBe('4px 8px');
+      expect(cs.borderTopWidth, selector).toBe('1px');
+      expect(cs.borderRadius, selector).toBe('6px');
+      expect(cs.columnGap, selector).toBe('6px');
+      // The rule says `inline-flex`; the computed value is `flex` because a flex
+      // item's display is blockified. Asserting the computed value, not the
+      // declaration — they legitimately differ here.
+      expect(cs.display, selector).toBe('flex');
+      expect(cs.whiteSpace, selector).toBe('nowrap');
+      // The three pinned inherited properties, and the one that keeps overflow
+      // rather than a silent squeeze as the failure mode.
+      expect(cs.fontWeight, selector).toBe('400');
+      expect(cs.fontStyle, selector).toBe('normal');
+      expect(cs.textAlign, selector).toBe('center');
+      expect(cs.flexShrink, selector).toBe('0');
+    }
+
+    // The row itself.
+    const row = await page.locator('.sidebar-footer-actions').evaluate(el => {
+      const s = getComputedStyle(el);
+      return { display: s.display, flexWrap: s.flexWrap, columnGap: s.columnGap };
+    });
+    expect(row.display).toBe('flex');
+    expect(row.flexWrap).toBe('nowrap');
+    expect(row.columnGap).toBe('6px');
+  });
+
+  // Some pins cannot be checked by computed value at all, because in MyCal the
+  // UA default already equals the contract value: `font-weight: 400` and
+  // `text-align: center` are what a <button> computes with or without our rule.
+  // Deleting either changes nothing here — and would change everything in
+  // MyNotes, whose `button { font: inherit }` means its buttons take those from
+  // `body` instead. That asymmetry is exactly why the contract pins them, and it
+  // means the app where the value is already right is the app whose rendering
+  // cannot detect the pin going missing.
+  //
+  // So read the rule itself out of the CSSOM. This asserts the declaration is
+  // present, not merely that the result looks right.
+  test('the pinned declarations are actually declared, not inherited', async ({ page }) => {
+    const declared = await page.evaluate(() => {
+      for (const sheet of [...document.styleSheets]) {
+        let rules: CSSRuleList;
+        try { rules = sheet.cssRules; } catch { continue; } // cross-origin
+        for (const rule of [...rules]) {
+          if (rule instanceof CSSStyleRule && rule.selectorText === '.sidebar-footer-btn') {
+            return {
+              fontWeight: rule.style.fontWeight,
+              fontStyle: rule.style.fontStyle,
+              textAlign: rule.style.textAlign,
+              flexShrink: rule.style.flexShrink,
+              whiteSpace: rule.style.whiteSpace,
+              fontFamily: rule.style.fontFamily,
+            };
+          }
+        }
+      }
+      return null;
+    });
+
+    expect(declared, '.sidebar-footer-btn rule not found in any stylesheet').not.toBeNull();
+    expect(declared!.fontWeight).toBe('400');
+    expect(declared!.fontStyle).toBe('normal');
+    expect(declared!.textAlign).toBe('center');
+    expect(declared!.flexShrink).toBe('0');
+    expect(declared!.whiteSpace).toBe('nowrap');
+    // Inheriting is itself the contract here — a literal stack would stop these
+    // controls following the app's own typography.
+    expect(declared!.fontFamily).toBe('inherit');
+  });
 
   // ---------------------------------------------------------------------------
   // Size and stability
@@ -235,7 +340,7 @@ test.describe('Sidebar footer contract', () => {
 
     // Still usable, not just present.
     await page.locator(SETTINGS).click();
-    await expect(page.locator('dialog')).toBeVisible();
+    await expect(page.locator('dialog.settings-dialog')).toBeVisible();
   });
 
   // ---------------------------------------------------------------------------
