@@ -76,6 +76,16 @@ node --test web/ts/*.test.mjs            # all of them
 
 Playwright end-to-end tests live in `e2e/`. The server must be running on port 8089 before running them.
 
+**Restart the server after every rebuild.** `web/embed.go` bakes `web/static/` into the binary, so
+a running `./mycal` keeps serving the CSS and JS it started with — `./build.sh` alone changes
+nothing it serves. A stale server makes the suite pass or fail against assets that are not the ones
+you edited, silently. When a measurement disagrees with the source, check this first:
+
+```bash
+curl -s http://localhost:8089/app.css | md5sum   # must match
+md5sum web/static/app.css
+```
+
 ```bash
 # Start server for E2E tests (use a separate DB to avoid interference)
 # -public-url must match the test baseURL origin (http://localhost:8089) or CSRF
@@ -115,6 +125,32 @@ Go backend with embedded Preact+JSX frontend. TypeScript source in `web/ts/`, co
   (`--surface`, `--hover-bg`, `--tag-bg`, …) are derived from the same Tailwind ramp. `--text` is
   an alias of `--fg`. Change a colour there and change it here — never hardcode a hex outside the
   `:root` / `[data-theme="dark"]` blocks.
+- **The sidebar footer's two controls are a three-repo contract.** The light/dark toggle and
+  Settings in `.sidebar-footer` are specified to be pixel-identical in MyCal, MyMail and MyNotes.
+  Every declaration in the `.sidebar-footer-btn` rule is part of that contract, including the ones
+  that look redundant, and so are `--sidebar-width`, the stacked width-stable label, and the
+  offset focus outline. **Changing any of them here without changing the other two silently
+  breaks the contract, and nothing in this repo can detect that** — there is no shared stylesheet
+  and no cross-repo test. The rule itself carries the derivation for each value; read the comments
+  there before touching it rather than trusting the shape of the CSS. Four things worth knowing
+  before you open the file:
+  - Computed height is **29.2px at a 16px root font** — the shared acceptance measurement rather
+    than a hard pixel contract, since the box mixes `rem` text with `px` padding.
+    `e2e/tests/sidebar-footer.spec.ts` pins it at the default root — that file is this
+    repo's whole half of the contract, so read it before changing anything here.
+  - **Position is measured from the window, not from the sidebar**: both controls sit 8px
+    from the window's left edge and 8px from its bottom, in every view, so that a user with
+    all three apps open in tabs sees nothing move when switching. Container-relative
+    offsets are not enough — three apps can each be correct against their own sidebar and
+    still land in three different places, which is what went wrong the first time. The
+    narrow (≤600px) layout is deliberately out of scope for the 8px *bottom* rule.
+  - The focus outline's **`outline-offset` is load-bearing**, not decoration: without it the
+    indicator's neighbour is `--border`, which caps the dark theme at 2.803:1 against WCAG
+    1.4.11's required 3:1. Never restore `outline: none`, and never shrink the 2px.
+  - `--sidebar-width` sizes the left column **and** `.brand` above it, which must stay equal
+    (`calendar-views.spec.ts` asserts Reload's right edge against the column's), and must stay
+    in `rem` so the column grows with the rem-sized buttons inside it.
+  - `.sidebar-footer-btn` and `title="Settings"` are pinned by the e2e suite — do not rename them.
 - Icons are Lucide, rendered inline as `<svg stroke="currentColor">` by `components/Icon.tsx`. The
   vendored bundle carries **only** the icons listed in the `ICONS` array of
   `web/ts/vendor/gen-lucide.mjs` — to use a new one, add its kebab-case name there, re-run

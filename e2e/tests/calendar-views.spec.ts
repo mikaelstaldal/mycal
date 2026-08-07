@@ -94,7 +94,9 @@ test.describe('Calendar Views', () => {
       // no overhang past it either.
       expect(innerHeight - viewBottom).toBeGreaterThanOrEqual(0);
       expect(innerHeight - viewBottom).toBeLessThanOrEqual(10);
-      // The sidebar's footer buttons line up with that same edge.
+      // The sidebar's footer box ends on that same edge. Its buttons sit 8px
+      // above it — that inset is the shared MySuite footer spec — so what is
+      // pinned here is the box, not the glyphs.
       expect(Math.abs(footerBottom - viewBottom)).toBeLessThanOrEqual(1);
       // What fills the view is the scrollable body, not chrome squeezing it out.
       expect(bodyHeight).toBeGreaterThan(200);
@@ -116,13 +118,26 @@ test.describe('Calendar Views', () => {
     expect(relaxed).toBeGreaterThan(0);
 
     await page.setViewportSize({ width: 1280, height: 300 });
-    const { scrollHeight, clientHeight } = await page.evaluate(() => {
-      const sidebar = document.querySelector('.left-sidebar')!;
-      return { scrollHeight: sidebar.scrollHeight, clientHeight: sidebar.clientHeight };
+    // .sidebar-content is the scrollport, not .left-sidebar: the footer is its
+    // sibling so that a scrollbar here cannot narrow the footer's buttons.
+    const { scrollHeight, clientHeight, footerInsideScrollport } = await page.evaluate(() => {
+      const content = document.querySelector('.sidebar-content')!;
+      return {
+        scrollHeight: content.scrollHeight,
+        clientHeight: content.clientHeight,
+        footerInsideScrollport: content.contains(document.querySelector('.sidebar-footer')!),
+      };
     });
 
     expect(await miniHeight()).toBeCloseTo(relaxed, 0);
     expect(scrollHeight).toBeGreaterThan(clientHeight);
+    // A scrollbar here must never narrow the footer. Asserted structurally —
+    // the footer is not inside the scrollport — rather than by comparing widths:
+    // a width comparison holds under the regression too (the footer would still
+    // out-measure the column thanks to its negative margin) and has no teeth at
+    // all under the overlay scrollbars this headless Chromium uses. Containment
+    // is the actual invariant and it is deterministic on every platform.
+    expect(footerInsideScrollport).toBe(false);
   });
 
   // Reload rides in the brand block rather than the top bar's action cluster:

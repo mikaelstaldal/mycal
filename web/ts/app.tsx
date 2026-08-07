@@ -478,17 +478,22 @@ function App() {
             </header>
             <div class="app-layout">
                 <div class="left-sidebar">
-                    <MiniMonth currentDate={currentDate}
-                               onDayClick={handleYearDayClick}
-                               onMonthClick={handleYearMonthClick}
-                               config={config} />
-                    {calendars.length > 1 ? (
-                        <CalendarSidebar calendars={calendars}
-                                         selectedCalendarIds={selectedCalendarIds}
-                                         onToggleCalendar={handleToggleCalendar}
-                                         onToggleAll={handleToggleAll}
-                                         onEditCalendar={handleEditCalendar} />
-                    ) : null}
+                    {/* The scrolling half of the column. The footer below is a
+                        sibling rather than the last child, so a scrollbar here
+                        never narrows it — same shape as MyNotes' sidebar. */}
+                    <div class="sidebar-content">
+                        <MiniMonth currentDate={currentDate}
+                                   onDayClick={handleYearDayClick}
+                                   onMonthClick={handleYearMonthClick}
+                                   config={config} />
+                        {calendars.length > 1 ? (
+                            <CalendarSidebar calendars={calendars}
+                                             selectedCalendarIds={selectedCalendarIds}
+                                             onToggleCalendar={handleToggleCalendar}
+                                             onToggleAll={handleToggleAll}
+                                             onEditCalendar={handleEditCalendar} />
+                        ) : null}
+                    </div>
                     {/* Pinned to the bottom of the left column, the same place
                         MyNotes puts its light/dark toggle and Settings. */}
                     <div class="sidebar-footer">
@@ -500,8 +505,20 @@ function App() {
                                 <Icon name={darkMode ? 'sun' : 'moon'} size={16} />
                                 {/* Just "Light"/"Dark" — the full "…mode" is on the
                                     title and aria-label; the short label is what
-                                    fits beside Settings in a 180px sidebar. */}
-                                <span>{darkMode ? 'Light' : 'Dark'}</span>
+                                    fits beside Settings in the sidebar. Both
+                                    words stay in the DOM and are stacked by
+                                    .sidebar-theme-label so the button keeps its
+                                    width and Settings does not shift on toggle.
+
+                                    Keep each visible word a substring of the
+                                    matching aria-label — "Light" in "Switch to
+                                    light mode" — or the button breaks WCAG 2.5.3
+                                    Label in Name. The span is aria-hidden, so
+                                    nothing here would catch it. */}
+                                <span class="sidebar-theme-label" aria-hidden="true">
+                                    <span class={darkMode ? 'is-shown' : undefined}>Light</span>
+                                    <span class={darkMode ? undefined : 'is-shown'}>Dark</span>
+                                </span>
                             </button>
                             <Settings config={config} onConfigChange={setConfig} />
                         </div>

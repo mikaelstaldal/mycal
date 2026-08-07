@@ -50,6 +50,32 @@
     --feed-disabled-color: var(--danger);
 }
 
+/* Layout tokens, kept out of the palette block above so that one stays purely
+   about colour — it is the block the MyNotes palette is synced against, and the
+   one the "never hardcode a hex outside :root" rule points at. Nothing here is
+   theme-dependent, so there is no [data-theme="dark"] counterpart. */
+:root {
+    /* The left column, and .brand above it — one column, so one number. It does
+       not bound the footer's two buttons: .sidebar-footer reclaims .app's
+       horizontal padding, so their budget is this width again after its own 8px
+       insets — 200px for a 174px pair, 26px spare, which absorbs a system-ui
+       about a quarter wider than this machine's before the row overflows.
+
+       In rem, not px, and 12.5rem is exactly 200px at the default 16px root: the
+       buttons down there are sized in rem too, so a px column would keep its
+       width while they grew and push Settings out over the calendar. That starts
+       at a 20px root — Chrome's "Large" — which is a WCAG 1.4.4 failure reachable
+       from the browser's own font menu. Keep this in rem. */
+    --sidebar-width: 12.5rem;
+
+    /* .app's horizontal padding — the gap between the window and everything in
+       the app. A token rather than a literal because .sidebar-footer cancels it
+       with a negative margin to reach the window's edge, and the two must stay
+       equal and opposite. Redefined at the narrow breakpoint, which the footer
+       then follows automatically. */
+    --app-padding-x: 16px;
+}
+
 [data-theme="dark"] {
     color-scheme: dark;
 
@@ -108,8 +134,22 @@ body {
 
 .app {
     margin: 0;
-    padding: 8px 16px;
+    padding: 8px var(--app-padding-x);
     position: relative;
+    /* A flex column at least as tall as the window, so .app-layout's `flex: 1`
+       has something to fill and .left-sidebar always reaches the bottom of the
+       viewport. Without it the column stops at the height of whatever view sits
+       beside it, and the footer — pushed down by `margin-top: auto` — lands
+       wherever the month or year grid happens to end: measured 96px above the
+       window in month and 170px in year, both varying with window size. The
+       footer's two buttons have to sit the same distance from the window's
+       bottom edge in every view, or MyCal moves against itself when the user
+       switches view. `min-height`, not `height`, so a grid taller than the
+       window still grows the page and scrolls the way it always has; the three
+       views that fill the viewport override this with `height` below. */
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
 }
 
 .app.drag-over::after {
@@ -143,9 +183,11 @@ body {
 }
 
 /* Brand mark + label, sized to match the left sidebar so the nav lines up with
-   .app-main */
+   .app-main. Shares --sidebar-width with .left-sidebar because the two are one
+   column, and e2e/tests/calendar-views.spec.ts pins .brand-reload-btn's right
+   edge to the sidebar's. */
 .brand {
-    width: 180px;
+    width: var(--sidebar-width);
     margin-right: 12px;
     flex-shrink: 0;
     display: flex;
@@ -179,7 +221,7 @@ body {
 
 .brand-name {
     /* overflow zeroes the automatic minimum size, so the label ellipsizes
-       instead of forcing .brand past its 180px. */
+       instead of forcing .brand past its 200px. */
     min-width: 0;
     white-space: nowrap;
     overflow: hidden;
@@ -188,7 +230,7 @@ body {
 
 /* Reload, at the far end of the brand block — the corner MyMail reloads from,
    `margin-left: auto` past the label and all (see its .sidebar-reload-btn). And
-   since .brand is the sidebar's 180px, the button lands on the right edge of the
+   since .brand is the sidebar's 200px, the button lands on the right edge of the
    column below it. A ghost button, the way MyMail draws this one: no outline of
    its own, unlike the framed pair in .sidebar-footer. */
 .brand-reload-btn {
@@ -1285,13 +1327,17 @@ body {
 
 /* .app is the viewport here and does not scroll, so a left column taller than
    it — enough calendars under the mini month — would be clipped with nowhere to
-   scroll. Give the column its own scrollport; .sidebar-footer stays pinned to
-   the bottom of it. Note this makes the column a scrollport horizontally too:
-   anything put in it has to fit 180px or clip itself, the way
-   .calendar-sidebar-name ellipsizes. */
-.app:has(.schedule-view, .week-view, .day-view) .left-sidebar {
+   scroll. Give .sidebar-content its own scrollport and let it take the free
+   space; .sidebar-footer is its sibling, not its child, so it lands on the
+   bottom of the column either way. Note this makes .sidebar-content a
+   scrollport horizontally too: anything put in it has to fit the column *minus
+   the scrollbar gutter* — about 185px of the 200px wherever classic scrollbars
+   are drawn — or clip itself, the way .calendar-sidebar-name ellipsizes.
+   Keeping the footer outside this element is exactly so its two buttons, which
+   have only 10px to spare, never pay that gutter. */
+.app:has(.schedule-view, .week-view, .day-view) .sidebar-content {
+    flex: 1;
     overflow-y: auto;
-    min-height: 0;
 }
 
 /* That scrollport ends at .app's bottom padding, which is the gap the sticky
@@ -1388,6 +1434,13 @@ body {
     color: var(--text);
 }
 
+/* The one remaining `outline: none` in this file, and it fails the bar the
+   sidebar footer's buttons now meet: a border tint is not a 2px perimeter, and
+   under forced colours the border colour is overridden so nothing is left at
+   all. Deliberately not fixed here — it is part of an app-wide focus pass that
+   was deferred rather than folded into the footer work, and doing it properly
+   means the same clip check the footer got, since this sits in a tight top bar.
+   Until then this is a known gap, not an oversight. */
 .search-input:focus {
     outline: none;
     border-color: var(--primary);
@@ -1479,7 +1532,10 @@ body {
 
 /* Responsive */
 @media (max-width: 600px) {
-    .app { padding: 4px 8px; }
+    /* Narrower gutter here; .sidebar-footer's negative margin reads the same
+       token, so it keeps reaching the window edge without a second rule. */
+    :root { --app-padding-x: 8px; }
+    .app { padding: 4px var(--app-padding-x); }
     .day { min-height: 60px; }
     .event-chip { font-size: 0.65rem; }
     .week-header { grid-template-columns: 40px repeat(7, minmax(0, 1fr)); }
@@ -1557,7 +1613,19 @@ body {
     }
     /* No room for the sidebar's calendars, but the footer's two buttons still
        have to be reachable — the column collapses to just the footer, stacked
-       below the main content. */
+       below the main content. The footer keeps its negative margin-left here,
+       so the buttons stay 8px from the window's left edge while the column's
+       right edge stays where the narrower gutter puts it: 8px on the left,
+       16px on the right. That asymmetry is deliberate — the MySuite rule is
+       about the left edge, which is the one the eye and the other two apps
+       line up on.
+
+       The *vertical* half of that rule does not survive this breakpoint: .app's
+       padding drops to 4px, so the buttons sit 4px from the window's bottom
+       rather than 8px, and the focus outline's 4px reaches the window edge
+       exactly. Still within the spec's 4px floor, but with none to spare. The
+       narrow layout is explicitly out of scope for the 8px bottom rule — if
+       that ever changes, this padding is what has to move. */
     .app-layout {
         flex-direction: column;
     }
@@ -2243,7 +2311,11 @@ body {
 /* Left sidebar wrapper. Stretched rather than hugging its content so the footer
    below can be pushed to the bottom of the column. */
 .left-sidebar {
-    width: 180px;
+    /* 200px at the default root font. It sizes the mini month and the calendar
+       list, not the footer — .sidebar-footer reaches past it on the left — and
+       .brand up in the top bar draws on the same token, so the two cannot drift
+       apart. */
+    width: var(--sidebar-width);
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
@@ -2251,36 +2323,98 @@ body {
     align-self: stretch;
 }
 
+/* Everything above the footer, and the half of the column that scrolls. It is a
+   wrapper rather than the footer simply being the last child, because a
+   scrollbar in the views where this scrolls would otherwise eat ~15px of the
+   footer's width on every platform that draws classic scrollbars — which at the
+   time was more than the whole margin the two buttons had. Outside the
+   scrollport the footer keeps its full width whatever the panels above do. */
+.sidebar-content {
+    display: flex;
+    flex-direction: column;
+    /* Not a duplicate of .left-sidebar's gap: that one now has only two children
+       and spaces the content from the footer, this one spaces the mini month
+       from the calendar list. Both are load-bearing. */
+    gap: 8px;
+    /* No `min-height: 0` here on purpose. It belongs only where this scrolls,
+       and even there `overflow-y: auto` already zeroes the automatic minimum
+       size. In the base rule it would let a content-sized column shrink under
+       its own content and spill over the footer. */
+}
+
 /* Light/dark toggle and Settings, pinned to the bottom of the left column — the
-   same footer MyNotes puts them in (see its .sidebar-footer). `margin-top: auto`
-   pushes it down; `position: sticky` keeps it on screen when the column scrolls
-   past it — the page in the month and year views, the left column's own
-   scrollport in the three that fill the viewport — so the two buttons are
-   always one click away. It keeps the page's --bg rather than the --surface of
-   the panels that now scroll under it: the footer belongs to the column, not to
-   the panel above it, and --bg is what it sits on when nothing scrolls, which
-   is the usual case. */
+   same footer MyNotes puts them in (see its .sidebar-footer), and a sibling of
+   the scrolling content there as it is here. `margin-top: auto` pushes it down
+   in the views where .sidebar-content is content-sized; where that one takes
+   `flex: 1` instead there is no free space left and the footer simply follows
+   it. `position: sticky` keeps it on screen while the *page* scrolls in the
+   month and year views — the three that fill the viewport scroll inside
+   .sidebar-content, which the footer is no longer part of. It keeps the page's
+   --bg rather than the --surface of the panels that scroll beside it: the
+   footer belongs to the column, not to the panel above it, and --bg is what it
+   sits on when nothing scrolls, which is the usual case.
+
+   The 8px padding insets the two buttons from the column's edges on all four
+   sides; it is part of the MySuite spec these controls share with MyMail and
+   MyNotes, so the pair sits the same distance off the sidebar's corner in all
+   three. The padding stays *inside* the sticky box, so the footer's own bottom
+   edge still lands on the bottom of the view beside it — which is what
+   e2e/tests/calendar-views.spec.ts measures. */
 .sidebar-footer {
     margin-top: auto;
+    /* Cancel .app's horizontal padding so the footer reaches the window's left
+       edge and its 8px of padding is the *only* thing between the window and
+       the buttons. That is the MySuite placement rule: the two controls must
+       land at the same window coordinates in all three apps, so that switching
+       browser tabs does not make them jump. MyMail and MyNotes get their 8px
+       from a sidebar panel already flush at x=0; MyCal's column sits inside
+       .app's padding, so the footer alone steps back out of it. The buttons
+       keep their 8px inset from the separator's start, exactly as before —
+       the separator moves with them rather than staying behind. */
+    margin-left: calc(-1 * var(--app-padding-x));
     position: sticky;
     bottom: 8px;
-    padding-top: 8px;
+    /* No padding on the bottom: .app's own 8px sits below this box, and that is
+       what puts the buttons 8px from the window's bottom edge. Padding here as
+       well would double it to 16px. The horizontal gap is solved the opposite
+       way — margin-left cancels .app's padding and this box supplies the 8px
+       itself — because e2e/tests/calendar-views.spec.ts pins the footer box's
+       bottom edge to the bottom of the view beside it, so the box may not move
+       down even though the buttons must. */
+    padding: 8px 8px 0;
     border-top: 1px solid var(--border);
     background: var(--bg);
 }
 
+/* nowrap: the two are content-sized and must stay on one row. See the width
+   budget noted on .sidebar-footer-btn. */
 .sidebar-footer-actions {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 6px;
 }
 
 /* Unlike the icon-only buttons elsewhere in the UI, these carry a label next to
-   the glyph — the shape MyNotes uses for the same two actions. */
+   the glyph — the shape MyNotes uses for the same two actions.
+
+   Geometry is the MySuite canonical spec, shared verbatim with MyMail and
+   MyNotes: the computed outer height must be 29.2px at the default 16px root
+   font size (19.2px line box + 8px padding + 2px border). The box mixes rem
+   text with px padding, so that number holds at the default root size and grows
+   with a larger one — it is the acceptance measurement, not a hard contract.
+   Do not change the font-size, padding, line-height or border here without
+   changing them in the other two.
+
+   Content-sized rather than stretched: the pair measures 174px inside the
+   footer's 200px content box, so 26px spare. (The footer's border box is wider
+   than the column — it reclaims .app's horizontal padding — so the buttons get
+   the column's width back after their own 8px insets, not minus them.) Treat
+   174px as this platform's number, not a constant: it is text measured in
+   whatever `system-ui` resolves to, so Segoe UI or SF Pro will not give exactly
+   this. With nowrap on both the row and the buttons and no shrink, a font wide
+   enough to eat the 26px overflows rather than reflowing. If a label here ever
+   changes, re-measure. */
 .sidebar-footer-btn {
-    /* Grow to fill the row so that, in a sidebar too narrow for both, the two
-       wrap into a tidy stack of equal-width buttons rather than a ragged one. */
-    flex: 1 1 auto;
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -2290,13 +2424,92 @@ body {
     cursor: pointer;
     padding: 4px 8px;
     font-family: inherit;
-    font-size: 0.8rem;
+    /* Two decimals deliberately — do not normalise to 0.8rem. The MySuite spec
+       states it this way so one grep finds the rule in all three repos; the
+       computed value is identical either way, so nothing would fail. */
+    font-size: 0.80rem;
+    line-height: 1.5;
+    white-space: nowrap;
+    /* These four change nothing today — they are what this button already
+       computes — and that is the point. Each currently arrives by coincidence
+       rather than by contract, from a source that differs between the three
+       apps: the weight and style fall out of the UA `button` shorthand here and
+       in MyNotes, but MyMail's Settings control is an <a> and inherits them from
+       body instead. Same value, three routes, three engines with their own UA
+       defaults. An ordinary `button { font-weight: 500 }` added to any one of
+       the three would break the match with nothing to catch it.
+
+       flex-shrink is the load-bearing one. Flex items shrink before they
+       overflow; these are saved only by `min-width: auto` resolving to the
+       nowrap content width, and `min-width: 0` is a common enough flex reset
+       that it could reach them. Pinning 0 means the failure mode stays overflow,
+       which is loud and visible, rather than a silent squeeze that clips the
+       labels with no ellipsis. This column has the least slack of the three. */
+    font-weight: 400;
+    font-style: normal;
+    text-align: center;
+    flex-shrink: 0;
     color: var(--text-subtle);
+    /* The only transition in this stylesheet — every other hover in the app
+       snaps. It is mandated by the MySuite spec, so do not delete it for
+       consistency with its neighbours. Colour only, no motion, which is why it
+       carries no prefers-reduced-motion guard. */
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
 }
 
+/* Two collisions to know about here, both real, neither a mistake.
+
+   The hover border is deliberately not the resting --border: in the dark theme
+   --hover-bg and --border are the same #374151, so keeping it would erase the
+   outline exactly when the button lights up.
+
+   And in the *light* theme --hover-bg is #f3f4f6, which is also --bg — what the
+   footer paints. So the background declaration below is a no-op in light mode:
+   the fill is drawn, it is simply the colour already there. Hover is carried by
+   the border and text colour, which both change in both themes. The fill is
+   kept because the MySuite spec mandates this colour and the dark theme does
+   need it; do not "fix" it by picking a different token here without changing
+   MyMail and MyNotes too. */
 .sidebar-footer-btn:hover {
     background: var(--hover-bg);
     color: var(--text);
+    border-color: var(--text-faint);
+}
+
+/* An outline rather than the translucent ring the MySuite spec first called for,
+   and the offset is the load-bearing part. (These buttons never shipped with
+   that ring — it was rejected before this landed — so there is nothing to find
+   in this repo's history.) WCAG 1.4.11 (AA) wants 3:1 for a focus indicator
+   against the colours adjacent to it; drawn tight against the button its
+   neighbour is --border, and in the dark theme --primary vs --border is
+   2.803:1 — a ceiling no amount of opacity can lift. Offsetting by 2px moves
+   the indicator clear of the border so both of its neighbours are the footer's
+   own --bg, measured 4.696:1 light and 4.823:1 dark.
+
+   It also removes the forced-colors problem rather than patching it: an outline
+   is painted under forced colours, a box-shadow is not. Do not add `outline:
+   none` back, and do not shrink the 2px — that is the minimum perimeter WCAG
+   2.4.13 accepts. */
+.sidebar-footer-btn:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+/* Both words stay in the DOM, stacked in one grid cell, so the button keeps the
+   width of the longer of the two and Settings never shifts sideways when the
+   theme is toggled. The visible word is aria-hidden — the button's accessible
+   name is its aria-label, which spells out the full "Switch to … mode". */
+.sidebar-theme-label {
+    display: grid;
+}
+
+.sidebar-theme-label > span {
+    grid-area: 1 / 1;
+    visibility: hidden;
+}
+
+.sidebar-theme-label > .is-shown {
+    visibility: visible;
 }
 
 /* Mini month calendar */
