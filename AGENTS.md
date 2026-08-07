@@ -178,9 +178,34 @@ Go backend with embedded Preact+JSX frontend. TypeScript source in `web/ts/`, co
   - removing `.sidebar-footer`'s negative `margin-left` — caught by the (8, 8) tests. Giving
     `.app` a `border-left` would clip the footer instead, and **nothing catches that**: the
     buttons' own 8px still measures correct.
+  - repainting `.sidebar-footer` on `--surface` — caught by *controls sit on the page
+    background, not a panel* in both themes, and by *the footer paints an opaque background
+    of its own*. This is the state MyCal shipped until the owner asked for the box to be
+    removed; the deviation from the shared spec is sanctioned and recorded upstream.
+  - deleting `.sidebar-footer`'s `background` as redundant — caught by *the footer paints an
+    opaque background of its own*, and **by nothing else**. Verified by deleting it: the
+    other six colour assertions stayed green, because the backdrop walk falls straight
+    through to `<body>` and finds the identical colour. The colour is redundant; the opacity
+    is not, and content slides through the buttons when the month view scrolls.
+  - resolving `.sidebar-footer-btn`'s `color` or hover `background` straight off
+    `--text-subtle` / `--hover-bg` instead of the `--sidebar-footer-*` aliases — caught in
+    light by *resting label meets 4.5:1* (4.393:1) and *hover fill is distinguishable from
+    its backdrop* (1.000:1). Those two aliases are light-only deviations and exist because
+    MyCal's light `--bg` is `#f3f4f6`, which is also its `--hover-bg`.
+  - collapsing those aliases into one unscoped pair — caught by *the dark aliases name the
+    shared tokens*, and by nothing else. Verified: the six ratio assertions stayed green,
+    because dark `--border` and dark `--hover-bg` are both `#374151`, so the wrong token
+    resolves to the right colour today. A CSSOM read is the only thing that can see it.
   - measuring any of the above against a server you did not restart after `./build.sh` — a
     stale binary makes a broken change look fine. `./test-e2e.sh` refuses to run in that
     state; a hand-started server does not.
+  - reading any colour off these buttons within 120ms of a theme switch or a hover — the
+    mandated `transition` covers `background`, `color` and `border-color`, so all three
+    report a blend of the two palettes for that long. This cost a debugging round: the
+    resting label read `#4b5563` (the *light* value) against a dark backdrop for 2.347:1,
+    which points at the palette and not at the clock. Assertions that the element is not
+    hovered do not catch it — the state is right and the timing is wrong. Use the spec's
+    `settledStyle` helper, which polls until two reads agree.
 
   What is MyCal's own, and therefore lives here:
   - `e2e/tests/sidebar-footer.spec.ts` is this repo's half of the contract, and the only

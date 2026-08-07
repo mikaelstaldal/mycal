@@ -350,8 +350,101 @@ test.describe('Sidebar footer contract', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // Focus indicator
+  // Colour
   // ---------------------------------------------------------------------------
+
+  // The colour actually painted behind a control: walk up to the first ancestor
+  // with a non-transparent background.
+  //
+  // Not the footer's own background — that is right in MyCal only because the
+  // footer happens to declare one, and it would read rgba(0,0,0,0) in MyNotes,
+  // whose footer is transparent and inherits its sidebar's paint. The contract is
+  // about the resolved backdrop, not about which element supplies it, so this is
+  // the method it names. Same number here either way; this is the version that is
+  // not carrying a MyCal-shaped assumption.
+  //
+  // Starts at the PARENT: an element's own background is not its backdrop.
+  // Starting at the button is correct today only because these carry
+  // `background: none`, so the loop would walk straight past them — nothing in
+  // the contract guarantees that. Used in a hover context it would return the
+  // button's own fill as the "backdrop" and every figure derived from it would be
+  // wrong while looking entirely plausible. That is not hypothetical: an earlier
+  // version of this file did start at `el`, and the first measurement taken after
+  // it was fixed came back different, because clicking the theme toggle leaves the
+  // pointer on it.
+  const backdropOf = (page: Page, selector: string) =>
+    page.locator(selector).first().evaluate(el => {
+      for (let n: Element | null = el.parentElement; n; n = n.parentElement) {
+        const c = getComputedStyle(n).backgroundColor;
+        if (c && c !== 'rgba(0, 0, 0, 0)' && c !== 'transparent') return c;
+      }
+      // Distinguishable from a colour, deliberately: a walk that finds nothing
+      // must not fall through to a default, or it becomes a run that measured
+      // nothing and looks like a pass.
+      return null;
+    });
+
+  // Resolve a custom property to the same rgb() form getComputedStyle reports for
+  // a background, so token and measurement can be compared without a hex/rgb
+  // conversion in the test. Reading the property off :root gives "#f3f4f6", which
+  // never equals "rgb(243, 244, 246)" and would make an equality assertion fail
+  // for a reason that has nothing to do with the contract.
+  const tokenColor = (page: Page, name: string) =>
+    page.evaluate(n => {
+      const probe = document.createElement('div');
+      probe.style.backgroundColor = `var(${n})`;
+      document.body.appendChild(probe);
+      const v = getComputedStyle(probe).backgroundColor;
+      probe.remove();
+      return v;
+    }, name);
+
+  const useDarkTheme = async (page: Page) => {
+    await page.getByRole('button', { name: 'Switch to dark mode' }).click();
+    await expect(page.getByRole('button', { name: 'Switch to light mode' })).toBeVisible();
+    // The click leaves the pointer sitting on the toggle, so any colour read from
+    // a .sidebar-footer-btn afterwards is read in its HOVER state. Every resting
+    // figure below would then be measured against the wrong thing while looking
+    // entirely reasonable. Move the pointer off before measuring anything.
+    await page.mouse.move(0, 0);
+    // Then let the colour transition finish. Swapping the theme re-resolves the
+    // tokens under a 0.12s transition, so the buttons spend that long reporting a
+    // blend of the two palettes. See settledStyle.
+    await settledStyle(page, SETTINGS, 'color');
+  };
+
+  // These buttons carry `transition: background 0.12s, color 0.12s,
+  // border-color 0.12s` — mandated by the contract, so it cannot be removed to
+  // make measuring easier. Every one of those three properties therefore reports
+  // an intermediate value for 120ms after anything that changes it, and the
+  // intermediate values are ordinary colours that look entirely plausible.
+  //
+  // This is not a theoretical hazard. Reading the label colour straight after the
+  // theme toggle returned #4b5563 — the *light* theme's resting value — against a
+  // dark backdrop, for 2.347:1 and a failing assertion that pointed at the
+  // palette instead of at the clock. Note what did not catch it: the test already
+  // asserted the element was not hovered, and it genuinely was not. The state was
+  // right and the timing was wrong.
+  //
+  // So poll until two consecutive reads agree, rather than sleeping a guessed
+  // interval, and throw if it never settles. A timeout that returned the last
+  // value read would be a measurement of the transition reported as a
+  // measurement of the colour — the same failure, quieter.
+  const settledStyle = async (page: Page, selector: string, prop: 'color' | 'backgroundColor') => {
+    const read = () =>
+      page.locator(selector).first().evaluate(
+        (el, p) => getComputedStyle(el)[p as 'color' | 'backgroundColor'],
+        prop,
+      );
+    let prev = await read();
+    for (let i = 0; i < 40; i++) {
+      await page.waitForTimeout(25);
+      const now = await read();
+      if (now === prev) return now;
+      prev = now;
+    }
+    throw new Error(`${prop} of ${selector} never settled`);
+  };
 
   // WCAG 1.4.11 (AA) wants 3:1 between the focus indicator and the colours next
   // to it. Asserting the indicator merely *exists* is not enough — the
@@ -381,7 +474,7 @@ test.describe('Sidebar footer contract', () => {
   // this fails loudly rather than silently if that ever stops holding.
   const focusAndRead = async (page: Page, selector: string) => {
     await page.keyboard.press('Tab');
-    return page.locator(selector).first().evaluate(el => {
+    const s = await page.locator(selector).first().evaluate(el => {
       (el as HTMLElement).focus();
       const cs = getComputedStyle(el);
       return {
@@ -390,40 +483,14 @@ test.describe('Sidebar footer contract', () => {
         outlineWidth: cs.outlineWidth,
         outlineOffset: cs.outlineOffset,
         outlineColor: cs.outlineColor,
-        // The colour actually painted behind the control: walk up to the first
-        // ancestor with a non-transparent background. Not the footer's own
-        // background — that is right in MyCal only because the footer happens to
-        // declare one, and it would read rgba(0,0,0,0) in MyNotes, whose footer
-        // is transparent and inherits its sidebar's paint. The contract (§5.3)
-        // is about the resolved backdrop, not about which element supplies it,
-        // so this is the method it names. Same number here either way; this is
-        // the version that is not carrying a MyCal-shaped assumption.
-        // Starts at the PARENT: an element's own background is not its backdrop.
-        // Starting at the button is correct today only because these carry
-        // `background: none`, so the loop walks straight past them — nothing in
-        // the contract guarantees that. Used in a hover context it would return
-        // the button's own --hover-bg as the "backdrop" and every figure derived
-        // from it would be wrong while looking entirely plausible.
-        backdrop: (() => {
-          for (let n: Element | null = el.parentElement; n; n = n.parentElement) {
-            const c = getComputedStyle(n).backgroundColor;
-            if (c && c !== 'rgba(0, 0, 0, 0)' && c !== 'transparent') return c;
-          }
-          // Distinguishable from a colour, deliberately: a walk that finds
-          // nothing must not fall through to a default, or it becomes a run
-          // that measured nothing and looks like a pass.
-          return null;
-        })(),
       };
     });
+    return { ...s, backdrop: await backdropOf(page, selector) };
   };
 
   for (const dark of [false, true]) {
     test(`focus indicator meets 3:1 against its backdrop in ${dark ? 'dark' : 'light'} mode`, async ({ page }) => {
-      if (dark) {
-        await page.getByRole('button', { name: 'Switch to dark mode' }).click();
-        await expect(page.getByRole('button', { name: 'Switch to light mode' })).toBeVisible();
-      }
+      if (dark) await useDarkTheme(page);
 
       const s = await focusAndRead(page, SETTINGS);
       expect(s.focusVisible).toBe(true);
@@ -442,6 +509,132 @@ test.describe('Sidebar footer contract', () => {
       expect(contrast(parseRgb(s.outlineColor), parseRgb(s.backdrop))).toBeGreaterThanOrEqual(3);
     });
   }
+
+  // The two defects below are the reason this section exists. Both shipped, both
+  // were fixed by pinning the backdrop to --surface, and both came straight back
+  // when the owner asked for the footer's box to be removed — with the whole
+  // suite green each time, because nothing here measured colour except the focus
+  // ring. A contrast failure and an invisible hover state are exactly the kind of
+  // defect that renders without complaint.
+  for (const dark of [false, true]) {
+    const mode = dark ? 'dark' : 'light';
+
+    // MyCal diverges from the shared contract here, on the owner's instruction:
+    // the controls sit on the page background rather than on a --surface panel,
+    // and the three apps are accepted to differ in this one colour. Asserted
+    // against the token rather than a literal so the palette stays the single
+    // source of the value — the ratios below are what pin the value itself.
+    test(`controls sit on the page background, not a panel, in ${mode} mode`, async ({ page }) => {
+      if (dark) await useDarkTheme(page);
+      const backdrop = await backdropOf(page, SETTINGS);
+      expect(backdrop, 'no opaque backdrop found above the control').not.toBeNull();
+      expect(backdrop).toBe(await tokenColor(page, '--bg'));
+      // The state this repo was in before the owner's call, spelled out so that
+      // restoring it fails here rather than only in the cross-repo guard.
+      expect(backdrop).not.toBe(await tokenColor(page, '--surface'));
+    });
+
+    // WCAG 1.4.3 (AA). The label is 12.8px at weight 400 — normal text, so the
+    // threshold is 4.5:1 and not the 3:1 large-text allowance. --text-subtle on
+    // --bg measures 4.393:1, which is the failure that shipped.
+    test(`resting label meets 4.5:1 against its backdrop in ${mode} mode`, async ({ page }) => {
+      if (dark) await useDarkTheme(page);
+      // Assert the state that was measured, not just the number: the resting
+      // colour and the hover colour are different declarations, and reading one
+      // while believing it is the other passes for the wrong reason. This is
+      // necessary and not sufficient — it says nothing about the transition, so
+      // the colour itself is read through settledStyle.
+      const hovered = await page.locator(SETTINGS).evaluate(el => el.matches(':hover'));
+      expect(hovered, 'measured in the hover state — this is not the resting colour').toBe(false);
+      const color = await settledStyle(page, SETTINGS, 'color');
+      const backdrop = await backdropOf(page, SETTINGS);
+      expect(backdrop, 'no opaque backdrop found above the control').not.toBeNull();
+      expect(color).toMatch(/^rgb\(/);
+      expect(backdrop).toMatch(/^rgb\(/);
+      expect(contrast(parseRgb(color), parseRgb(backdrop!))).toBeGreaterThanOrEqual(4.5);
+    });
+
+    // There is no WCAG threshold for a hover fill, and the mandated one is faint
+    // by design (1.125:1 light, 1.721:1 dark) — so this pins the only thing that
+    // is unambiguously broken: a fill the same colour as what it is drawn on.
+    // That is not a hypothetical either. In MyCal's light palette --hover-bg and
+    // --bg are both #f3f4f6, so the mandated fill painted over itself at exactly
+    // 1.000:1 and the buttons lost their hover fill. (Not their whole hover
+    // state — the rule moves the label and border colours as well, and those
+    // still changed. This assertion covers the fill alone.)
+    test(`hover fill is distinguishable from its backdrop in ${mode} mode`, async ({ page }) => {
+      if (dark) await useDarkTheme(page);
+      // Read the backdrop BEFORE hovering. The walk starts at the parent so it is
+      // hover-safe by construction, but taking it first means the assertion does
+      // not depend on that remaining true.
+      const backdrop = await backdropOf(page, SETTINGS);
+      expect(backdrop, 'no opaque backdrop found above the control').not.toBeNull();
+
+      await page.locator(SETTINGS).hover();
+      const fill = await settledStyle(page, SETTINGS, 'backgroundColor');
+      // Guards the vacuous pass: with the hover rule gone the button keeps
+      // `background: none` and reads rgba(0, 0, 0, 0), which parses to black and
+      // would score a huge ratio against a light backdrop. rgb( excludes it.
+      expect(fill, 'no opaque hover fill — did the hover rule apply?').toMatch(/^rgb\(/);
+      expect(fill, 'hover fill is the same colour as its backdrop').not.toBe(backdrop);
+      expect(contrast(parseRgb(fill), parseRgb(backdrop!))).toBeGreaterThan(1);
+    });
+  }
+
+  // MyCal's two deviations from the shared colours are recorded upstream as
+  // LIGHT-ONLY: dark still owes its values to the tokens the contract names, and
+  // that is the whole shape of the divergence.
+  //
+  // Nothing above can check it. Point the dark aliases at light's values and both
+  // thresholds still pass — dark --text-muted is #d1d5db (12.039:1, clears 4.5)
+  // and dark --border is #374151, which is *the same colour as* dark --hover-bg,
+  // so even the fill lands on the mandated value by coincidence. Measured, not
+  // assumed: that mutation was applied and the six ratio assertions stayed green.
+  //
+  // So read the declarations rather than the results — the same reason the
+  // typography pins are read out of the CSSOM. Asserting the token each theme is
+  // *named against* is the only way to catch a substitution that resolves to an
+  // identical colour today and stops doing so the day the palette moves.
+  test('the dark aliases name the shared tokens, not their current values', async ({ page }) => {
+    const decl = await page.evaluate(() => {
+      for (const sheet of [...document.styleSheets]) {
+        let rules: CSSRuleList;
+        try { rules = sheet.cssRules; } catch { continue; } // cross-origin
+        for (const rule of [...rules]) {
+          // Exact match: the stylesheet has several `[data-theme="dark"] .foo`
+          // rules, and the palette block is the bare selector.
+          if (rule instanceof CSSStyleRule && rule.selectorText === '[data-theme="dark"]') {
+            return {
+              text: rule.style.getPropertyValue('--sidebar-footer-text').trim(),
+              hover: rule.style.getPropertyValue('--sidebar-footer-hover-bg').trim(),
+            };
+          }
+        }
+      }
+      return null;
+    });
+
+    expect(decl, '[data-theme="dark"] palette rule not found in any stylesheet').not.toBeNull();
+    expect(decl!.text).toBe('var(--text-subtle)');
+    expect(decl!.hover).toBe('var(--hover-bg)');
+  });
+
+  // §8.3: this footer is sticky and the document scrolls under it in the month
+  // and year views, so it needs an opaque background of its own regardless of
+  // what colour that is.
+  //
+  // This assertion cannot be folded into the backdrop test above, and the reason
+  // is the whole point of it. Now that the footer paints --bg — the same colour
+  // as the page behind it — deleting the declaration changes nothing visible at
+  // the moment of the edit, and the backdrop walk keeps passing because it simply
+  // falls through to <body> and finds the identical colour. The colour is
+  // redundant; the opacity is load-bearing. The defect surfaces later, in a
+  // different view, as content sliding through the buttons.
+  test('the footer paints an opaque background of its own', async ({ page }) => {
+    const own = await page.locator('.sidebar-footer').evaluate(el => getComputedStyle(el).backgroundColor);
+    expect(own, '.sidebar-footer has no background of its own').toMatch(/^rgb\(/);
+    expect(own).toBe(await tokenColor(page, '--bg'));
+  });
 
   // An outline is painted under forced colours; a box-shadow is not, which is
   // why the ring the spec first called for would have needed a media-query

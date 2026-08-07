@@ -48,6 +48,26 @@
     --tag-color: #1d4ed8;
     --feed-disabled-bg: #fee2e2;
     --feed-disabled-color: var(--danger);
+
+    /* The two sidebar-footer buttons resolve their resting text and hover fill
+       through these rather than straight off --text-subtle and --hover-bg, which
+       is what the MySuite spec's role table names and what the other two apps
+       use directly. The indirection exists for one theme only: since the footer
+       stopped painting --surface (see .sidebar-footer), the controls sit on --bg,
+       and in MyCal's LIGHT palette --bg and --hover-bg are the same #f3f4f6.
+       That collision is the one §5.4/§10.1 of the shared spec already names, and
+       against --bg it breaks both colours at once — the label at 4.393:1 fails
+       WCAG 1.4.3 (4.5:1 for 12.8px/400), and the fill paints #f3f4f6 over
+       #f3f4f6 at 1.000:1, so the fill disappears. Degradation rather than loss:
+       the hover rule moves three properties, and the label and border colours
+       still change when the fill does not.
+
+       Dark has no collision and is not diverged: both aliases below resolve to
+       the spec's own tokens there, and every dark figure improved when the
+       backdrop moved (label 5.782 → 6.987, fill 1.424 → 1.721). Only light
+       differs, which is why these are aliases per theme and not new colours. */
+    --sidebar-footer-text: var(--text-muted);       /* #4b5563 → 6.867:1 on --bg */
+    --sidebar-footer-hover-bg: var(--border);       /* #e5e7eb → 1.125:1 on --bg */
 }
 
 /* Layout tokens, kept out of the palette block above so that one stays purely
@@ -109,6 +129,24 @@
     --tag-bg: #1e3a5f;
     --tag-color: #93c5fd;
     --feed-disabled-bg: #3f1d1d;
+
+    /* Both resolve to the shared spec's own tokens: dark is not diverged. They
+       are restated here only because the light block aliases them elsewhere —
+       without these two lines the footer would inherit light's indirection into
+       the dark theme, where --text-muted is #d1d5db (a resting label at 12.039:1,
+       near-white, reading as permanently hovered next to the #f3f4f6 hover text)
+       and --border is… also #374151. See the light block for why the indirection
+       exists at all.
+
+       DO NOT COLLAPSE THESE TWO BLOCKS INTO ONE UNSCOPED PAIR. It is tempting for
+       the fill, because dark's --border and --hover-bg are the same #374151, so
+       `var(--border)` alone would give the right colour in both themes today.
+       That equality is a coincidence in the palette, not a rule: the day --border
+       moves in dark, the fill would follow it away from the mandated --hover-bg
+       silently and in the one theme that is not supposed to be diverging at all.
+       Naming the token each theme actually owes its value to is the point. */
+    --sidebar-footer-text: var(--text-subtle);      /* #9ca3af → 6.987:1 on --bg */
+    --sidebar-footer-hover-bg: var(--hover-bg);     /* #374151 → 1.721:1 on --bg */
 }
 
 * {
@@ -1334,8 +1372,12 @@ body {
    scrollport horizontally too: anything put in it has to fit the column *minus
    the scrollbar gutter* — about 185px of the 200px wherever classic scrollbars
    are drawn — or clip itself, the way .calendar-sidebar-name ellipsizes.
-   Keeping the footer outside this element is exactly so its two buttons, which
-   have only 10px to spare, never pay that gutter. */
+   Keeping the footer outside this element is exactly so its two buttons never
+   pay that gutter: the pair has 26px of slack, so a ~15px gutter would eat most
+   of it and leave the row a hair from overflowing on a slightly wider system-ui.
+   (This said "only 10px to spare" for a while. That number predated the footer's
+   negative margin, which hands the column's width back to the buttons after
+   their own insets — a stale budget quoted as a live justification.) */
 .app:has(.schedule-view, .week-view, .day-view) .sidebar-content {
     flex: 1;
     overflow-y: auto;
@@ -2365,21 +2407,47 @@ body {
    month and year views — the three that fill the viewport scroll inside
    .sidebar-content, which the footer is no longer part of.
 
-   It paints --surface, and that is a contract requirement rather than a local
-   choice: what has to be --surface is the colour resolved immediately behind
-   the two buttons, whichever element supplies it. MyNotes' footer is
-   transparent and inherits it from the sidebar panel; MyCal's and MyMail's
-   declare it, because a sticky footer needs an opaque background anyway or the
-   content scrolling under it shows through. Two rules meet in this one
-   declaration.
+   It paints --bg — the same colour as everything behind it — and that is a
+   deliberate divergence from the MySuite spec, made on the owner's instruction
+   after seeing the footer in Firefox: the two controls sit directly on the left
+   column's background, and the three apps are accepted to differ in the colour
+   immediately behind them. §5.3 of the shared spec pins that backdrop to
+   --surface, so this repo no longer satisfies it and the cross-repo guard
+   reports MyCal as a disagreement. That is the sanctioned state, not drift.
 
-   It used to paint --bg, on the reasoning that the footer belongs to the column
-   rather than to the panels above it. That was wrong on contrast: --bg is
-   #f3f4f6 in light, and the resting label at #6b7280 measured 4.393:1 against
-   it where WCAG 1.4.3 wants 4.5:1 for normal text. It also made the hover fill
-   invisible, since the mandated fill is #f3f4f6 too — the same colour painting
-   over itself. --surface fixes both at once (4.834:1, and the fill becomes
-   visible at 1.101:1), which is why the two defects were fixed together.
+   THE DECLARATION IS STILL LOAD-BEARING, AND NOW IT LOOKS REDUNDANT. Painting
+   --bg is not the same as painting nothing. This footer is sticky, and in the
+   month and year views the document scrolls underneath it by several hundred
+   pixels; transparent would let the mini month and the calendar list slide
+   visibly through the buttons. The colour is redundant, the opacity is not.
+   Deleting this line changes nothing on screen until someone scrolls, which is
+   exactly why it is spelled out here.
+
+   What removing the fill costs, measured in both themes, is confined to LIGHT.
+   Against --bg the resting label falls to 4.393:1 (WCAG 1.4.3 wants 4.5:1) and
+   the hover fill lands on 1.000:1, because MyCal's light --bg and --hover-bg are
+   both #f3f4f6 — the surface coincidence the shared spec names in §5.4/§10.1,
+   biting from the other end. Those two are re-fixed by the --sidebar-footer-*
+   aliases in the palette block rather than by putting the panel back; read that
+   comment for the numbers. Dark diverges in nothing and improved on every row:
+   label 5.782 → 6.987, focus ring 3.991 → 4.823, fill 1.424 → 1.721.
+
+   border-top stays; border-right does not. The two look like a pair and are not.
+   The separator is mandated by the shared spec (§8.5) and has never required an
+   edge to terminate against — MyMail's and MyNotes' sidebars happen to carry a
+   border-right, which is a property of those two apps rather than a requirement
+   on this one, and reasoning from the two in view to the third is how a local
+   quirk becomes a false rule. The decisive evidence is this repo's own history:
+   border-top + --bg + no border-right is what MyCal shipped for the entire life
+   of the footer, up to 282f00f, which added the fill and the border-right and
+   never touched the separator. Nobody objected to that configuration; the
+   objection arrived with the white fill.
+
+   The border-right goes because the condition that earned it has reversed. It
+   was added to stop the band terminating against the page with no edge — a seam
+   that existed only because the band was a different colour from the page. There
+   is no band now, so there is no seam, and the declaration would be carried
+   forward on a rationale that has expired.
 
    The padding is 8px on three sides and zero on the bottom, and it is measured
    against the WINDOW, not this column — see the margin-left comment below and
@@ -2420,14 +2488,7 @@ body {
        down even though the buttons must. */
     padding: 8px 8px 0;
     border-top: 1px solid var(--border);
-    background: var(--surface);
-    /* The band is full-bleed to the window on the left but stops at the column's
-       right edge, so without this it terminates against the page background with
-       no edge — invisible while it painted --bg, a visible seam now that it does
-       not. MyMail's and MyNotes' sidebars carry a border-right and their footers
-       span to it, so a bordered right edge is what the other two already show.
-       Costs 1px of the row's slack (26 → 25) and moves neither L nor B. */
-    border-right: 1px solid var(--border);
+    background: var(--bg);
 }
 
 /* nowrap: the two are content-sized and must stay on one row. See the width
@@ -2494,7 +2555,10 @@ body {
     font-style: normal;
     text-align: center;
     flex-shrink: 0;
-    color: var(--text-subtle);
+    /* --text-subtle in dark, one stop darker in light. The alias, not the token
+       the shared spec's role table names, because the light value had to move
+       when the footer stopped painting a panel — see the palette block. */
+    color: var(--sidebar-footer-text);
     /* The only transition in this stylesheet — every other hover in the app
        snaps. It is mandated by the MySuite spec, so do not delete it for
        consistency with its neighbours. Colour only, no motion, which is why it
@@ -2506,14 +2570,35 @@ body {
    --hover-bg and --border are the same #374151, so keeping it would erase the
    button's outline exactly when it lights up.
 
-   The fill used to be invisible in light — --hover-bg is #f3f4f6, and so was
-   the --bg the footer painted, so it drew that colour over itself. The footer
-   paints --surface now and the fill measures 1.101:1 against it, which is
-   faint but real. Do not change this colour to strengthen it without changing
-   MyMail and MyNotes: it is mandated, and the fill being weak in all three is
-   recorded upstream as a known limitation rather than a MyCal defect. */
+   The fill resolves through an alias in light. --hover-bg is #f3f4f6 there and
+   so is the --bg this footer now paints, so the mandated colour would draw over
+   itself at 1.000:1. That is a fill that disappears, not a hover state that
+   disappears — this rule moves the label and border colours too, and those
+   still read. The alias resolves to --border
+   (#e5e7eb) instead: 1.125:1, hover label 11.856:1 on it.
+
+   --surface was the other candidate and was rejected upstream, not here. It is
+   the arithmetically better one — #ffffff on #f3f4f6 is the mandated pair with
+   the roles swapped, and contrast is symmetric, so it preserves the suite's
+   1.101:1 exactly where #e5e7eb makes MyCal a third figure. It lost on two
+   non-numeric grounds: a white fill paints a small white box in the footer the
+   owner had just asked to stop being a white box, and it would make MyCal's hover
+   *lighten* where MyMail's and MyNotes' darken — a difference in how the control
+   behaves rather than in what colour sits behind it, which is the kind switching
+   tabs actually shows. Recorded because it was a judgement call and the
+   arithmetic argued the other way.
+
+   The fill and the resting border are the same #e5e7eb in light, which looks like
+   the dark collision the paragraph above warns about. It is not: the hover border
+   moves to --text-faint, so the control's boundary survives the fill landing on
+   it (2.051:1 against the fill).
+
+   Dark keeps --hover-bg untouched and gained a little: 1.424:1 against the old
+   --surface backdrop, 1.721:1 against --bg. Do not strengthen either theme's
+   fill to taste — the weakness is mandated and is recorded upstream as a known
+   suite-wide limitation, not a MyCal defect. */
 .sidebar-footer-btn:hover {
-    background: var(--hover-bg);
+    background: var(--sidebar-footer-hover-bg);
     color: var(--text);
     border-color: var(--text-faint);
 }
@@ -2526,12 +2611,15 @@ body {
    neighbour is --border, and in the dark theme --primary vs --border is
    2.803:1 — a ceiling no amount of opacity can lift. Offsetting by 2px moves
    the indicator clear of the border so both of its neighbours are the footer's
-   own --surface, measured 5.169:1 light and 3.991:1 dark.
+   own background, now --bg: measured 4.696:1 light and 4.823:1 dark.
 
-   Dark has about one point of headroom over the 3:1 floor, and that figure is
-   now the same in all three apps — so it is the suite's margin, not MyCal's,
-   and there is none to spend. Anything that would reduce it is a change to the
-   shared contract, not a local one.
+   Both figures were re-measured when the backdrop moved, rather than assumed to
+   still clear. Light fell (5.169 → 4.696) and dark rose (3.991 → 4.823), so the
+   binding case is no longer dark. It also means MyCal's dark margin is no longer
+   the suite's: MyMail and MyNotes still sit at 3.991 against --surface, roughly
+   one point over the 3:1 floor with none to spend, and this repo's 1.823 is its
+   own. Do not copy this number back into the shared spec, and do not treat the
+   extra room here as room the other two have.
 
    It also removes the forced-colors problem rather than patching it: an outline
    is painted under forced colours, a box-shadow is not. Do not add `outline:
