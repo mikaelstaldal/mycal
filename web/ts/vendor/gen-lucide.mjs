@@ -24,7 +24,6 @@ const ICONS = [
   'moon',
   'pencil',
   'refresh-cw',
-  'rotate-ccw',
   'rss',
   'settings',
   'sun',

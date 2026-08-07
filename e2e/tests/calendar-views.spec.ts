@@ -124,4 +124,25 @@ test.describe('Calendar Views', () => {
     expect(await miniHeight()).toBeCloseTo(relaxed, 0);
     expect(scrollHeight).toBeGreaterThan(clientHeight);
   });
+
+  // Reload rides in the brand block rather than the top bar's action cluster:
+  // after the label, flush with the right edge .brand shares with the column
+  // below it. The narrow-screen bar drops the mark and the label, and has to
+  // keep the button — which is the half of this that has already regressed once.
+  test('Reload sits after the brand label, at any width', async ({ page }) => {
+    const reload = page.getByRole('button', { name: 'Reload' });
+    await expect(reload).toBeVisible();
+
+    const [btn, label, sidebar] = await Promise.all([
+      reload.boundingBox(),
+      page.locator('.brand-name').boundingBox(),
+      page.locator('.left-sidebar').boundingBox(),
+    ]);
+    expect(btn!.x).toBeGreaterThanOrEqual(label!.x + label!.width);
+    expect(btn!.x + btn!.width).toBeCloseTo(sidebar!.x + sidebar!.width, 0);
+
+    await page.setViewportSize({ width: 375, height: 700 });
+    await expect(page.locator('.brand-name')).toBeHidden();
+    await expect(reload).toBeVisible();
+  });
 });

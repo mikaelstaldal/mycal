@@ -441,6 +441,17 @@ function App() {
                 <div class="brand">
                     <span class="brand-logo"><Logo /></span>
                     <span class="brand-name">MyCal</span>
+                    {/* After the mark and the label, at the right end of the
+                        brand block — where MyMail reloads from in its own
+                        sidebar header, and named the way MyMail names it.
+                        "Reload" rather than "Refresh" also keeps its accessible
+                        name clear of the feed rows' "Refresh now"; Playwright
+                        matches names by substring, and both are in the DOM
+                        while the feeds dialog is open. */}
+                    <button class="brand-reload-btn" onClick={() => { loadEvents(); loadCalendars(); }}
+                            title="Reload" aria-label="Reload">
+                        <Icon name="refresh-cw" />
+                    </button>
                 </div>
                 <Nav currentDate={currentDate}
                      onPrev={handlePrev} onNext={handleNext} onToday={handleToday}
@@ -449,9 +460,6 @@ function App() {
                 <div class="top-bar-actions">
                     <input type="search" class="search-input" placeholder="Search events..."
                            value={searchQuery} onInput={handleSearchInput} />
-                    <button class="settings-btn" onClick={() => { loadEvents(); loadCalendars(); }} title="Refresh" aria-label="Refresh">
-                        <Icon name="rotate-ccw" />
-                    </button>
                     {!demo && (
                         <Fragment>
                             <button class="settings-btn" onClick={() => setShowImportSingle(true)} title="Import Event" aria-label="Import Event">

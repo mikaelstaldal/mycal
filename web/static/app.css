@@ -186,6 +186,31 @@ body {
     text-overflow: ellipsis;
 }
 
+/* Reload, at the far end of the brand block — the corner MyMail reloads from,
+   `margin-left: auto` past the label and all (see its .sidebar-reload-btn). And
+   since .brand is the sidebar's 180px, the button lands on the right edge of the
+   column below it. A ghost button, the way MyMail draws this one: no outline of
+   its own, unlike the framed pair in .sidebar-footer. */
+.brand-reload-btn {
+    margin-left: auto;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    padding: 4px;
+    line-height: 1;
+    color: var(--text-subtle);
+}
+
+.brand-reload-btn:hover {
+    background: var(--hover-bg);
+    color: var(--text);
+}
+
 /* Navigation */
 .nav {
     display: flex;
@@ -1476,7 +1501,15 @@ body {
         gap: 6px;
         margin-bottom: 8px;
     }
+    /* No room for the mark and the label, but Reload rides in this block and
+       still has to be reachable — keep the row and drop the two that are only
+       identification here, leaving the button at the top right of the bar. */
     .brand {
+        width: auto;
+        margin-right: 0;
+    }
+    .brand-logo,
+    .brand-name {
         display: none;
     }
     .nav {
