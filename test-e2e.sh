@@ -34,6 +34,25 @@ cleanup() {
 }
 
 trap cleanup EXIT
+# Belt and braces, and the honest justification is the whole justification: in
+# general an untrapped fatal signal can terminate bash without running the EXIT
+# trap, which would leave the server squatting the port and make the pre-flight
+# probe below refuse the next run. Three sibling scripts should not differ by
+# accident, and that is the reason to add the line.
+#
+# It is deliberately not justified by a leak, because there is not one to point
+# at. Measured, killing a run mid-suite and then checking the port and the
+# process table: with the EXIT trap alone, SIGTERM and SIGINT both clean up and
+# leave port 8089 free — adding this line changed nothing either way. A claim
+# that `trap cleanup EXIT` alone leaks on SIGPIPE was withdrawn by its own author
+# after the test proved confounded, and it did not reproduce here. Only SIGKILL
+# leaks, and nothing can trap that.
+#
+# So: keep the line, and do not let anyone re-derive a leak from its presence.
+#
+# Re-raising via `exit` rather than adding the signals to the EXIT trap's list:
+# listing them there runs cleanup twice, once per trap.
+trap 'exit 1' INT TERM PIPE
 
 if [ ! -x "$BINARY" ]; then
     echo "$BINARY not found or not executable — run ./build.sh first" >&2
