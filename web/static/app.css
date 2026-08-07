@@ -3047,8 +3047,21 @@ body {
     }
 }
 
+/* --primary-soft laid *over* the resting fill rather than replacing it, which
+   is what makes this move the right way in both themes: the tint darkens
+   #dbeafe to #c5d9fb in light and lightens #1e3a5f to #23477a in dark. Naming a
+   fill directly cannot do that — the rule used to say `--accent-hover-bg`, which
+   in dark is the same #1e3a5f as --tag-bg, so hovering did nothing at all
+   (1.000:1), and in light it went *lighter*, reading as de-emphasis.
+
+   The two hovered hexes are read off rendered pixels, not computed from the
+   alpha: light lands a shade off the arithmetic. Against the resting fill they
+   measure 1.172:1 light and 1.234:1 dark — small, as a hover tint should be,
+   but they are the numbers, so re-measure rather than assume the tint still
+   shows if --primary-soft or --tag-bg moves. The label keeps its contrast on
+   top of the hover fill: 4.689:1 light and 5.167:1 dark, both over 4.5:1. */
 .demo-badge:hover {
-    background: var(--accent-hover-bg);
+    background: linear-gradient(var(--primary-soft), var(--primary-soft)) var(--tag-bg);
 }
 
 /* The pattern .sidebar-footer-btn uses, and for the same reason: offset clear of
