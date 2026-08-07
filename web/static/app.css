@@ -1312,8 +1312,9 @@ body {
    space under the view. A fourth view that scrolls its own body belongs in the
    selector list of all four rules below, not just this one. */
 .app:has(.schedule-view, .week-view, .day-view) {
-    display: flex;
-    flex-direction: column;
+    /* The flex column comes from .app's base rule; only the height changes here,
+       from at-least-the-window to exactly-the-window, which is what stops the
+       page scrolling and hands the scrolling to the view instead. */
     height: 100dvh;
     overflow: hidden;
 }
@@ -2354,12 +2355,16 @@ body {
    footer belongs to the column, not to the panel above it, and --bg is what it
    sits on when nothing scrolls, which is the usual case.
 
-   The 8px padding insets the two buttons from the column's edges on all four
-   sides; it is part of the MySuite spec these controls share with MyMail and
-   MyNotes, so the pair sits the same distance off the sidebar's corner in all
-   three. The padding stays *inside* the sticky box, so the footer's own bottom
-   edge still lands on the bottom of the view beside it — which is what
-   e2e/tests/calendar-views.spec.ts measures. */
+   The padding is 8px on three sides and zero on the bottom, and it is measured
+   against the WINDOW, not this column — see the margin-left comment below and
+   the shared spec. (An earlier version of this paragraph described it as an
+   inset "from the column's edges on all four sides", which was the
+   container-relative rule the spec has since withdrawn; it was already false of
+   this code when it was read.) What the padding does still do is stay *inside*
+   the sticky box, so the footer's own bottom edge lands on the bottom of the
+   view beside it — which is what e2e/tests/calendar-views.spec.ts measures, and
+   the reason the bottom inset had to come out of the padding rather than out of
+   a margin. */
 .sidebar-footer {
     margin-top: auto;
     /* Cancel .app's horizontal padding so the footer reaches the window's left
@@ -2370,7 +2375,13 @@ body {
        from a sidebar panel already flush at x=0; MyCal's column sits inside
        .app's padding, so the footer alone steps back out of it. The buttons
        keep their 8px inset from the separator's start, exactly as before —
-       the separator moves with them rather than staying behind. */
+       the separator moves with them rather than staying behind.
+
+       This lands the footer at exactly x=0, and in the three views where .app is
+       `overflow: hidden` that is its clipping edge. It clears only because .app
+       has no left border; giving it one would shave the footer with nothing to
+       catch it, since the tests assert the buttons' own 8px and that would still
+       hold. */
     margin-left: calc(-1 * var(--app-padding-x));
     position: sticky;
     bottom: 8px;
@@ -2398,12 +2409,13 @@ body {
    the glyph — the shape MyNotes uses for the same two actions.
 
    Geometry is the MySuite canonical spec, shared verbatim with MyMail and
-   MyNotes: the computed outer height must be 29.2px at the default 16px root
-   font size (19.2px line box + 8px padding + 2px border). The box mixes rem
-   text with px padding, so that number holds at the default root size and grows
-   with a larger one — it is the acceptance measurement, not a hard contract.
-   Do not change the font-size, padding, line-height or border here without
-   changing them in the other two.
+   MyNotes and defined in ../mysuite/spec/sidebar-footer.md — read that before
+   changing anything here. The computed outer height must be 29.2px at the
+   default 16px root font size (19.2px line box + 8px padding + 2px border).
+   The box mixes rem text with px padding, so that number holds at the default
+   root size and grows with a larger one — it is the acceptance measurement, not
+   a hard contract. Do not change the font-size, padding, line-height or border
+   here without changing them in the other two.
 
    Content-sized rather than stretched: the pair measures 174px inside the
    footer's 200px content box, so 26px spare. (The footer's border box is wider
@@ -2498,7 +2510,14 @@ body {
 /* Both words stay in the DOM, stacked in one grid cell, so the button keeps the
    width of the longer of the two and Settings never shifts sideways when the
    theme is toggled. The visible word is aria-hidden — the button's accessible
-   name is its aria-label, which spells out the full "Switch to … mode". */
+   name is its aria-label, which spells out the full "Switch to … mode".
+
+   Because both stay mounted, the button's textContent is "LightDark" and always
+   will be. `visibility: hidden` keeps the inactive one out of the accessibility
+   tree and off the screen, but not out of the DOM — so find-in-page and
+   select-all see both, and a test written against textContent rather than
+   innerText will read the concatenation. That is the cost of the width
+   stability, not a bug to fix. */
 .sidebar-theme-label {
     display: grid;
 }

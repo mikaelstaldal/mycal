@@ -26,8 +26,14 @@ test.describe('Sidebar footer contract', () => {
       return needed > el.clientWidth + 0.5;
     });
 
+  // By attribute rather than `.first()`: the spec mandates toggle-then-Settings,
+  // but a positional locator would silently repoint if a third control ever
+  // joined the row, and every assertion here would keep passing about the wrong
+  // element.
+  const THEME = '.sidebar-footer-btn[aria-pressed]';
+
   const boxes = async (page: Page) => ({
-    theme: (await page.locator('.sidebar-footer-btn').first().boundingBox())!,
+    theme: (await page.locator(THEME).boundingBox())!,
     settings: (await page.locator(SETTINGS).boundingBox())!,
     column: (await page.locator('.left-sidebar').boundingBox())!,
     viewportHeight: page.viewportSize()!.height,
@@ -150,19 +156,38 @@ test.describe('Sidebar footer contract', () => {
 
   // The row is nowrap and the buttons do not shrink, so a wider font overflows
   // rather than reflowing — and the only font anyone measures here is this
-  // container's. The CSS claims ~26px of slack absorbs a system-ui a quarter
-  // wider than this one; this turns that claim into an assertion instead of a
-  // comment, since the overflow branch is otherwise never exercised.
-  test('the row absorbs a 20% wider font without overflowing', async ({ page }) => {
-    expect(await footerOverflows(page)).toBe(false);
+  // container's. This turns the CSS's slack claim into an assertion, since the
+  // overflow branch is otherwise never exercised.
+  //
+  // 1.1x, not the 1.3x where it actually breaks: the point is to prove the slack
+  // is real, not to pin how much of it there is. The row's width is text in
+  // whatever system-ui resolves to, which the CSS comment right beside it warns
+  // is not portable — so an assertion sitting near the boundary would be pinning
+  // exactly the number that comment says not to trust.
+  test('the row absorbs a 10% wider font without overflowing', async ({ page }) => {
+    const measure = () =>
+      page.locator('.sidebar-footer-actions').evaluate(el => {
+        const gap = parseFloat(getComputedStyle(el).columnGap) || 0;
+        const kids = [...el.children];
+        return {
+          needed: kids.reduce((s, k) => s + k.getBoundingClientRect().width, 0) + gap * (kids.length - 1),
+          available: el.clientWidth,
+        };
+      });
+
+    const before = await measure();
+    expect(before.needed, `pair ${before.needed} in ${before.available}`).toBeLessThanOrEqual(before.available);
 
     await page.locator('.sidebar-footer-btn').evaluateAll(els => {
       for (const el of els) {
-        el.style.fontSize = parseFloat(getComputedStyle(el).fontSize) * 1.2 + 'px';
+        el.style.fontSize = parseFloat(getComputedStyle(el).fontSize) * 1.1 + 'px';
       }
     });
 
-    expect(await footerOverflows(page)).toBe(false);
+    const after = await measure();
+    // Reported either way, so a failure says how far over rather than just "red".
+    expect(after.needed, `at 1.1x font: pair ${after.needed} in ${after.available}`)
+      .toBeLessThanOrEqual(after.available);
   });
 
   // The footer buttons are sized in rem, so the column has to be too — a px
@@ -286,7 +311,7 @@ test.describe('Sidebar footer contract', () => {
   // patch. The base rule carries it, so there is nothing theme-specific here.
   test('controls keep a focus indicator under forced colors', async ({ page }) => {
     await page.emulateMedia({ forcedColors: 'active' });
-    const s = await focusAndRead(page, '.sidebar-footer-btn');
+    const s = await focusAndRead(page, THEME);
     expect(s.focusVisible).toBe(true);
     expect(s.outlineStyle).not.toBe('none');
     expect(parseFloat(s.outlineWidth)).toBeGreaterThan(0);

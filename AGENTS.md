@@ -125,32 +125,70 @@ Go backend with embedded Preact+JSX frontend. TypeScript source in `web/ts/`, co
   (`--surface`, `--hover-bg`, `--tag-bg`, …) are derived from the same Tailwind ramp. `--text` is
   an alias of `--fg`. Change a colour there and change it here — never hardcode a hex outside the
   `:root` / `[data-theme="dark"]` blocks.
-- **The sidebar footer's two controls are a three-repo contract.** The light/dark toggle and
-  Settings in `.sidebar-footer` are specified to be pixel-identical in MyCal, MyMail and MyNotes.
-  Every declaration in the `.sidebar-footer-btn` rule is part of that contract, including the ones
-  that look redundant, and so are `--sidebar-width`, the stacked width-stable label, and the
-  offset focus outline. **Changing any of them here without changing the other two silently
-  breaks the contract, and nothing in this repo can detect that** — there is no shared stylesheet
-  and no cross-repo test. The rule itself carries the derivation for each value; read the comments
-  there before touching it rather than trusting the shape of the CSS. Four things worth knowing
-  before you open the file:
-  - Computed height is **29.2px at a 16px root font** — the shared acceptance measurement rather
-    than a hard pixel contract, since the box mixes `rem` text with `px` padding.
-    `e2e/tests/sidebar-footer.spec.ts` pins it at the default root — that file is this
-    repo's whole half of the contract, so read it before changing anything here.
-  - **Position is measured from the window, not from the sidebar**: both controls sit 8px
-    from the window's left edge and 8px from its bottom, in every view, so that a user with
-    all three apps open in tabs sees nothing move when switching. Container-relative
-    offsets are not enough — three apps can each be correct against their own sidebar and
-    still land in three different places, which is what went wrong the first time. The
-    narrow (≤600px) layout is deliberately out of scope for the 8px *bottom* rule.
-  - The focus outline's **`outline-offset` is load-bearing**, not decoration: without it the
-    indicator's neighbour is `--border`, which caps the dark theme at 2.803:1 against WCAG
-    1.4.11's required 3:1. Never restore `outline: none`, and never shrink the 2px.
+- **The sidebar footer's two controls are a three-repo contract, defined outside this repo.**
+  The light/dark toggle and Settings in `.sidebar-footer` are specified to look identical, and
+  to sit at the same window coordinates, in MyCal, MyMail and MyNotes — so that someone with
+  all three open in browser tabs sees nothing move when switching between them. MyCal
+  implements that contract; it does not define it.
+
+  **The definition is [`../mysuite/spec/sidebar-footer.md`](../mysuite/spec/sidebar-footer.md)**
+  (sibling checkout, no remote yet). Read it before changing anything in the
+  `.sidebar-footer-btn` rule, `.sidebar-footer`, or the theme toggle's markup — including the
+  declarations that look redundant, which are pinned deliberately and for reasons the CSS
+  comments give at the point of use. It also carries a withdrawn-rules table, so an older
+  comment or report elsewhere is not authority for re-deriving a superseded rule. The
+  verification procedure it depends on is
+  [`../mysuite/spec/measurement-protocol.md`](../mysuite/spec/measurement-protocol.md) —
+  a green build proves nothing about geometry here, for the reason given under E2E Tests above.
+  That checkout has no remote yet, so if the path does not resolve for you the
+  `.sidebar-footer-btn` comment block carries every resolved value and is self-sufficient;
+  what you would be missing is the reasoning and the withdrawn-rules table, not the numbers.
+
+  **Changing any of this is a change in all three repositories.** Nothing anywhere can detect
+  that one of them has drifted — there is no shared stylesheet and no cross-repo test — so a
+  local "fix" here silently breaks the contract rather than failing. That sentence is repeated
+  from the shared spec on purpose: the person about to edit this CSS is exactly the person who
+  may never open a pointer.
+
+  **Edits that break it silently.** Each of these is an ordinary tidy-up, each leaves the
+  build and the Go tests green, and none of them fails anything unless a person runs the
+  Playwright suite by hand:
+  - normalising `font-size: 0.80rem` to `0.8rem` — a formatter will do this unprompted, and
+    the computed value is identical, so only a cross-repo `grep` would ever notice
+  - deleting a "redundant" `flex-shrink: 0`, `text-align: center`, `font-weight: 400` or
+    `font-style: normal` from `.sidebar-footer-btn` — they are no-ops *here* and pinned
+    precisely because the three apps arrive at them by three different routes
+  - adding `font-weight` (or any `font` shorthand) to a generic `button` rule, which would
+    move these controls in this repo only
+  - folding `.sidebar-footer-btn` into a shared icon-button class
+  - restoring `outline: none` on `:focus-visible`, or shrinking the 2px outline or its offset
+  - renaming `.sidebar-footer-btn` or changing `title="Settings"` — `e2e/tests/` pins both
+  - changing `--sidebar-width` without re-measuring `.brand`, which shares it
+  - removing `.sidebar-footer`'s negative `margin-left`, or giving `.app` a left border —
+    either one moves or clips the footer while the buttons' own 8px still measures correct
+  - measuring any of the above against a server you did not restart after `./build.sh`
+    (see E2E Tests above) — a stale binary makes a broken change look fine
+
+  What is MyCal's own, and therefore lives here:
+  - `e2e/tests/sidebar-footer.spec.ts` is this repo's half of the contract, and the only
+    machine-checkable statement of it anywhere — MyMail and MyNotes have no e2e suite at all.
+    **It does not run in CI.** `.github/workflows/main.yml` runs `./build.sh` only, and
+    `build.sh` does not invoke Playwright, so nothing checks this contract unless a person
+    runs it. Treat "the tests pass" as a claim someone has to make deliberately, not one CI
+    makes for you. Read the file alongside the spec; it encodes the parts that are checkable.
+  - App-wide focus indicators are a known deferred gap, not an oversight — see the shared
+    spec's open-items section. `.search-input:focus` still carries the `outline: none` pattern
+    this contract removed from the footer, and its own rule says so.
+  - `.sidebar-footer-btn` and `title="Settings"` are pinned by that suite — do not rename them.
   - `--sidebar-width` sizes the left column **and** `.brand` above it, which must stay equal
     (`calendar-views.spec.ts` asserts Reload's right edge against the column's), and must stay
     in `rem` so the column grows with the rem-sized buttons inside it.
-  - `.sidebar-footer-btn` and `title="Settings"` are pinned by the e2e suite — do not rename them.
+  - MyCal reaches the shared position by a mechanism the other two do not need: the footer
+    cancels `.app`'s horizontal padding via `--app-padding-x` and drops its own bottom padding,
+    because an e2e assertion pins the footer box's bottom edge to the view beside it. The spec
+    sanctions this explicitly; it is an implementation of the contract, not a deviation.
+  - The narrow (≤600px) layout is out of scope for the 8px *bottom* rule — `.app`'s padding
+    drops to 4px there. The left edge still holds.
 - Icons are Lucide, rendered inline as `<svg stroke="currentColor">` by `components/Icon.tsx`. The
   vendored bundle carries **only** the icons listed in the `ICONS` array of
   `web/ts/vendor/gen-lucide.mjs` — to use a new one, add its kebab-case name there, re-run
