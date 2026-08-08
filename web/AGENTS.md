@@ -55,7 +55,9 @@ node --test web/ts/*.test.mjs            # all of them
   implements that contract; it does not define it.
 
   **The definition is [`../mysuite/spec/sidebar-footer.md`](../mysuite/spec/sidebar-footer.md)**
-  (sibling checkout, no remote yet). Read it before changing anything in the
+  (a sibling checkout of <https://github.com/mikaelstaldal/mysuite>; keep the path — the
+  relative links resolve in a checkout, and the cross-repo check below assumes the four repos
+  are siblings). Read it before changing anything in the
   `.sidebar-footer-btn` rule, `.sidebar-footer`, or the theme toggle's markup — including the
   declarations that look redundant, which are pinned deliberately and for reasons the CSS
   comments give at the point of use. It also carries a withdrawn-rules table, so an older
@@ -64,8 +66,8 @@ node --test web/ts/*.test.mjs            # all of them
   [`../mysuite/spec/measurement-protocol.md`](../mysuite/spec/measurement-protocol.md) —
   a green build proves nothing about geometry here, for the reason given in `e2e/AGENTS.md` under
   the stale-server trap.
-  That checkout has no remote yet, so if the path does not resolve for you the
-  `.sidebar-footer-btn` comment block carries every resolved value and is self-sufficient;
+  If the path does not resolve for you, clone the repository beside this one; until you do, the
+  `.sidebar-footer-btn` comment block carries every resolved value and is self-sufficient —
   what you would be missing is the reasoning and the withdrawn-rules table, not the numbers.
 
   **Changing any of this is a change in all three repositories.** There is no shared
