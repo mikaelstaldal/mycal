@@ -54,16 +54,21 @@ node --test web/ts/*.test.mjs            # all of them
   all three open in browser tabs sees nothing move when switching between them. MyCal
   implements that contract; it does not define it.
 
-  **The definition is [`../mysuite/spec/sidebar-footer.md`](../mysuite/spec/sidebar-footer.md)**
+  **The definition is [`../mysuite/spec/sidebar-footer.md`](../../mysuite/spec/sidebar-footer.md)**
   (a sibling checkout of <https://github.com/mikaelstaldal/mysuite>; keep the path — the
   relative links resolve in a checkout, and the cross-repo check below assumes the four repos
-  are siblings). Read it before changing anything in the
+  are siblings). **The link targets in this file read `../../mysuite/…` while the visible text
+  and the bare paths in prose read `../mysuite/…`, and that mismatch is deliberate:** prose
+  paths are relative to the repository root per the note at the top of this file, but a markdown
+  link resolves from *this* file, which is one directory deeper. Do not "fix" the targets to
+  match the prose — that is what made all five of them dead until it was measured. Read it
+  before changing anything in the
   `.sidebar-footer-btn` rule, `.sidebar-footer`, or the theme toggle's markup — including the
   declarations that look redundant, which are pinned deliberately and for reasons the CSS
   comments give at the point of use. It also carries a withdrawn-rules table, so an older
   comment or report elsewhere is not authority for re-deriving a superseded rule. The
   verification procedure it depends on is
-  [`../mysuite/spec/measurement-protocol.md`](../mysuite/spec/measurement-protocol.md) —
+  [`../mysuite/spec/measurement-protocol.md`](../../mysuite/spec/measurement-protocol.md) —
   a green build proves nothing about geometry here, for the reason given in `e2e/AGENTS.md` under
   the stale-server trap.
   If the path does not resolve for you, clone the repository beside this one; until you do, the
@@ -220,9 +225,9 @@ contract shared with the sibling MyMail and MyNotes apps. **The badge is shared;
 it is MyCal's own** — that distinction is the contract (§6), so the three badges are the same
 size and colour and sit in the same place in their own chrome while each app draws its own
 picture. It is defined in the sibling
-`mysuite` repository — [`../mysuite/spec/app-logo.md`](../mysuite/spec/app-logo.md) — and **not
+`mysuite` repository — [`../mysuite/spec/app-logo.md`](../../mysuite/spec/app-logo.md) — and **not
 here**. Its values are not restated in this repo; read them there, along with
-[`../mysuite/spec/measurement-protocol.md`](../mysuite/spec/measurement-protocol.md), which is
+[`../mysuite/spec/measurement-protocol.md`](../../mysuite/spec/measurement-protocol.md), which is
 binding on any number you report about it. **Changing any of it is a change in all three
 repositories.**
 
@@ -252,7 +257,7 @@ Go tests green, and each is MyCal-specific — the sibling repos break in differ
   attributes.)*
 - **Adjusting `--primary` to make the badge read better.** It is a cross-contract operand (§7.3):
   it is also the focus-outline colour in `.sidebar-footer-btn:focus-visible`, which
-  [`../mysuite/spec/sidebar-footer.md`](../mysuite/spec/sidebar-footer.md) §6.2 holds to a WCAG
+  [`../mysuite/spec/sidebar-footer.md`](../../mysuite/spec/sidebar-footer.md) §6.2 holds to a WCAG
   1.4.11 obligation — a different contract, in a section nobody editing a logo would think to
   open. It also takes the badge fill out of this contract's §7.1 in both themes at once. If you
   think the fill needs changing, say so upstream rather than changing it.
