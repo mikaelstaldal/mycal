@@ -35,10 +35,36 @@ interface DemoBadgeProps {
 
 /** The persistent marker in the top bar; clicking it reopens the notice. */
 export function DemoBadge({ onClick }: DemoBadgeProps): VNode {
+    // The sentence MyMail and MyNotes show, with MyCal's noun. A bare "Demo"
+    // said that this is a demo without saying the thing that actually matters,
+    // which is where the user's data is going.
+    //
+    // Deliberately *not* role="status", which both of theirs carry. Theirs are
+    // an inert <span> and <p>, where a live region is the right way to expose a
+    // standing message. This one is a button — the only route back to
+    // DemoDialog once the first-visit notice has been dismissed, since
+    // demoNoticeSeen() persists that dismissal. role="status" would replace the
+    // button role, so assistive tech would stop announcing it as operable; and
+    // the text is not a live update anyway, it is there from first paint and
+    // never changes.
+    //
+    // No aria-label either. It used to read "About this demo" over the visible
+    // word "Demo" — a different string, but a short one nobody would try to
+    // speak. Over a full sentence that same override breaks WCAG 2.5.3 (Label
+    // in Name): a speech user says what they see and hits nothing. So the
+    // visible sentence is the accessible name, and title carries what clicking
+    // does. For a button, contents beat title in the name computation, so title
+    // becomes the description rather than competing with the name.
+    //
+    // The clause is a span because MyCal's top bar cannot always show it —
+    // .demo-badge-detail in app.css hides it below a breakpoint, and carries
+    // the measurements that set where that breakpoint is. Hidden *visually
+    // only*: the span stays in the accessibility tree, so the name is the full
+    // sentence at every width and "Demo" is still contained in it, which is all
+    // 2.5.3 asks.
     return (
-        <button class="demo-badge" onClick={onClick}
-                title="About this demo" aria-label="About this demo">
-            Demo
+        <button class="demo-badge" onClick={onClick} title="About this demo">
+            Demo<span class="demo-badge-detail">&nbsp;&mdash; events are stored in this browser only</span>
         </button>
     );
 }

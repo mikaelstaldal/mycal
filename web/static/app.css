@@ -2961,22 +2961,116 @@ body {
 }
 
 /* Demo mode (see web/ts/components/DemoDialog.tsx). Only ever rendered by a
-   build that has no server behind it. */
+   build that has no server behind it.
+
+   It carries the same sentence MyMail and MyNotes carry, at their 0.75rem, but
+   it is a button rather than their inert span/paragraph — clicking it brings
+   the demo notice back. Hence `font-family: inherit`: a <button> otherwise
+   renders in the UA's own font, which the uppercase chip this used to be got
+   away with and a sentence of body copy does not. The uppercase and the
+   letter-spacing went with the wording, for the same reason.
+
+   Text is --tag-color on --tag-bg: 5.493:1 light (#1d4ed8 on #dbeafe), 6.379:1
+   dark (#93c5fd on #1e3a5f). The border is the same colour as the text against
+   the top bar's --bg, 6.090:1 light and 9.838:1 dark. Those four are computed
+   from the tokens, not read off a screen.
+
+   Why the sentence is not simply always shown, unlike MyMail's and MyNotes'.
+   Both of those sit in containers with room to spare — MyMail's top bar holds a
+   title and nothing else, MyNotes' badge has the sidebar's full width. MyCal's
+   top bar holds the brand block, the whole navigation and the search field, and
+   below a certain window width there is no room. Measured on Chromium/Linux in
+   Liberation Sans, so readings and not constants, and quoted for the Schedule
+   view because its nav is the widest of the five: the sentence wants 271px at a
+   16px root, and the bar's spare width with the badge removed entirely is 295px
+   at a 1440px window, 135px at 1280px, 7px at 1152px, and negative at 1024px
+   and below, where the search field is already at its 110px floor.
+
+   A shorter wording would buy a little and not enough — the shortest tried,
+   "Demo — this browser only", wants 161px, which clears 1440px and 1366px but
+   not the 135px going at 1280px, so it would need a breakpoint of its own and
+   would still say nothing below one. Deliberately not done; one string.
+
+   Letting the badge absorb the squeeze instead was tried and is far worse than
+   an overflow: it collapsed to 18px wide and 221px tall, nine lines of one
+   character, and took the top bar from 40px to 221px with it. */
 .demo-badge {
     background: var(--tag-bg);
     color: var(--tag-color);
     border: 1px solid var(--tag-color);
     border-radius: 6px;
-    font-size: 0.8rem;
+    font-family: inherit;
+    font-size: 0.75rem;
     font-weight: 500;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
+    line-height: 1.3;
+    /* A button centres its text by default, which reads oddly the moment the
+       sentence takes a second line. Logical, unlike .sidebar-footer-btn's
+       `center` — that one is pinned by the shared spec, this one is free. */
+    text-align: start;
     cursor: pointer;
-    padding: 5px 10px;
+    padding: 4px 8px;
 }
 
+/* 89.9375rem = 1439px at the browser's default 16px: below the narrowest window
+   measured above with room for the sentence, the clause is hidden from the eye
+   but not from the accessibility tree. `display: none` would take it out of
+   both, and the sentence is the part worth keeping for a screen reader at every
+   width. It is the button's accessible name throughout; the visible "Demo" is a
+   substring of it, which is what WCAG 2.5.3 asks for.
+
+   The query is this way round on purpose. Written as `min-width` it would have
+   to *un-set* all five properties at wide widths, and a sixth added here later
+   would silently fail to be undone. This way the clipping lives in one place and
+   above the breakpoint the span is simply inline text.
+
+   Deliberately a `rem` query: relative units in a media query resolve against
+   the browser's *initial* font size rather than the page's, so a reader whose
+   default is 20px gets the breakpoint at 1799px and one at 24px gets it at
+   2159px — pushed out by the same factor the sentence grows by.
+
+   There is deliberately no `min-width` floor on the badge. A floor makes the
+   wrapped shape tidier and is the obvious thing to add, but it reintroduces a
+   horizontal scroll whenever the page's root font has been raised without the
+   browser default moving with it — the two are independent and the query can
+   only see the second. Without one, `min-width: auto` on a flex item stops the
+   shrinking at the longest word, so the worst case is a tall narrow badge
+   rather than an overflow. Do not add `min-width: 0` here: that is what removes
+   the stop, and it is what produced the 18px × 221px collapse above. */
+@media (max-width: 89.9375rem) {
+    .demo-badge-detail {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+}
+
+/* --primary-soft laid *over* the resting fill rather than replacing it, which
+   is what makes this move the right way in both themes: the tint darkens
+   #dbeafe to #c5d9fb in light and lightens #1e3a5f to #23477a in dark. Naming a
+   fill directly cannot do that — the rule used to say `--accent-hover-bg`, which
+   in dark is the same #1e3a5f as --tag-bg, so hovering did nothing at all
+   (1.000:1), and in light it went *lighter*, reading as de-emphasis.
+
+   The two hovered hexes are read off rendered pixels, not computed from the
+   alpha: light lands a shade off the arithmetic. Against the resting fill they
+   measure 1.172:1 light and 1.234:1 dark — small, as a hover tint should be,
+   but they are the numbers, so re-measure rather than assume the tint still
+   shows if --primary-soft or --tag-bg moves. The label keeps its contrast on
+   top of the hover fill: 4.689:1 light and 5.167:1 dark, both over 4.5:1. */
 .demo-badge:hover {
-    background: var(--accent-hover-bg);
+    background: linear-gradient(var(--primary-soft), var(--primary-soft)) var(--tag-bg);
+}
+
+/* The pattern .sidebar-footer-btn uses, and for the same reason: offset clear of
+   the badge's own border so both of the indicator's neighbours are the top bar's
+   --bg, which --primary meets at 4.696:1 light and 4.823:1 dark. An outline
+   rather than a box-shadow so it survives forced colours. */
+.demo-badge:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
 }
 
 .demo-dialog {
