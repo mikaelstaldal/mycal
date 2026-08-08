@@ -151,19 +151,25 @@ node --test web/ts/*.test.mjs            # all of them
     `settledStyle` helper, which polls until two reads agree.
 
   What is MyCal's own, and therefore lives here:
-  - `e2e/tests/sidebar-footer.spec.ts` is this repo's half of the contract, and the only half
-    that runs anywhere — not the only one that exists. MyMail and MyNotes both have suites of
-    their own now, on unpushed branches whose CI steps have never executed. The distinction is
-    coverage *in effect* versus coverage on disk, and it is the whole difference: a suite
-    nobody has run is not a guard.
+  - `e2e/tests/sidebar-footer.spec.ts` is this repo's half of the contract. All three repos'
+    suites now run in CI. `../mysuite/spec/sidebar-footer.md` §9.1 is the authority on that
+    and carries the evidence — do not re-derive it from this line, and correct it there first.
 
-    That is a claim about two other repositories, so it dates the moment either of them
-    pushes. `../mysuite/spec/sidebar-footer.md` §9.1 carries the live status of all three and
-    is the authority — do not re-derive it from this line, and correct it there first. (This
-    read "MyMail and MyNotes have no e2e suite at all" until both grew one, which is the shape
-    to watch for: it stayed grammatical and confident while quietly becoming false.)
+    **Three suites running is still not a cross-repo check.** Each asserts against its own app
+    and cannot see the other two, so all three stay green through a divergence. That gap is
+    what `../mysuite/tools/check-contract.py` exists for, with the limits noted above.
 
-    It runs in CI (`.github/workflows/main.yml` → `./test-e2e.sh`) and gates publishing. Note what that
+    (This bullet has now been confidently false twice. It read "MyMail and MyNotes have no e2e
+    suite at all" until both grew one; it then said their CI had never executed until all three
+    went green. The second time it was **already annotated** with the warning that it dates the
+    moment either repo pushes, and already pointed at §9.1 as the authority — and it went stale
+    anyway. A condition written into a claim only helps if somebody notices the condition
+    fired, and a push produces no commit, no diff and nothing for a review or a `grep` to catch.
+    Nothing in this repo changes when a sentence about another repo goes false, so this line has
+    no owner here. Read it for the lesson; go to §9.1 for the fact.)
+
+    MyCal's own suite runs from `.github/workflows/main.yml` → `./test-e2e.sh`, and gates
+    publishing. Note what that
     does and does not mean: the workflow triggers on `push` to `main`, so a breaking commit is
     already on `main` by the time the suite is red — what the gate prevents is a broken
     contract reaching Pages or the rolling release, not the commit landing. Read the suite
