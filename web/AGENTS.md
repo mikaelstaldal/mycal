@@ -192,7 +192,8 @@ node --test web/ts/*.test.mjs            # all of them
   `.brand-logo` badge. It is MyCal's own glyph, not a Lucide icon, so it is hand-written inline
   SVG and must **not** be routed through the Lucide bundle. It shares its geometry with
   `web/static/favicon.svg` — differing only in that it draws in `currentColor` to invert onto the
-  blue badge — so a change to either belongs in both.
+  blue badge — so a change to either belongs in both. **The badge around it is a three-repo
+  contract** — see *The app logo is governed from outside this repo* below before touching either.
 - **A button is either an icon or a label, never both.** Buttons that show text (Save, Delete,
   Close, Add Feed, …) stay text-only; `<Icon>` is for the buttons that would otherwise be a bare
   glyph — the top-bar actions, the nav and mini-month arrows, dialog dismiss ✕, the calendar
@@ -210,6 +211,92 @@ node --test web/ts/*.test.mjs            # all of them
 - Vendored preact `.d.ts` live under `web/ts/vendor/preact/` (referenced via tsconfig `paths`, excluded from the build); Leaflet/Quill/Lucide ambient declarations live in `web/ts/vendor/` (Lucide's bundle is mapped to the bare specifier `lucide-icons` in both tsconfig `paths` and the `index.html` import map)
 - Relative imports use `.js` extensions (TypeScript ESM convention — tsc resolves `.ts`/`.tsx`, emits `.js`)
 - Every `.js` under `web/static/` outside `web/static/vendor/**` is emitted by `tsc` — do not edit directly; `.gitignore` keeps those out of Git. The rest of what lives there is hand-maintained and tracked, and is edited in place: `app.css`, `index.html` and the favicons
+
+## The app logo is governed from outside this repo
+
+The badge at the top left — `.brand-logo` in `web/static/app.css`, drawn by
+`web/ts/components/Logo.tsx`, rendered inside `.brand` in `web/ts/app.tsx` — implements a
+contract shared with the sibling MyMail and MyNotes apps. **The badge is shared; the mark inside
+it is MyCal's own** — that distinction is the contract (§6), so the three badges are the same
+size and colour and sit in the same place in their own chrome while each app draws its own
+picture. It is defined in the sibling
+`mysuite` repository — [`../mysuite/spec/app-logo.md`](../mysuite/spec/app-logo.md) — and **not
+here**. Its values are not restated in this repo; read them there, along with
+[`../mysuite/spec/measurement-protocol.md`](../mysuite/spec/measurement-protocol.md), which is
+binding on any number you report about it. **Changing any of it is a change in all three
+repositories.**
+
+**Know what it pins before you go looking for a rule that is not there.** The contract pins the
+badge's appearance and its *placement* — top left of the app's own chrome, ahead of the app-name
+label in reading order — and deliberately **not** its window coordinates (§4). MyCal is the
+reason: our badge is centred in `.top-bar`, whose height is set by the `<h1>` date heading
+wrapping, so its vertical position moves with viewport width, view, date, locale and root font
+size, and the page-scrolling views carry it off-screen entirely (§4.1, §9.1). Do not "restore" a
+coordinate you found in an old comment or report — there has never been one to restore.
+
+**Edits that break it silently.** Each is an ordinary tidy-up that leaves `./build.sh` and the
+Go tests green, and each is MyCal-specific — the sibling repos break in different places.
+
+- **Routing `Logo.tsx` through the Lucide bundle**, or **changing its `viewBox` or
+  `stroke-width` without changing `favicon.svg` too** — or the reverse. Both break the favicon
+  parity the icons list above already states; the contract records it (§6.3) but leaves it
+  MyCal's own, and nothing anywhere compares the two files.
+- **Moving the glyph's size out of `.brand-logo svg` onto the SVG as `width`/`height`
+  attributes.** The contract mandates the glyph *renders* at its size, measured — never "the
+  attribute says so" (§3.2) — precisely because the two shipped apps set it in different layers.
+  **The failure here is delayed, which is what makes it dangerous, and the direction is the
+  opposite of the obvious one:** an author CSS rule beats a presentation attribute, so adding the
+  attributes changes nothing at all while `.brand-logo svg` stands. The size only jumps the day
+  someone deletes that "now-redundant" CSS rule. *(Verified by setting the attributes on the live
+  SVG and re-measuring: the box stayed put until the CSS rule was removed, then followed the
+  attributes.)*
+- **Adjusting `--primary` to make the badge read better.** It is a cross-contract operand (§7.3):
+  it is also the focus-outline colour in `.sidebar-footer-btn:focus-visible`, which
+  [`../mysuite/spec/sidebar-footer.md`](../mysuite/spec/sidebar-footer.md) §6.2 holds to a WCAG
+  1.4.11 obligation — a different contract, in a section nobody editing a logo would think to
+  open. It also takes the badge fill out of this contract's §7.1 in both themes at once. If you
+  think the fill needs changing, say so upstream rather than changing it.
+- **Changing `.brand`'s `gap`.** Pinned by §3.4, which is authority for the value — and
+  load-bearing outside this repo: it is part of the width MyNotes is being widened to in order to
+  fit its own badge (§10.1). It looks like a local spacing tweak and is not.
+- **Touching the badge's horizontal or vertical anchor.** `--app-padding-x` sets the badge's
+  distance from the window's left edge and **cannot move the footer**, which cancels that exact
+  token with a negative margin — a token the footer contract is immune to and the logo is not
+  (§9.5) — and it is redefined again inside the narrow-screen media block in `app.css`.
+  `.top-bar`'s `min-height` is the vertical equivalent; its comment at the point of use says what
+  it is holding, and why the bar is not allowed to collapse to its contents.
+- **"Fixing" the `@media (max-width: 600px)` rule that hides the badge.** The declaration is
+  `.brand-logo, .brand-name { display: none }` — **one rule, two selectors**, so splitting the
+  list to touch the label is the same edit with the same effect. It is a **sanctioned exemption**
+  recorded with MyCal's reason in §9.3: there is no room for the mark and the label, and Reload
+  rides in the same block and must stay reachable. Leave it, and note it is MyCal's alone — not a
+  licence for another app to hide its badge.
+- **Redrawing the mark smaller inside its `viewBox`.** §3.3 sets a floor on how much of the glyph
+  box the rendered ink must span, on the larger axis. A redraw that adds breathing room around the
+  mark passes every box-and-glyph-box check while visibly failing "the three look like one
+  product" — which is the whole reason that rule exists.
+
+**Two things that are not breakages but will cost you an afternoon:**
+
+- **`getByText('8')` matches the logo.** The mark draws a real `<text>8</text>`, so
+  `.brand-logo`'s `textContent` is `"8"` and an exact-text locator matches it along with the day
+  numbers (§9.5). It is hidden from the accessibility tree but not from the DOM, so a header
+  assertion written by text can land on the mark.
+- **The demo build is a second shipped surface** with different badge geometry, and it is what
+  GitHub Pages publishes. Demo mode swaps the top bar's action cluster — three buttons out, the
+  demo badge in — and that badge's detail span is clipped at its own breakpoint, so the `<h1>`
+  wraps at different widths and the badge's vertical position follows a different, **non-monotonic**
+  curve (§4.1, §9.5). *(Measured — the clip and the jump flip at the same width.)*
+
+**What catches any of this: essentially nothing, and that is a coverage sweep, not a red run.**
+Sweeping every spec in `e2e/tests/`, the frontend unit tests and
+`../mysuite/tools/check-contract.py` finds exactly one assertion touching the badge —
+`e2e/tests/calendar-views.spec.ts:12`, `expect(page.locator('.brand-logo svg')).toBeVisible()` —
+and it is satisfied by any non-empty box, so it cannot distinguish one glyph size from another.
+Nothing pins the size, colour, radius, position, centring or the `aria-hidden`. The cross-repo
+guard does not know the logo exists; a check there is deliberately deferred until MyNotes lands
+(§9.4). **Nothing here has been mutation-tested**, so read the list as "nothing asserts this" —
+the weaker and the honest claim. The prose above is the only guard that fires before the edit.
 
 ## Demo mode
 
