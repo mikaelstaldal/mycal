@@ -37,4 +37,8 @@ comment above the line that starts the server; it is not repeated here.
 
 *Important:* interactively, use the `playwright-test` command from `e2e/` and nothing else —
 do not invent variants. `test-e2e.sh` falls back to `./node_modules/.bin/playwright test` when
-that wrapper is absent, which is the case in CI; that fallback is sanctioned and is the only one.
+that wrapper is absent, which is the case in CI; that fallback is sanctioned and is the only
+one. `e2e/package.json`'s `npm test` / `npm run test:headed` exist for parity with the sibling
+repos and are **not** that path — they run `playwright test` against a server you must already
+have started yourself, with no port check and no freshness check, so they skip everything the
+two bullets above are about.

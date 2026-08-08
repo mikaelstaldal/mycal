@@ -4,6 +4,8 @@ This file provides guidance to AI coding agents when working with code in this r
 
 Frontend/web UI instructions: see `web/AGENTS.md` (loaded automatically when working under `web/`).
 
+End-to-end test instructions: see `e2e/AGENTS.md` (loaded automatically when working under `e2e/`).
+
 ## Project Overview
 
 This is a calendar application with a Go backend, REST API and an embedded TypeScript web frontend. 
