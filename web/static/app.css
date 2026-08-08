@@ -212,11 +212,26 @@ body {
     display: flex;
     align-items: center;
     margin-bottom: 16px;
-    /* .brand is centred here, so the bar's height sets how far the logo sits
-       from the top of the viewport. 40px puts the 28px badge's top edge at
-       8px (.app padding) + 6px = 14px — the same offset MyMail's sidebar
-       header gives its own badge via padding-top: 14px. Without this the bar
-       collapses to ~34px and the mark rides 3px higher than MyMail's. */
+    /* The bar must still grow to fit a wrapped heading — do not turn this into
+       a fixed `height`. What it no longer decides is where the *badge* sits:
+       that offset is authored on .brand and .brand-logo below.
+
+       It is still load-bearing for everything else in the row. Removing it lets
+       the bar collapse to 34px, and the nav rides up with it: `nav h1` measured
+       at y = 11.188 with this line and 8.188 without, in Year view at 1280. The
+       badge stays at 14 either way, so no test here catches its removal — which
+       is exactly why this says so rather than reading as a historical note.
+
+       The history, because it is the evidence that 14 was a chosen number and
+       not a coincidence. This said `min-height: 40px` put the
+       badge's top edge at 8px (.app padding) + 6px = 14px, "the same offset
+       MyMail's sidebar header gives its own badge via padding-top: 14px". The
+       *intent* was right and is now the shared rule
+       (../../mysuite/spec/app-logo.md §4). The *mechanism* was not: centring
+       .brand in this bar makes the badge's position a remainder of the date
+       heading's line count, and min-height is a floor a two-line heading simply
+       exceeds. Measured before the fix, landing view, 16px root: y = 14 at
+       1920, 27.609 at 1280, 44.406 at 1024. */
     min-height: 40px;
 }
 
@@ -234,6 +249,23 @@ body {
     font-size: 1.1rem;
     font-weight: 600;
     color: var(--text);
+    /* The badge's distance from the top of the window is a contract value
+       (../../mysuite/spec/app-logo.md §4), so it is authored here rather than
+       left to fall out of the bar's height. `flex-start` takes this block out
+       of .top-bar's centring, and 6px on top of .app's 8px padding-top is the
+       14px the badge has to sit at — whatever the heading does beside it.
+       MyMail reaches the same 14 the same way: a fixed inset on its
+       .sidebar-header, not a remainder.
+
+       The label and Reload move with it deliberately. They are one block with
+       the mark, and pinning the mark while leaving them centred would pull the
+       row apart every time the heading wraps. Reload's *right* edge is what
+       calendar-views.spec.ts pins, and that is horizontal — unaffected.
+
+       Overridden in the ≤600px block, where .top-bar becomes a column and this
+       would mean something else entirely. */
+    align-self: flex-start;
+    margin-top: 6px;
 }
 
 /* The app mark (components/Logo.tsx, the favicon glyph) on a --primary square.
@@ -244,6 +276,17 @@ body {
     width: 28px;
     height: 28px;
     flex-shrink: 0;
+    /* Out of .brand's own `align-items: center`, so the badge's offset is two
+       px declarations end to end — .app's 8px padding-top plus .brand's 6px —
+       and nothing else. Centring here would leave a remainder of
+       (.brand height − 28) / 2, which is zero today only because the badge is
+       the tallest thing in the row, and only by 1.61px: giving .brand-name a
+       taller line-height, or padding the Reload button, moves the mark with
+       nothing red. Measured at 19.344px and 18px respectively. The shared
+       contract requires the offset to be *declared* rather than computed
+       (../../mysuite/spec/app-logo.md §4.2), and this is the declaration that
+       makes that true at every root font size. */
+    align-self: flex-start;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1606,6 +1649,13 @@ body {
     .brand {
         width: auto;
         margin-right: 0;
+        /* .top-bar is a column here, so its cross axis is horizontal:
+           `align-self: flex-start` would shrink this row to its content width
+           rather than align it vertically, stranding Reload in the middle of
+           the bar. The badge is hidden at this width anyway (§9.3), so the 14px
+           rule has nothing to hold on to — hand the row back to `stretch`. */
+        align-self: auto;
+        margin-top: 0;
     }
     .brand-logo,
     .brand-name {

@@ -237,13 +237,24 @@ here**. Its values are not restated in this repo; read them there, along with
 binding on any number you report about it. **Changing any of it is a change in all three
 repositories.**
 
-**Know what it pins before you go looking for a rule that is not there.** The contract pins the
-badge's appearance and its *placement* — top left of the app's own chrome, ahead of the app-name
-label in reading order — and deliberately **not** its window coordinates (§4). MyCal is the
-reason: our badge is centred in `.top-bar`, whose height is set by the `<h1>` date heading
-wrapping, so its vertical position moves with viewport width, view, date, locale and root font
-size, and the page-scrolling views carry it off-screen entirely (§4.1, §9.1). Do not "restore" a
-coordinate you found in an old comment or report — there has never been one to restore.
+**The badge's resting position is a pinned value, and MyCal is the app that made it one.** The
+contract pins the badge's appearance and its placement; the owner ruled on the resting window
+position after this repo's measurements showed MyCal and MyMail disagreeing at 1280px wide.
+`../../mysuite/spec/app-logo.md` §4 is the authority for the number — do not re-derive it from
+here, and correct it there first.
+
+**Both halves of it are authored, and that is the point.** The horizontal offset comes from
+`--app-padding-x` on `.app`, and the vertical one from `.brand`'s `align-self: flex-start` plus
+its `margin-top`. Neither is a remainder of anything. **This is the defect that made the rule
+necessary:** the badge used to be centred in `.top-bar`, so its distance from the top was
+whatever the `<h1>` date heading's line count left over — it moved with viewport width, view,
+date and locale, and it was measured three different values across ordinary desktop widths in a
+single view. If you find an older comment or report describing that behaviour, it predates the
+fix. `e2e/tests/calendar-views.spec.ts` pins the resting position now, and asserts the bar is
+still growing when it checks — so the test cannot be satisfied by stopping the heading wrapping.
+
+The badge still scrolls away with the page in the views that scroll (§9.1); the fix is about
+where it rests, not about pinning it to the window. That gap is open and is the owner's.
 
 **Edits that break it silently.** Each is an ordinary tidy-up that leaves `./build.sh` and the
 Go tests green, and each is MyCal-specific — the sibling repos break in different places.
@@ -270,12 +281,16 @@ Go tests green, and each is MyCal-specific — the sibling repos break in differ
 - **Changing `.brand`'s `gap`.** Pinned by §3.4, which is authority for the value — and
   load-bearing outside this repo: it is part of the width MyNotes is being widened to in order to
   fit its own badge (§10.1). It looks like a local spacing tweak and is not.
-- **Touching the badge's horizontal or vertical anchor.** `--app-padding-x` sets the badge's
+- **Touching either of the badge's two anchors.** Horizontally, `--app-padding-x` sets its
   distance from the window's left edge and **cannot move the footer**, which cancels that exact
   token with a negative margin — a token the footer contract is immune to and the logo is not
-  (§9.5) — and it is redefined again inside the narrow-screen media block in `app.css`.
-  `.top-bar`'s `min-height` is the vertical equivalent; its comment at the point of use says what
-  it is holding, and why the bar is not allowed to collapse to its contents.
+  (§9.5) — and it is redefined again inside the narrow-screen media block. Vertically, it is
+  `.brand`'s `align-self: flex-start` and `margin-top`: deleting either hands the position back
+  to `.top-bar`'s centring and re-creates the defect the rule exists for. Both carry their
+  derivation at the point of use. `.top-bar`'s `min-height` no longer positions the **badge**, but
+  it is not inert: it floors the bar, and the nav's centring rides on it — measured, `nav h1` sits
+  3px higher without it. No test catches its removal, since the badge holds 14 either way. The bar
+  must also stay free to grow, so do not "simplify" it into a fixed `height` either.
 - **"Fixing" the `@media (max-width: 600px)` rule that hides the badge.** The declaration is
   `.brand-logo, .brand-name { display: none }` — **one rule, two selectors**, so splitting the
   list to touch the label is the same edit with the same effect. It is a **sanctioned exemption**
@@ -293,21 +308,32 @@ Go tests green, and each is MyCal-specific — the sibling repos break in differ
   `.brand-logo`'s `textContent` is `"8"` and an exact-text locator matches it along with the day
   numbers (§9.5). It is hidden from the accessibility tree but not from the DOM, so a header
   assertion written by text can land on the mark.
-- **The demo build is a second shipped surface** with different badge geometry, and it is what
-  GitHub Pages publishes. Demo mode swaps the top bar's action cluster — three buttons out, the
-  demo badge in — and that badge's detail span is clipped at its own breakpoint, so the `<h1>`
-  wraps at different widths and the badge's vertical position follows a different, **non-monotonic**
-  curve (§4.1, §9.5). *(Measured — the clip and the jump flip at the same width.)*
+- **The demo build is a second shipped surface**, and it is what GitHub Pages publishes. Demo mode
+  swaps the top bar's action cluster — three buttons out, the demo badge in — and that badge's
+  detail span is clipped at its own breakpoint, so the `<h1>` wraps at **different widths there
+  than in the real build, and non-monotonically**: the bar measures 40px at 1510, 67.219px from
+  1505 down to 1440, and 40px again at 1439. **The badge no longer follows it** — measured at
+  (16, 14) across that whole band after the offset was authored — but the swing is still there and
+  will still surprise anyone measuring anything else in that bar. Re-measure the demo build
+  separately; "verified in the real build" does not cover Pages.
 
-**What catches any of this: essentially nothing, and that is a coverage sweep, not a red run.**
-Sweeping every spec in `e2e/tests/`, the frontend unit tests and
-`../mysuite/tools/check-contract.py` finds exactly one assertion touching the badge —
-`e2e/tests/calendar-views.spec.ts:12`, `expect(page.locator('.brand-logo svg')).toBeVisible()` —
-and it is satisfied by any non-empty box, so it cannot distinguish one glyph size from another.
-Nothing pins the size, colour, radius, position, centring or the `aria-hidden`. The cross-repo
-guard does not know the logo exists; a check there is deliberately deferred until MyNotes lands
-(§9.4). **Nothing here has been mutation-tested**, so read the list as "nothing asserts this" —
-the weaker and the honest claim. The prose above is the only guard that fires before the edit.
+**What catches any of this — and it is now two different answers.**
+
+**The resting position is covered, and the guard was proved rather than trusted.**
+`e2e/tests/calendar-views.spec.ts` pins the badge's x, y, width and height across five widths and
+all five views, and asserts the bar is still growing while it does. It was mutation-tested in both
+directions before being believed: deleting the offset declarations fails it on the y assertion
+with the exact pre-fix number, and "fixing" the position by stopping the heading wrapping fails it
+on the precondition instead.
+
+**Everything else about the badge is still uncovered.** No assertion anywhere pins its colour,
+radius, glyph size, centring or the `aria-hidden`; the only other one that touches it is
+`calendar-views.spec.ts:12`, `expect(page.locator('.brand-logo svg')).toBeVisible()`, which is
+satisfied by any non-empty box and cannot distinguish one glyph size from another. The cross-repo
+guard does not know the logo exists, and a check there is deliberately deferred until MyNotes
+lands. `../mysuite/spec/app-logo.md` §9.4 is the authority on suite coverage across the three
+apps — correct it there first. For everything in that second group the prose above is still the
+only guard that fires before the edit.
 
 ## Demo mode
 
