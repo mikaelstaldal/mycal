@@ -68,11 +68,19 @@ node --test web/ts/*.test.mjs            # all of them
   `.sidebar-footer-btn` comment block carries every resolved value and is self-sufficient;
   what you would be missing is the reasoning and the withdrawn-rules table, not the numbers.
 
-  **Changing any of this is a change in all three repositories.** Nothing anywhere can detect
-  that one of them has drifted — there is no shared stylesheet and no cross-repo test — so a
-  local "fix" here silently breaks the contract rather than failing. That sentence is repeated
-  from the shared spec on purpose: the person about to edit this CSS is exactly the person who
-  may never open a pointer.
+  **Changing any of this is a change in all three repositories.** There is no shared
+  stylesheet, and nothing runs automatically when you edit this file — so a local "fix" here
+  breaks the contract quietly rather than failing. That sentence is repeated from the shared
+  spec on purpose: the person about to edit this CSS is exactly the person who may never open
+  a pointer.
+
+  One thing *can* detect the drift, and it is not automatic: `../mysuite/tools/check-contract.py`
+  reads all three stylesheets and fails when a pinned value disagrees. Run it after changing
+  anything here. It is a static reader, so it sees only what the spec pins and nothing
+  geometric — it prints its own limits on every run, and they are worth reading, because a
+  green run there means less than it looks like it does. (This paragraph said "no cross-repo
+  test" until that script existed; the annotation forty lines below already cited the guard by
+  name, so the file was contradicting itself.)
 
   **Edits that break it silently.** Each is an ordinary tidy-up that leaves `./build.sh` and
   the Go tests green. Each was applied deliberately to find out which assertion fires, so the
@@ -102,10 +110,14 @@ node --test web/ts/*.test.mjs            # all of them
     of its own*. This is the state MyCal shipped until the owner asked for the box to be
     removed; the deviation from the shared spec is sanctioned and recorded upstream.
   - deleting `.sidebar-footer`'s `background` as redundant — caught by *the footer paints an
-    opaque background of its own*, and **by nothing else**. Verified by deleting it: the
-    other six colour assertions stayed green, because the backdrop walk falls straight
-    through to `<body>` and finds the identical colour. The colour is redundant; the opacity
-    is not, and content slides through the buttons when the month view scrolls.
+    opaque background of its own*, and, since it exists, by
+    `../mysuite/tools/check-contract.py`: deleting it fails that guard with
+    `§5.3 backdrop is as recorded` in both themes, exit 1. Re-verified by deleting it rather
+    than reasoned from the guard's source. Nothing else catches it — the other six colour
+    assertions stayed green, because the backdrop walk falls straight through to `<body>` and
+    finds the identical colour. The colour is redundant; the opacity is not, and content
+    slides through the buttons when the month view scrolls. (This said "and **by nothing
+    else**" while the guard already caught it; the annotation predated the script.)
   - resolving `.sidebar-footer-btn`'s `color` or hover `background` straight off
     `--text-subtle` / `--hover-bg` instead of the `--sidebar-footer-*` aliases — caught in
     light by *resting label meets 4.5:1* (4.393:1) and *hover fill is distinguishable from
@@ -132,9 +144,19 @@ node --test web/ts/*.test.mjs            # all of them
     `settledStyle` helper, which polls until two reads agree.
 
   What is MyCal's own, and therefore lives here:
-  - `e2e/tests/sidebar-footer.spec.ts` is this repo's half of the contract, and the only
-    automated check it has anywhere — MyMail and MyNotes have no e2e suite at all. It runs in
-    CI (`.github/workflows/main.yml` → `./test-e2e.sh`) and gates publishing. Note what that
+  - `e2e/tests/sidebar-footer.spec.ts` is this repo's half of the contract, and the only half
+    that runs anywhere — not the only one that exists. MyMail and MyNotes both have suites of
+    their own now, on unpushed branches whose CI steps have never executed. The distinction is
+    coverage *in effect* versus coverage on disk, and it is the whole difference: a suite
+    nobody has run is not a guard.
+
+    That is a claim about two other repositories, so it dates the moment either of them
+    pushes. `../mysuite/spec/sidebar-footer.md` §9.1 carries the live status of all three and
+    is the authority — do not re-derive it from this line, and correct it there first. (This
+    read "MyMail and MyNotes have no e2e suite at all" until both grew one, which is the shape
+    to watch for: it stayed grammatical and confident while quietly becoming false.)
+
+    It runs in CI (`.github/workflows/main.yml` → `./test-e2e.sh`) and gates publishing. Note what that
     does and does not mean: the workflow triggers on `push` to `main`, so a breaking commit is
     already on `main` by the time the suite is red — what the gate prevents is a broken
     contract reaching Pages or the rolling release, not the commit landing. Read the suite

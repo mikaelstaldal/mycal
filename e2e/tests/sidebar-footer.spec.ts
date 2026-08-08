@@ -2,8 +2,11 @@ import { test, expect, type Page } from '@playwright/test';
 
 // The sidebar footer's two controls — the light/dark toggle and Settings — are a
 // three-repo contract: they are specified to look and sit identically in MyCal,
-// MyMail and MyNotes. Nothing else enforces that (there is no shared stylesheet
-// and no cross-repo test), so these assertions are this repo's whole half of it.
+// MyMail and MyNotes. There is no shared stylesheet, so these assertions are this
+// repo's whole rendered half of it. The other half is static and lives outside
+// this repo: ../mysuite/tools/check-contract.py reads all three stylesheets and
+// fails on a pinned value that disagrees. Neither sees what the other does — it
+// cannot see geometry, and this suite cannot see the other two apps.
 // See the `.sidebar-footer-btn` block in web/static/app.css for the derivations,
 // and web/AGENTS.md for the contract itself — named rather than left as a bare
 // "AGENTS.md", which now resolves to this directory's own file.
