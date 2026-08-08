@@ -2,8 +2,9 @@
 
 This file covers the TypeScript/Preact frontend under `web/`, and is loaded in addition to the
 repository-root `AGENTS.md`, which keeps the project overview, the build and code-generation
-commands, the Go tests, the `e2e/` Playwright suite and the security guidelines. Paths below are
-relative to the repository root, as they are there.
+commands, the Go tests, how to run the `e2e/` Playwright suite and the security guidelines. The
+suite's own instructions are in `e2e/AGENTS.md`. Paths below are relative to the repository root,
+as they are there.
 
 ## Frontend tests
 
@@ -61,8 +62,8 @@ node --test web/ts/*.test.mjs            # all of them
   comment or report elsewhere is not authority for re-deriving a superseded rule. The
   verification procedure it depends on is
   [`../mysuite/spec/measurement-protocol.md`](../mysuite/spec/measurement-protocol.md) —
-  a green build proves nothing about geometry here, for the reason given under E2E Tests in the
-  repository-root `AGENTS.md`.
+  a green build proves nothing about geometry here, for the reason given in `e2e/AGENTS.md` under
+  the stale-server trap.
   That checkout has no remote yet, so if the path does not resolve for you the
   `.sidebar-footer-btn` comment block carries every resolved value and is self-sufficient;
   what you would be missing is the reasoning and the withdrawn-rules table, not the numbers.

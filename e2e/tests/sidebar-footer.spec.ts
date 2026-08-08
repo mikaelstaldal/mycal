@@ -5,7 +5,8 @@ import { test, expect, type Page } from '@playwright/test';
 // MyMail and MyNotes. Nothing else enforces that (there is no shared stylesheet
 // and no cross-repo test), so these assertions are this repo's whole half of it.
 // See the `.sidebar-footer-btn` block in web/static/app.css for the derivations,
-// and AGENTS.md for the contract itself.
+// and web/AGENTS.md for the contract itself — named rather than left as a bare
+// "AGENTS.md", which now resolves to this directory's own file.
 test.describe('Sidebar footer contract', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');

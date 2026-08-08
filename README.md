@@ -150,7 +150,7 @@ cd e2e && npm ci && npx playwright install chromium && cd ..
 Start the server by hand only if you have a reason to. The binary embeds `web/static/`, so one
 started before a rebuild serves the old assets and the tests then measure something other than
 what you changed; and `-public-url` has to match the tests' base URL (`http://localhost:8089`)
-or CSRF rejects every write with a 403. `test-e2e.sh` handles both.
+or CSRF rejects writes made from inside the page with a 403. `test-e2e.sh` handles both.
 
 ## Tech Stack
 

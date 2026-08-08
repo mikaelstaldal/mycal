@@ -84,7 +84,7 @@ jobs:
 
       # Gates publishing rather than running alongside it: these assertions are
       # the only automated check the cross-repo sidebar-footer contract has in
-      # any of the three apps (see AGENTS.md), so a build that breaks it must not
+      # any of the three apps (see web/AGENTS.md), so a build that breaks it must not
       # reach Pages or the release. test-e2e.sh starts the server from the binary
       # ./build.sh just produced — one built at a different time would embed
       # different web/static/, and the suite would be measuring something other

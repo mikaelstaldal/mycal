@@ -51,32 +51,11 @@ go test ./internal/repository/ -run TestList  # single test
 
 Playwright end-to-end tests live in `e2e/`. **Run them with `./build.sh && ./test-e2e.sh`** — that
 script is what CI runs, and it starts the server itself on a fresh database, checks the server is
-actually serving the assets on disk, and tears both down afterwards. It takes the same arguments
-as `playwright test`, so `./test-e2e.sh tests/sidebar-footer.spec.ts -g "focus"` works.
+actually serving the assets on disk, and tears both down afterwards.
 
-Prefer it over starting a server by hand. The two things it exists to prevent are easy to hit and
-neither announces itself:
-
-- **A stale server.** `web/embed.go` bakes `web/static/` into the binary, so a running `./mycal`
-  keeps serving the CSS and JS it started with — `./build.sh` alone changes nothing it serves. The
-  suite then passes or fails against assets that are not the ones you edited. When a measurement
-  disagrees with the source, check this first:
-  ```bash
-  curl -s http://localhost:8089/app.css | md5sum   # must match
-  md5sum web/static/app.css
-  ```
-- **A stale database, or someone else's server on the port.** Reusing a data directory is how an
-  "empty" run silently becomes a run against whatever the last one left behind; and if something
-  already holds 8089, a hand-started server exits on bind failure while the tests run happily
-  against the squatter.
-
-If you do start one by hand, `-public-url` must match the test baseURL origin
-(`http://localhost:8089`) or CSRF rejects every mutating request with 403 and every write test
-fails.
-
-*Important:* interactively, use the `playwright-test` command from `e2e/` and nothing else —
-do not invent variants. `test-e2e.sh` falls back to `./node_modules/.bin/playwright test` when
-that wrapper is absent, which is the case in CI; that fallback is sanctioned and is the only one.
+Everything else about them is in `e2e/AGENTS.md` (loaded automatically when working under `e2e/`).
+Read it before writing a spec or starting a server by hand: it carries the stale-server and
+stale-database traps, which are easy to hit and neither of which announces itself.
 
 ## Verification
 
