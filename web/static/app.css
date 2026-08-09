@@ -227,7 +227,7 @@ body {
        badge's top edge at 8px (.app padding) + 6px = 14px, "the same offset
        MyMail's sidebar header gives its own badge via padding-top: 14px". The
        *intent* was right and is now the shared rule
-       (../../mysuite/spec/app-logo.md §4). The *mechanism* was not: centring
+       (../mysuite/spec/app-logo.md §4). The *mechanism* was not: centring
        .brand in this bar makes the badge's position a remainder of the date
        heading's line count, and min-height is a floor a two-line heading simply
        exceeds. Measured before the fix, landing view, 16px root: y = 14 at
@@ -250,7 +250,7 @@ body {
     font-weight: 600;
     color: var(--text);
     /* The badge's distance from the top of the window is a contract value
-       (../../mysuite/spec/app-logo.md §4), so it is authored here rather than
+       (../mysuite/spec/app-logo.md §4), so it is authored here rather than
        left to fall out of the bar's height. `flex-start` takes this block out
        of .top-bar's centring, and 6px on top of .app's 8px padding-top is the
        14px the badge has to sit at — whatever the heading does beside it.
@@ -281,11 +281,25 @@ body {
        and nothing else. Centring here would leave a remainder of
        (.brand height − 28) / 2, which is zero today only because the badge is
        the tallest thing in the row, and only by 1.61px: giving .brand-name a
-       taller line-height, or padding the Reload button, moves the mark with
-       nothing red. Measured at 19.344px and 18px respectively. The shared
-       contract requires the offset to be *declared* rather than computed
-       (../../mysuite/spec/app-logo.md §4.2), and this is the declaration that
-       makes that true at every root font size. */
+       taller line-height, or padding the Reload button, would then move the
+       mark. Measured at 19.344px and 18px respectively, at a 16px root.
+
+       Deleting this line IS caught now, and that is a change from what this
+       comment used to say: calendar-views.spec.ts re-measures the badge at 20px
+       and 24px roots, where the rem-sized label overtakes the badge and the
+       remainder stops being zero — verified by deleting it, y = 16.5 at 20px.
+       At a 16px root alone it still measures 14 either way, so the root loop is
+       the whole of the coverage.
+
+       What those two levers DO still move, today and unguarded here, is the
+       *label* beside it — .brand-name does not opt out of the centring the way
+       this rule does. That is a recorded, deliberately unclosed drift path
+       (../mysuite/spec/app-name-label.md §4.2, §4.3); web/AGENTS.md carries the
+       operands, and the label's own y assertion is what fires.
+
+       The shared contract requires the badge's offset to be *declared* rather
+       than computed (../mysuite/spec/app-logo.md §4.2), and this is the
+       declaration that makes that true at every root font size. */
     align-self: flex-start;
     display: flex;
     align-items: center;

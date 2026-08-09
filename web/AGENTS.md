@@ -240,7 +240,7 @@ repositories.**
 **The badge's resting position is a pinned value, and MyCal is the app that made it one.** The
 contract pins the badge's appearance and its placement; the owner ruled on the resting window
 position after this repo's measurements showed MyCal and MyMail disagreeing at 1280px wide.
-`../../mysuite/spec/app-logo.md` §4 is the authority for the number — do not re-derive it from
+`../mysuite/spec/app-logo.md` §4 is the authority for the number — do not re-derive it from
 here, and correct it there first.
 
 **Both halves of it are authored, and that is the point.** The horizontal offset comes from
@@ -334,6 +334,156 @@ guard does not know the logo exists, and a check there is deliberately deferred 
 lands. `../mysuite/spec/app-logo.md` §9.4 is the authority on suite coverage across the three
 apps — correct it there first. For everything in that second group the prose above is still the
 only guard that fires before the edit.
+
+## The app-name label is governed from outside this repo
+
+`<span class="brand-name">MyCal</span>` — the text beside the badge, rendered by `.brand` in
+`web/ts/app.tsx` and styled by `.brand-name` and `.brand` in `web/static/app.css`. Its font, size
+and placement are a three-repo contract, defined in the sibling `mysuite` repository —
+[`../mysuite/spec/app-name-label.md`](../../mysuite/spec/app-name-label.md) — and **not here**.
+Read it before changing anything below; its values are not restated in this repo.
+
+**Cite it by filename, never by a bare section number.** Four documents in that repository now
+have a §2, §3 and §4, so `app-name-label.md §4.1` is unambiguous and `§4.1` is not.
+
+**This label used to be explicitly out of scope** — `../mysuite/spec/app-logo.md` §2 records that
+ruling, with the owner's words and the condition attached. **The owner has since reopened it**
+(`app-name-label.md` §2.1), so that exclusion is superseded rather than violated. If you find a
+comment or report here describing the label as unspecified, it predates `app-name-label.md`.
+
+> **That supersession is a specimen worth keeping, and it is `AGENTS.md` §3.5's shape.** The
+> comment in `calendar-views.spec.ts` saying the label was out of scope was **accurate when it was
+> written, in a file nobody touched, and was made false by a ruling in another repository.**
+> Nothing in this repo changed, so no diff, no review and no `grep` could have caught it. It is
+> the second instance in one round. **A claim here about another repo's contents has no owner in
+> this repo** — when you cite one, prefer pointing at the section over restating what it says.
+
+**Two things are MyCal's own and are recorded upstream as exemptions, not as defects:**
+
+- **The ≤600px hide.** `@media (max-width: 600px) { .brand-logo, .brand-name { display: none } }`
+  is sanctioned in `app-name-label.md` §4.4 — the owner accepted it rather than requiring the other
+  two apps to match. **That one rule is now load-bearing for two contracts at once**: it is also
+  the badge's exemption in `app-logo.md` §9.3. It is one rule with two selectors, so splitting the
+  list to touch one element is an edit against both documents.
+- **The label's vertical position is a remainder, and the contract declines to close that.**
+  See below — it is the first entry in the list, because it is the one that will actually bite.
+
+**Edits that break this silently.** Each is an ordinary tidy-up that leaves `./build.sh`, the Go
+tests and most of the e2e suite green. Every "caught by" below was established by making the edit
+and running the suite, not by reading the assertions.
+
+- **Padding or resizing `.brand-reload-btn` moves the label.** This is the one to know. The label
+  does not opt out of `.brand`'s `align-items: center` the way `.brand-logo` does, so its `y` is a
+  remainder of the row's height — and the row's height is **its tallest item**, which includes the
+  Reload button. Measured: `padding: 4px` → `20px` on that button moves the label 14px down while
+  the badge does not move at all.
+
+  **The contract knows and deliberately leaves it open.** `app-name-label.md` §4.2 records this
+  exact path — MyCal's and MyMail's Reload buttons are strangers in the row — and §4.3 is the
+  ruling that declines to close it: authoring the offset would move three shipping apps' labels by
+  ~0.8px, so the owner constrained the observable and named the operands instead, explicitly **not**
+  extending `app-logo.md` §4.2's *authored, not arrived at* to the label. **So this prose and the
+  assertion below are the whole guard.**
+
+  Note what `.brand-logo`'s comment block in `app.css` says about the same two levers. It is
+  **accurate and is about the badge**, which now opts out and no longer moves. Nobody had written
+  down that those levers still move the *label*, for real, today. The repo documented the hazard
+  for the element it then protected, and the unprotected element beside it inherited it.
+  *Caught by* `calendar-views.spec.ts` — *the app-name label renders at the contract typography*,
+  on the `y` assertion, with the exact 28.797 the mutation produces.
+- **Declaring `font-size`, `font-family` or `font-weight` on `.brand-name`** — including by
+  "moving the label's type onto the label" from `.brand`. It changes nothing rendered when the
+  values match, and MyCal has **no** typographic declaration on `.brand-name` today; everything
+  reaches it by inheritance. *Caught by both.* `../mysuite/tools/check-contract.py` asserts that
+  `.brand-name` declares none of those three — **MyCal is the only app that guard can exist for**,
+  being the only one of the three whose label has an element at all, and it was added after a
+  `font-size: 1.4rem` on this very selector, a visible three-way divergence, ran green.
+  `calendar-views.spec.ts` catches it too, and only because it follows `app-name-label.md` §6.1:
+  it resolves the values **off the element the text actually inherits from**, so a nearer
+  declaration is what it reads (verified — `1.4rem` there fails it at `22.4px`). A suite that read
+  `.brand` instead would have reproduced the same false green.
+- **Changing `body`'s `font-family`.** The label's font is declared nowhere nearer —
+  `.brand-name` and `.brand` both inherit it (`app-name-label.md` §3.1 pins the declared stack, and
+  only the stack: what the platform resolves `system-ui` to is a per-machine reading and no
+  contract can pin it). *Caught by both*, and they cover different halves. `check-contract.py`
+  reads `body`'s declaration and the script itself labels that line **WEAK** — it says nothing
+  about the cascade from `body` to the label, nor about which face renders. The suite asserts the
+  resolved stack **on the label**, which is the cascade half, and is what fires if something
+  nearer starts declaring a family. Verified by reordering the stack: both go red.
+- **Normalising `.brand`'s `1.1rem`** — to `1.10rem`, `1.1em` or `17.6px`. All three are caught,
+  and by different tools, which is the reason to write them out rather than as one row. Measured:
+
+  | edit | renders identically | `check-contract.py` | the suite |
+  |---|---|---|---|
+  | `1.10rem` | at every root | **FAIL** | pass |
+  | `1.1em` | at every root — nothing between `body` and `.brand` sets a `font-size` | **FAIL** | pass |
+  | `17.6px` | at a 16px root only | **FAIL** | **FAIL** |
+
+  So the source-text pin is the **only** guard for the first two, and the suite's 24px-root test
+  is a second, independent one for the third. `1.1em` is the row to note: it is invisible to any
+  number of root sizes *here*, and it would stop being invisible the day anything between `body`
+  and `.brand` took a `font-size` — a condition nothing records and nothing enforces.
+- **Deleting `.brand-name`'s `min-width: 0`.** **It is inert today, and the reason to keep it is
+  not the reason usually given.** `overflow: hidden` is what zeroes a flex item's automatic minimum
+  size — the rule's own comment says so and is right — so deleting `min-width` alone changes
+  nothing rendered at all. Deleting `overflow` alone changes nothing this suite can *see* either:
+  the box keeps its width and the text keeps its length, and what stops happening is the clipping,
+  which is paint. Only deleting **both** grows the label's box and pushes Reload out of the
+  column, and that is the only one of the three a measurement catches. So this is the
+  delayed-hazard shape `app-logo.md` §5 describes for the glyph: the edit that arms the breakage
+  and the edit that fires it are separate, and neither looks wrong on its own. *Caught by*
+  `calendar-views.spec.ts` — *the label keeps the declarations that clip it, including the inert
+  one*, which reads the resolved values and is the **only** thing that fires on the arming edit;
+  the geometric test beside it fires only once both are gone.
+- **Changing `.brand`'s `gap`.** It is the badge→label gap and is pinned by both contracts
+  (`app-logo.md` §3.4, `app-name-label.md` §3.3), and it is load-bearing outside this repo — it is
+  part of the width MyNotes was widened to. *Caught by* both label tests, which measure it to the
+  label's **ink**, not off the `gap` property.
+- **Changing `--sidebar-width`.** It sets `.brand`'s width and therefore how much room the label
+  has before it truncates. *Caught by* `calendar-views.spec.ts`, but as a **Reload** failure — the
+  assertion pins that button's right edge to the column's, so the report will not mention the
+  label.
+
+**What catches the label — and it is two tools, not one.** `app-name-label.md` §7 divides the
+guard three ways and this repo sits on all three sides of it:
+
+- **`../mysuite/tools/check-contract.py`**, cross-repo and static. It holds the two things no
+  rendered test can: the `1.1rem` **source text**, and `.brand-name` declaring no typography.
+  **Run it after changing anything in this section** — nothing runs it automatically, and the
+  script says so itself on every run. It reads a working tree, not a commit.
+- **`e2e/tests/calendar-views.spec.ts`**, rendered and MyCal-only. Six tests: four written for
+  this contract — typography at a 16px root, the rem/px pair at 24px, the truncation geometry,
+  and the clipping declarations — plus the pre-existing text and Reload-ordering checks, which
+  cover the label's content and its position in the row but nothing about how it looks.
+- **Neither**, for the things `app-name-label.md` §7.3 says cannot be guarded — chiefly which
+  font face the platform actually resolves.
+
+**The four new tests were mutation-tested before being believed**, per
+`../mysuite/spec/measurement-protocol.md`: nine deliberate breakages, each confirmed red **on its
+own assertion** and reverted green. Two cautions from that exercise, both of which cost a wrong
+conclusion before they were caught:
+
+- One run came back fully green and was *not* a gap in the test — the mutation had prepended a
+  `padding` declaration that the rule's own later `padding` overrode, so nothing had actually
+  changed. **A mutation that does not mutate is indistinguishable from a test that does not
+  catch.** Check the edit took effect before concluding anything from a green run.
+- The mutations were run through Playwright and **not** through `check-contract.py`, and three
+  rows above were written as "caught by nothing" on that basis. All three were wrong; the static
+  check held every one. **Run both tools before writing down what catches an edit.**
+
+**Why the 16px root is the one that matters, and why a sweep is not a substitute.** The label's
+height is `1.5 × 1.1 × root`, which overtakes the 28px badge at a root of about 16.97px. Below
+that the badge is the tallest thing in the row and the label is centred against it; above it the
+label sets the row's height and lands flush. **So the offset exists only at the default root — the
+one every reader sees — and a test at 20px or 24px would find the label perfectly aligned and be
+measuring the one case where it is absent.** Do not "improve" that test by sweeping root sizes and
+dropping 16.
+
+**Still uncovered:** the label's colour, its `text-overflow` behaviour as actually *painted*
+(nothing here can see an ellipsis glyph — only that the box clips), and its appearance in the demo
+build, which is a second shipped surface and is what Pages publishes. `app-name-label.md` §7.2 is
+the authority on what each app's suite must assert; §8.1 carries the per-app breakdown of this
+list. Correct either there first.
 
 ## Demo mode
 
