@@ -1,6 +1,6 @@
 module github.com/mikaelstaldal/mycal
 
-go 1.26.4
+go 1.26.6
 
 require (
 	github.com/go-faster/errors v0.7.1
@@ -38,7 +38,7 @@ require (
 	golang.org/x/net v0.56.0 // indirect
 	golang.org/x/sync v0.21.0 // indirect
 	golang.org/x/sys v0.46.0 // indirect
-	golang.org/x/text v0.38.0 // indirect
+	golang.org/x/text v0.39.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
