@@ -41,6 +41,9 @@ jobs:
       - name: Install govulncheck
         run: go install golang.org/x/vuln/cmd/govulncheck@v1.7.0
 
+      - name: Build
+        run: go build -tags netgo .
+
       # In the default source mode this fails the job only on a vulnerability
       # reachable from this code. One in a module we merely require is reported
       # and ignored, which is what keeps this from going permanently red over
