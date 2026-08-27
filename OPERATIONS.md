@@ -57,7 +57,7 @@ chown mycal:mycal /var/lib/mycal
 chmod 0700 /var/lib/mycal
 ```
 
-mycal creates `mycal.sqlite` in the data directory on first startup and applies schema migrations automatically on each subsequent start.
+mycal creates `mycal.sqlite` in the data directory on first startup and applies schema migrations automatically on each subsequent start. Starting the *server* against a database written by a newer mycal is refused rather than migrated — if you see "was written by a newer version of mycal", roll the binary forward rather than downgrading the data. `-export-ics` is deliberately not subject to that check: it opens the database read-only and cannot damage it, so an older binary can still get your data out.
 
 ---
 
@@ -68,6 +68,8 @@ mycal uses HTTP Basic Auth backed by an htpasswd file (bcrypt). Create the file 
 ```bash
 htpasswd -Bc /etc/mycal/htpasswd myuser
 ```
+
+The file is parsed strictly at startup: every non-blank line must be a `username:bcrypt-hash` pair (bcrypt only — `htpasswd -B`), usernames must be unique, and the file must not be empty. mycal refuses to start otherwise. A malformed, non-bcrypt or duplicate entry is reported with its file and line number; a file with no entries at all is reported by name, there being no line to point at.
 
 Protect the file:
 

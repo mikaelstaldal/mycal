@@ -71,7 +71,7 @@ Go backend with embedded Preact+JSX frontend. TypeScript source in `web/ts/`, co
 - **model** → Event struct, request types (Create/Update), validation. Datetimes are RFC 3339 strings throughout.
 - **repository** → `EventRepository` interface + SQLite implementation (`modernc.org/sqlite`, pure Go). Schema auto-created on startup.
 - **service** → Business logic wrapping repository. Returns typed sentinel errors (`ErrNotFound`, `ErrValidation`).
-- **handler** → HTTP handlers using Go 1.22+ `ServeMux` routing patterns (`"GET /api/v1/events/{id}"`). JSON helpers and middleware (logging, recovery, CORS).
+- **handler** → HTTP handlers using Go 1.22+ `ServeMux` routing patterns (`"GET /api/v1/events/{id}"`). JSON helpers and middleware (recovery, gzip, cache control). There is no CORS middleware — the browser clients and the sibling apps are same-origin by construction, and cross-origin writes are refused by the `csrf` middleware in `main.go`.
 
 **Key design decisions:**
 - `UpdateEventRequest` uses pointer fields for partial updates (nil = unchanged)

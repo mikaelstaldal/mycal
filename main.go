@@ -27,6 +27,7 @@ import (
 	"github.com/mikaelstaldal/go-server-common/auth"
 	"github.com/mikaelstaldal/go-server-common/csrf"
 	"github.com/mikaelstaldal/go-server-common/httputil"
+	commonsqlite "github.com/mikaelstaldal/go-server-common/sqlite"
 	commonweb "github.com/mikaelstaldal/go-server-common/web"
 	"github.com/mikaelstaldal/mycal/internal/handler"
 	"github.com/mikaelstaldal/mycal/internal/ical"
@@ -444,6 +445,9 @@ func main() {
 		"synchronous=NORMAL",
 	)
 	if err != nil {
+		if errors.Is(err, commonsqlite.ErrSchemaTooNew) {
+			log.Fatalf("database %s was written by a newer version of mycal; upgrade the binary: %v", databaseFile, err)
+		}
 		log.Fatalf("open database: %v", err)
 	}
 	defer db.Close()
@@ -591,7 +595,11 @@ func serveHTTP(mux http.Handler, opts httpServerOptions, onShutdown func()) erro
 		HSTS:           hsts,
 	})(httpHandler)
 	if opts.basicAuthFile != "" {
-		htpasswd, err := auth.LoadHtpasswd(opts.basicAuthFile)
+		// Strict: every non-blank line must be a "username:bcrypt-hash" pair, so a
+		// login the operator believes in cannot silently not exist. Usernames carry
+		// no meaning of their own here — they name no file, table or path — so no
+		// username validator is passed.
+		htpasswd, err := auth.LoadHtpasswdStrict(opts.basicAuthFile, nil)
 		if err != nil {
 			return fmt.Errorf("load htpasswd: %w", err)
 		}

@@ -59,6 +59,8 @@ htpasswd -Bc htpasswd admin
 
 When enabled, all endpoints (UI, API, and iCalendar feed) require valid credentials. The browser will prompt for a username and password automatically.
 
+The htpasswd file is parsed strictly at startup: every non-blank line must be a `username:bcrypt-hash` pair with no duplicate usernames, and the file must not be empty. Anything else aborts startup — a bad entry named by file and line number, an entryless file by name — rather than silently leaving out a login you believe exists.
+
 ## API
 
 See the [OpenAPI specification](openapi.yaml).

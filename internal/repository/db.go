@@ -11,8 +11,8 @@ import (
 // busy_timeout pragma (0 = skip), applies any extraPragmas, and runs pending
 // schema migrations. Connection setup (DSN, pragmas, WAL mode) is delegated to
 // the shared sqlite package; the imperative v1 schema migration — which
-// reconciles pre-user_version legacy databases and so cannot be expressed as a
-// flat statement list — is applied by initSchema.
+// reconciles pre-user_version legacy databases and so cannot be expressed as
+// the flat statement list sqlite.Migrate takes — is applied by initSchema.
 func OpenDB(path string, busyTimeout int, extraPragmas ...string) (*sql.DB, error) {
 	// Passing no migrations leaves migration to initSchema while still letting
 	// the shared package build the DSN, bake in pragmas, and enable WAL mode.
@@ -44,10 +44,18 @@ type execQuerier interface {
 // Each if-block is independent so multiple migrations can apply in one startup.
 // When the database is already at the latest version no statements run, so it is
 // safe to call against a read-only connection.
+//
+// A database stamped past currentSchemaVersion was written by a newer mycal, so
+// this binary does not know the shape it would be writing to: it is refused with
+// sqlite.ErrSchemaTooNew rather than operated on.
 func initSchema(db *sql.DB) error {
-	var version int
-	if err := db.QueryRow("PRAGMA user_version").Scan(&version); err != nil {
-		return fmt.Errorf("read user_version: %w", err)
+	version, err := sqlite.UserVersion(db)
+	if err != nil {
+		return err
+	}
+	if version > currentSchemaVersion {
+		return fmt.Errorf("%w: database is at schema version %d, this binary knows %d",
+			sqlite.ErrSchemaTooNew, version, currentSchemaVersion)
 	}
 
 	if version < 1 {

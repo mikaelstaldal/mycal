@@ -2,9 +2,11 @@ package repository
 
 import (
 	"database/sql"
+	"fmt"
 	"path/filepath"
 	"testing"
 
+	"github.com/mikaelstaldal/go-server-common/sqlite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -125,4 +127,20 @@ func TestFreshDatabaseIsVersioned(t *testing.T) {
 	var mode string
 	require.NoError(t, db.QueryRow("PRAGMA journal_mode").Scan(&mode))
 	assert.Equal(t, "wal", mode)
+}
+
+// TestSchemaTooNewIsRefused verifies that a database stamped with a user_version
+// this binary does not know is refused rather than operated on.
+func TestSchemaTooNewIsRefused(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "future.sqlite")
+
+	db, err := OpenDB(dbPath, 5000)
+	require.NoError(t, err)
+	_, err = db.Exec(fmt.Sprintf("PRAGMA user_version = %d", currentSchemaVersion+1))
+	require.NoError(t, err)
+	require.NoError(t, db.Close())
+
+	_, err = OpenDB(dbPath, 5000)
+	require.Error(t, err)
+	assert.ErrorIs(t, err, sqlite.ErrSchemaTooNew)
 }
