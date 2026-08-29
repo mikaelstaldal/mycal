@@ -3,6 +3,7 @@ package repository
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"github.com/mikaelstaldal/go-server-common/sqlite"
 )
@@ -27,6 +28,43 @@ func OpenDB(path string, busyTimeout int, extraPragmas ...string) (*sql.DB, erro
 	}
 
 	return db, nil
+}
+
+// MemoryDSN returns a DSN for an in-memory database that stays correct when more
+// than one connection is used. Tests pass t.Name() to get a database of their own.
+//
+// A bare ":memory:" database is private to the connection that opened it, so a
+// second connection from the same *sql.DB gets a second, empty database. That is
+// invisible for as long as a caller happens to reuse one pooled connection and
+// surfaces as a confusing "no such table" the moment it does not — and neither
+// the number of connections nor when they are taken is under the caller's
+// control: sqlite.Open's WAL step and sqlite.MigrateStrict both acquire
+// connections of their own. cache=shared makes every connection see the same
+// database.
+//
+// A shared-cache database is identified by its name, so distinct names must stay
+// distinct: two callers mapped onto one name would share a database, which is the
+// problem this function exists to avoid rather than a milder version of it. Every
+// byte outside [A-Za-z0-9] is therefore escaped as _<hex>_ rather than replaced.
+// That is injective over any string: an unescaped run can never contain '_', so an
+// escape cannot be confused with the text around it, and no two names can meet.
+//
+// Bytes rather than runes, deliberately. Ranging over a string decodes invalid
+// UTF-8 to utf8.RuneError, which would map every such byte onto one escape and
+// collide names that differ — and this takes a string, not a valid-UTF-8 string.
+// Escaping the bytes costs nothing and removes the exception.
+func MemoryDSN(name string) string {
+	var b strings.Builder
+	for i := 0; i < len(name); i++ {
+		c := name[i]
+		switch {
+		case c >= 'a' && c <= 'z', c >= 'A' && c <= 'Z', c >= '0' && c <= '9':
+			b.WriteByte(c)
+		default:
+			fmt.Fprintf(&b, "_%02x_", c)
+		}
+	}
+	return "file:" + b.String() + "?mode=memory&cache=shared"
 }
 
 // currentSchemaVersion is the PRAGMA user_version a fully migrated database

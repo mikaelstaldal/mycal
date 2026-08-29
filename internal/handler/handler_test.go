@@ -39,7 +39,7 @@ func mustDate(s string) time.Time {
 
 func setupTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
-	db, err := repository.OpenDB(":memory:", 0)
+	db, err := repository.OpenDB(repository.MemoryDSN(t.Name()), 0)
 	require.NoError(t, err, "open db")
 	repo, err := repository.NewSQLiteRepository(db)
 	require.NoError(t, err, "init repo")

@@ -11,7 +11,7 @@ import (
 
 func setupTestRepo(t *testing.T) *SQLiteRepository {
 	t.Helper()
-	db, err := OpenDB(":memory:", 0)
+	db, err := OpenDB(MemoryDSN(t.Name()), 0)
 	require.NoError(t, err)
 	t.Cleanup(func() { db.Close() })
 	repo, err := NewSQLiteRepository(db)
