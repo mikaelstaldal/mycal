@@ -18,7 +18,6 @@ import (
 	"os/signal"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"runtime/debug"
 	"strings"
 	"syscall"
@@ -448,14 +447,12 @@ func main() {
 		if errors.Is(err, commonsqlite.ErrSchemaTooNew) {
 			log.Fatalf("database %s was written by a newer version of mycal; upgrade the binary: %v", databaseFile, err)
 		}
+		if errors.Is(err, repository.ErrLegacySchema) {
+			log.Fatalf("database %s: %v", databaseFile, err)
+		}
 		log.Fatalf("open database: %v", err)
 	}
 	defer db.Close()
-
-	// Allow concurrent reads under WAL mode; writes still serialize at the SQLite level.
-	numConns := runtime.GOMAXPROCS(0)
-	db.SetMaxOpenConns(numConns)
-	db.SetMaxIdleConns(numConns)
 
 	if err = ensureWritable(db); err != nil {
 		log.Fatalf("open database: %v", err)

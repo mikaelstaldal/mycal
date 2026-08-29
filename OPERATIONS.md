@@ -59,6 +59,8 @@ chmod 0700 /var/lib/mycal
 
 mycal creates `mycal.sqlite` in the data directory on first startup and applies schema migrations automatically on each subsequent start. Starting the *server* against a database written by a newer mycal is refused rather than migrated — if you see "was written by a newer version of mycal", roll the binary forward rather than downgrading the data. `-export-ics` is deliberately not subject to that check: it opens the database read-only and cannot damage it, so an older binary can still get your data out.
 
+A database from the other direction is refused too. Versions of mycal before schema versioning existed did not stamp `PRAGMA user_version`, and current builds no longer carry the code that recognised those databases column by column; one is refused on startup with a message naming a mycal build that can still migrate it. Run that build once against the data directory, then upgrade again. `-export-ics` is *not* a way out of this one — it reads columns such a database does not have — so the older binary is the only route.
+
 ---
 
 ## Set Up Authentication

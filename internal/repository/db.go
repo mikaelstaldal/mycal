@@ -1,26 +1,49 @@
 package repository
 
 import (
+	"context"
 	"database/sql"
+	"errors"
 	"fmt"
+	"runtime"
 	"strings"
 
 	"github.com/mikaelstaldal/go-server-common/sqlite"
 )
 
+// ErrLegacySchema is returned for a database that predates the user_version
+// scheme. mycal used to reconcile such databases in Go, inspecting them column by
+// column; that code is gone, so one is now refused rather than guessed at.
+//
+// The last build of that generation is d89ff9b, which reconciled on every startup
+// without recording that it had; user_version arrived in the commit after it. Any
+// database still in the pre-versioning shape has therefore not been started since.
+var ErrLegacySchema = errors.New("database predates schema versioning")
+
 // OpenDB opens the SQLite database at path, enables foreign keys, sets the
-// busy_timeout pragma (0 = skip), applies any extraPragmas, and runs pending
-// schema migrations. Connection setup (DSN, pragmas, WAL mode) is delegated to
-// the shared sqlite package; the imperative v1 schema migration — which
-// reconciles pre-user_version legacy databases and so cannot be expressed as
-// the flat statement list sqlite.Migrate takes — is applied by initSchema.
+// busy_timeout pragma (0 = skip), applies any extraPragmas, sizes the connection
+// pool, and runs pending schema migrations. Connection setup (DSN, pragmas, WAL
+// mode) is delegated to the shared sqlite package.
+//
+// Migrations are applied by sqlite.MigrateStrict rather than by Open, so that the
+// pool is sized before anything migrates and so that each batch decides what it
+// needs only after taking the write lock. mycal has one migrating process, so the
+// second property is uniformity with the other services rather than a race it has.
 func OpenDB(path string, busyTimeout int, extraPragmas ...string) (*sql.DB, error) {
-	// Passing no migrations leaves migration to initSchema while still letting
-	// the shared package build the DSN, bake in pragmas, and enable WAL mode.
+	// Passing no migrations here leaves migrating to initSchema while still
+	// letting the shared package build the DSN, bake in pragmas and set WAL mode.
 	db, err := sqlite.Open(path, busyTimeout, nil, extraPragmas...)
 	if err != nil {
 		return nil, err
 	}
+
+	// Sized before migrating rather than by the caller afterwards: MigrateStrict
+	// takes a connection per batch, and a pool still at its defaults is one the
+	// caller has not chosen. This cannot precede the WAL step, which sqlite.Open
+	// performs before it returns the *sql.DB there is anything to configure.
+	numConns := runtime.GOMAXPROCS(0)
+	db.SetMaxOpenConns(numConns)
+	db.SetMaxIdleConns(numConns)
 
 	if err := initSchema(db); err != nil {
 		db.Close()
@@ -68,195 +91,87 @@ func MemoryDSN(name string) string {
 }
 
 // currentSchemaVersion is the PRAGMA user_version a fully migrated database
-// carries. Bump it when adding a migration block to initSchema.
-const currentSchemaVersion = 2
+// carries. Derived from migrations rather than maintained by hand, so that it
+// cannot disagree with the version MigrateStrict refuses a database for being
+// newer than.
+var currentSchemaVersion = len(migrations)
 
-// execQuerier is satisfied by both *sql.DB and *sql.Tx so migration helpers can
-// run against either.
-type execQuerier interface {
-	Exec(query string, args ...any) (sql.Result, error)
-	QueryRow(query string, args ...any) *sql.Row
+// migrations is the schema, one slice per version: migrations[0] takes a database
+// from user_version 0 to 1, migrations[1] from 1 to 2.
+//
+// schemaV1Indexes is concatenated rather than folded into schemaV1 so that
+// schemaV1 stays byte-identical to the historical v1 statement list. The two were
+// separate because the indexes name columns that legacy databases only gained
+// during reconciliation, and so had to be created after it; with reconciliation
+// gone the ordering is no longer load-bearing, only the grouping is.
+var migrations = [][]string{
+	append(append([]string{}, schemaV1...), schemaV1Indexes...),
+	{`ALTER TABLE events ADD COLUMN note_slug TEXT NOT NULL DEFAULT ''`},
 }
 
-// initSchema applies pending schema migrations using PRAGMA user_version.
-// Each if-block is independent so multiple migrations can apply in one startup.
-// When the database is already at the latest version no statements run, so it is
-// safe to call against a read-only connection.
+// initSchema refuses a pre-user_version database and hands everything else to
+// sqlite.MigrateStrict.
 //
-// A database stamped past currentSchemaVersion was written by a newer mycal, so
-// this binary does not know the shape it would be writing to: it is refused with
-// sqlite.ErrSchemaTooNew rather than operated on.
+// A database stamped past the latest migration was written by a newer mycal, so
+// this binary does not know the shape it would be writing to; MigrateStrict
+// refuses it with sqlite.ErrSchemaTooNew. A database at user_version 0 that
+// already has an events table is the opposite case: written by a mycal from
+// before the versioning scheme, in a shape this binary no longer models. Every
+// statement below assumes it is building a schema from nothing, so running them
+// against an existing one could complete without error and still be wrong — the
+// damaged shapes the old non-transactional migrator could leave behind take the
+// columns but not the data. Refusing is the only honest answer.
+//
+// The guard is also what lets migrations[0] assume an empty database: it carries
+// no FTS rebuild, because the index it would rebuild can have no rows to hold.
+//
+// The check reads user_version outside the write lock MigrateStrict takes, so it
+// assumes one migrating process — true of mycal, where OpenDB is reached only from
+// server startup and -export-ics opens the database read-only without migrating.
+// Anything that gives mycal a second read-write entry point, an -import or -repair
+// mode say, invalidates that: between this check and the lock, another process
+// could create the very table being checked for. The detection would then have to
+// move inside the transaction, and this comment is the notice that it has not.
 func initSchema(db *sql.DB) error {
 	version, err := sqlite.UserVersion(db)
 	if err != nil {
 		return err
 	}
-	if version > currentSchemaVersion {
-		return fmt.Errorf("%w: database is at schema version %d, this binary knows %d",
-			sqlite.ErrSchemaTooNew, version, currentSchemaVersion)
+	if version == 0 && tableExists(db, "events") {
+		return fmt.Errorf("%w: user_version is 0 with an existing events table. "+
+			"This build cannot migrate it: the code that reconciled pre-versioning "+
+			"databases has been removed. Start it once with an older mycal build to "+
+			"migrate and stamp it, then upgrade again", ErrLegacySchema)
 	}
 
-	if version < 1 {
-		// A pre-existing events table means this database was created before the
-		// user_version scheme; it may carry legacy columns that need reconciling.
-		legacy := tableExists(db, "events")
-
-		tx, err := db.Begin()
-		if err != nil {
-			return fmt.Errorf("begin migration to v1: %w", err)
-		}
-		defer tx.Rollback()
-
-		for _, stmt := range schemaV1 {
-			if _, err := tx.Exec(stmt); err != nil {
-				preview := stmt
-				if len(preview) > 60 {
-					preview = preview[:60]
-				}
-				return fmt.Errorf("schema v1 %q: %w", preview, err)
-			}
-		}
-
-		// Sync the FTS index with the existing events before reconcileLegacy runs
-		// any UPDATE: the update triggers delete-then-insert each touched row in
-		// events_fts, which corrupts the index if the row was never indexed. A
-		// no-op on a fresh, empty database.
-		if _, err := tx.Exec(`INSERT INTO events_fts(events_fts) VALUES('rebuild')`); err != nil {
-			return fmt.Errorf("rebuild events_fts: %w", err)
-		}
-
-		if legacy {
-			if err := reconcileLegacy(tx); err != nil {
-				return fmt.Errorf("reconcile legacy schema: %w", err)
-			}
-		}
-
-		// Indexes on ics_uid/calendar_id must come after reconcileLegacy, which
-		// adds those columns to legacy tables that predate them.
-		for _, stmt := range schemaV1Indexes {
-			if _, err := tx.Exec(stmt); err != nil {
-				return fmt.Errorf("schema v1 index %q: %w", stmt, err)
-			}
-		}
-
-		if _, err := tx.Exec("PRAGMA user_version = 1"); err != nil {
-			return fmt.Errorf("set user_version = 1: %w", err)
-		}
-
-		if err := tx.Commit(); err != nil {
-			return fmt.Errorf("commit migration to v1: %w", err)
-		}
-	}
-
-	if version < 2 {
-		// v2 adds events.note_slug, the link to a MyNotes note. A fresh database
-		// gets it here too: schemaV1 is left as the historical v1 schema and is
-		// never edited, so every database reaches the current shape the same way.
-		// Guarded by columnExists so re-running is harmless.
-		tx, err := db.Begin()
-		if err != nil {
-			return fmt.Errorf("begin migration to v2: %w", err)
-		}
-		defer tx.Rollback()
-
-		if !columnExists(tx, "events", "note_slug") {
-			if _, err := tx.Exec(`ALTER TABLE events ADD COLUMN note_slug TEXT NOT NULL DEFAULT ''`); err != nil {
-				return fmt.Errorf("schema v2 add note_slug: %w", err)
-			}
-		}
-
-		if _, err := tx.Exec(fmt.Sprintf("PRAGMA user_version = %d", currentSchemaVersion)); err != nil {
-			return fmt.Errorf("set user_version = %d: %w", currentSchemaVersion, err)
-		}
-
-		if err := tx.Commit(); err != nil {
-			return fmt.Errorf("commit migration to v2: %w", err)
-		}
-	}
-
-	return nil
+	// Background rather than a caller's context: this runs once at startup, before
+	// anything that could be cancelled exists, and a migration abandoned halfway
+	// through its batch is worth less than one that finishes.
+	return sqlite.MigrateStrict(context.Background(), db, migrations)
 }
 
 // tableExists reports whether a table with the given name is present.
-func tableExists(q execQuerier, table string) bool {
+func tableExists(db *sql.DB, table string) bool {
 	var n int
-	_ = q.QueryRow(`SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?`, table).Scan(&n)
+	_ = db.QueryRow(`SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?`, table).Scan(&n)
 	return n > 0
 }
 
 // columnExists reports whether the given column is present on the table.
-func columnExists(q execQuerier, table, column string) bool {
+func columnExists(db *sql.DB, table, column string) bool {
 	var n int
-	_ = q.QueryRow(`SELECT COUNT(*) FROM pragma_table_info(?) WHERE name = ?`, table, column).Scan(&n)
+	_ = db.QueryRow(`SELECT COUNT(*) FROM pragma_table_info(?) WHERE name = ?`, table, column).Scan(&n)
 	return n > 0
-}
-
-// reconcileLegacy brings a pre-user_version database up to the v1 schema. Every
-// step is guarded so it is a no-op on databases already at the final state.
-// Ordered: add new columns, migrate calendar_name data into the calendars table
-// and calendar_id, then drop the obsolete calendar_name columns.
-func reconcileLegacy(tx *sql.Tx) error {
-	if !columnExists(tx, "events", "ics_uid") {
-		if _, err := tx.Exec(`ALTER TABLE events ADD COLUMN ics_uid TEXT NOT NULL DEFAULT ''`); err != nil {
-			return err
-		}
-	}
-	if !columnExists(tx, "events", "calendar_id") {
-		if _, err := tx.Exec(`ALTER TABLE events ADD COLUMN calendar_id INTEGER NOT NULL DEFAULT 0`); err != nil {
-			return err
-		}
-	}
-	if !columnExists(tx, "feeds", "calendar_id") {
-		if _, err := tx.Exec(`ALTER TABLE feeds ADD COLUMN calendar_id INTEGER NOT NULL DEFAULT 0`); err != nil {
-			return err
-		}
-	}
-
-	// Migrate the obsolete defaultEventColor preference to the default calendar's color.
-	var prefColor string
-	if err := tx.QueryRow(`SELECT value FROM preferences WHERE key = 'defaultEventColor'`).Scan(&prefColor); err == nil && prefColor != "" {
-		if _, err := tx.Exec(`UPDATE calendars SET color = ? WHERE id = 0`, prefColor); err != nil {
-			return err
-		}
-		if _, err := tx.Exec(`DELETE FROM preferences WHERE key = 'defaultEventColor'`); err != nil {
-			return err
-		}
-	}
-
-	// Migrate existing calendar_name values into the calendars table, then populate
-	// calendar_id from them, then drop the calendar_name columns.
-	if columnExists(tx, "events", "calendar_name") {
-		if _, err := tx.Exec(`INSERT OR IGNORE INTO calendars (name, color)
-			SELECT DISTINCT calendar_name, 'dodgerblue' FROM events WHERE calendar_name != ''`); err != nil {
-			return err
-		}
-		if _, err := tx.Exec(`UPDATE events SET calendar_id = COALESCE((SELECT id FROM calendars WHERE name = events.calendar_name), 0) WHERE calendar_name != '' AND calendar_id = 0`); err != nil {
-			return err
-		}
-		if _, err := tx.Exec(`ALTER TABLE events DROP COLUMN calendar_name`); err != nil {
-			return err
-		}
-	}
-	if columnExists(tx, "feeds", "calendar_name") {
-		if _, err := tx.Exec(`INSERT OR IGNORE INTO calendars (name, color)
-			SELECT DISTINCT calendar_name, 'dodgerblue' FROM feeds WHERE calendar_name != ''`); err != nil {
-			return err
-		}
-		if _, err := tx.Exec(`UPDATE feeds SET calendar_id = COALESCE((SELECT id FROM calendars WHERE name = feeds.calendar_name), 0) WHERE calendar_name != '' AND calendar_id = 0`); err != nil {
-			return err
-		}
-		if _, err := tx.Exec(`ALTER TABLE feeds DROP COLUMN calendar_name`); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 // schemaV1 contains every DDL statement for the current schema (version 0 → 1).
 // All statements use IF NOT EXISTS so the migration is safe to re-run and is a
-// no-op against an existing database that already carries this schema. Legacy
-// reconciliation of pre-user_version databases is handled by reconcileLegacy.
+// no-op against an existing database that already carries this schema.
+//
+// This is the historical v1 statement list and is not edited. A database reaches
+// the current shape by running it and then every later migration in turn, so
+// changing it would mean two databases at the same user_version having been built
+// from different text.
 var schemaV1 = []string{
 	`CREATE TABLE IF NOT EXISTS events (
 		id               INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -338,8 +253,13 @@ var schemaV1 = []string{
 	`INSERT OR IGNORE INTO calendars (id, name, color) VALUES (0, 'Default', 'dodgerblue')`,
 }
 
-// schemaV1Indexes are indexes on columns (ics_uid, calendar_id) that legacy
-// databases gain only after reconcileLegacy runs, so they are created last.
+// schemaV1Indexes are part of migration 0 and are concatenated onto schemaV1 by
+// migrations. They are a separate slice only to keep schemaV1 byte-identical to
+// its historical text; the order the two are applied in no longer matters, since
+// the columns they index are in schemaV1's own CREATE TABLE statements. They were
+// once applied last because legacy databases gained those columns during a
+// reconciliation that has since been deleted — do not read this separation as an
+// ordering constraint, and do not fold it away either.
 var schemaV1Indexes = []string{
 	`CREATE INDEX IF NOT EXISTS idx_events_ics_uid ON events(ics_uid)`,
 	`CREATE INDEX IF NOT EXISTS idx_events_calendar_id ON events(calendar_id)`,
