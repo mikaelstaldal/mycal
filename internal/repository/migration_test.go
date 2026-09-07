@@ -2,7 +2,9 @@ package repository
 
 import (
 	"database/sql"
+	"flag"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -11,6 +13,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+var updateSchema = flag.Bool("update-schema", false, "refresh spec/schema.sql from a fresh database")
 
 // TestLegacyDatabaseIsRefused builds a pre-user_version database — the shape the
 // deleted reconciliation code existed to repair — and asserts that it is now
@@ -164,6 +168,41 @@ func TestFreshDatabaseIsVersioned(t *testing.T) {
 	assert.Equal(t, "Default", calName)
 }
 
+// TestSchemaSnapshotMatchesFreshDatabase keeps spec/schema.sql as an exact,
+// executable snapshot of the user-defined DDL produced by all migrations. The
+// full build runs this test, so changing a migration without refreshing the
+// snapshot fails before the two descriptions of the current schema can drift.
+func TestSchemaSnapshotMatchesFreshDatabase(t *testing.T) {
+	migratedPath := filepath.Join(t.TempDir(), "migrated.sqlite")
+	db, err := OpenDB(migratedPath, 5000)
+	require.NoError(t, err)
+	require.NoError(t, db.Close())
+
+	snapshotFile := filepath.Join("..", "..", "spec", "schema.sql")
+	if *updateSchema {
+		require.NoError(t, os.WriteFile(snapshotFile, schemaSnapshot(t, migratedPath), 0o644))
+	}
+	snapshot, err := os.ReadFile(snapshotFile)
+	require.NoError(t, err)
+	snapshotPath := filepath.Join(t.TempDir(), "snapshot.sqlite")
+	snapshotDB, err := sql.Open("sqlite", snapshotPath)
+	require.NoError(t, err)
+	_, err = snapshotDB.Exec(string(snapshot))
+	require.NoError(t, err, "spec/schema.sql must be executable SQLite DDL")
+	require.NoError(t, snapshotDB.Close())
+
+	assert.Equal(t, schemaFingerprint(t, migratedPath), schemaFingerprint(t, snapshotPath),
+		"spec/schema.sql is stale; refresh it from a freshly migrated database")
+
+	var snapshotVersion int
+	snapshotDB, err = sql.Open("sqlite", snapshotPath)
+	require.NoError(t, err)
+	defer snapshotDB.Close()
+	require.NoError(t, snapshotDB.QueryRow("PRAGMA user_version").Scan(&snapshotVersion))
+	assert.Equal(t, currentSchemaVersion, snapshotVersion,
+		"spec/schema.sql must identify the schema version it represents")
+}
+
 // TestFreshInstallIsNotRefused covers the legacy guard's false-positive case: a
 // real first start creates the file before anything reads user_version, so the
 // guard sees an existing, empty database and must let it through. Getting this
@@ -209,13 +248,19 @@ func TestReopenAppliesNothing(t *testing.T) {
 	assert.Equal(t, before, schemaFingerprint(t, dbPath), "reopening must not alter the schema")
 }
 
-// schemaFingerprint is every object in sqlite_master, in name order.
+// schemaFingerprint is every non-SQLite-owned object in sqlite_master, in name
+// order. sqlite_stat* tables can appear after ANALYZE and are runtime state, not
+// schema maintained by migrations or represented by the snapshot.
 func schemaFingerprint(t *testing.T, dbPath string) string {
 	t.Helper()
 	raw, err := sql.Open("sqlite", dbPath)
 	require.NoError(t, err)
 	defer raw.Close()
-	rows, err := raw.Query(`SELECT type, name, COALESCE(sql, '') FROM sqlite_master ORDER BY name`)
+	rows, err := raw.Query(`
+		SELECT type, name, COALESCE(sql, '')
+		FROM sqlite_master
+		WHERE name NOT LIKE 'sqlite_%'
+		ORDER BY name`)
 	require.NoError(t, err)
 	defer rows.Close()
 	var sb strings.Builder
@@ -226,6 +271,37 @@ func schemaFingerprint(t *testing.T, dbPath string) string {
 	}
 	require.NoError(t, rows.Err())
 	return sb.String()
+}
+
+// schemaSnapshot serializes the user-maintained objects in creation order. It
+// omits sqlite_* objects and FTS5 shadow tables because SQLite creates those
+// automatically when this DDL is executed.
+func schemaSnapshot(t *testing.T, dbPath string) []byte {
+	t.Helper()
+	raw, err := sql.Open("sqlite", dbPath)
+	require.NoError(t, err)
+	defer raw.Close()
+	rows, err := raw.Query(`
+		SELECT sql
+		FROM sqlite_master
+		WHERE sql IS NOT NULL
+		  AND name NOT LIKE 'sqlite_%'
+		  AND name NOT GLOB 'events_fts_*'
+		ORDER BY rowid`)
+	require.NoError(t, err)
+	defer rows.Close()
+	var sb strings.Builder
+	sb.WriteString("-- Generated from a freshly migrated database. Do not edit by hand.\n")
+	sb.WriteString("-- Regenerate with:\n")
+	sb.WriteString("-- go test ./internal/repository -run TestSchemaSnapshotMatchesFreshDatabase -update-schema\n\n")
+	for rows.Next() {
+		var ddl string
+		require.NoError(t, rows.Scan(&ddl))
+		sb.WriteString(ddl + ";\n\n")
+	}
+	require.NoError(t, rows.Err())
+	fmt.Fprintf(&sb, "PRAGMA user_version = %d;\n", currentSchemaVersion)
+	return []byte(sb.String())
 }
 
 // TestSchemaTooNewIsRefused verifies that a database stamped with a user_version

@@ -119,6 +119,13 @@ so that clients can be updated.
 
 Make migrations when changing the database schema, assume there is production data that needs to be preserved. 
 
+`spec/schema.sql` is the executable snapshot of the current SQLite DDL (not
+seed data). After adding or changing a migration, refresh it from a fresh
+database with
+`go test ./internal/repository -run TestSchemaSnapshotMatchesFreshDatabase -update-schema`.
+The full build verifies that the snapshot, its `user_version`, and the migrated
+schema match.
+
 ## Version control
 
 Git is used for version control. When creating new files, make sure to add them to Git.
