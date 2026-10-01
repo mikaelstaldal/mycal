@@ -132,6 +132,19 @@ either URL can also be set by hand under Settings.
 
 Subscribe to your calendar from any app that supports iCalendar (Google Calendar, Apple Calendar, Thunderbird, etc.) using:
 
+```text
+https://your-mycal-server/calendar.ics
+```
+
+## Calendar subscriptions
+
+MyCal accepts HTTP, HTTPS, `webcal://`, and `webcals://` feed URLs in **Feed Subscriptions**.
+To open `webcal:` links clicked on other websites in MyCal, open MyCal over HTTPS and select
+**Use MyCal for webcal links** in that dialog. Allow the handler in your browser, then choose
+MyCal for webcal links if prompted. When a link opens MyCal, confirm the subscription there.
+The browser handler covers `webcal:` links; `webcals:` can be added manually. MyCal fetches
+both webcal schemes over HTTPS.
+
 ## E2E Tests
 
 End-to-end tests use [Playwright](https://playwright.dev/) and live in the `e2e/` directory.

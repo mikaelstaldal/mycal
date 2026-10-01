@@ -22,7 +22,7 @@ import { addMonths, addWeeks, startOfWeek, toRFC3339, eventStartStr } from './ut
 import { getConfig, hasUserDefaultView } from './util/config.js';
 import { isDemo, mymailUrl, mynotesUrl } from './util/serverconfig.js';
 import { checkAndNotify, requestPermission } from './util/notifications.js';
-import { showChoice } from './util/confirm.js';
+import { showChoice, showConfirm } from './util/confirm.js';
 import type { components } from './api/types.js';
 import type { AppConfig } from './util/config.js';
 type CalendarEvent = components['schemas']['Event'];
@@ -33,6 +33,28 @@ type CalendarMeta = components['schemas']['Calendar'];
 // cross-origin — are not offered at all rather than offered and failing. See
 // AGENTS.md for the full list of divergences.
 const demo = isDemo();
+
+function takeSubscriptionURI(): string | null {
+    const params = new URLSearchParams(window.location.hash.slice(1));
+    if (!params.has('subscribe')) return null;
+    // Remove the URI before any API call or further navigation. Calendar feed
+    // links commonly contain private tokens; the fragment never reaches the
+    // server, and clearing it also prevents a reload from adding the feed twice.
+    history.replaceState(history.state, '', location.pathname + location.search);
+    return params.get('subscribe');
+}
+
+function comparableFeedURI(raw: string): string {
+    try {
+        const url = new URL(raw);
+        if (url.protocol === 'webcal:' || url.protocol === 'webcals:') {
+            return new URL('https:' + url.href.slice(url.protocol.length)).href;
+        }
+        return url.href;
+    } catch {
+        return raw;
+    }
+}
 
 function App() {
     const [darkMode, setDarkMode] = useState(() => localStorage.getItem('darkMode') === 'true');
@@ -47,6 +69,7 @@ function App() {
     const [showImportSingle, setShowImportSingle] = useState(false);
     const [showImportBulk, setShowImportBulk] = useState(false);
     const [showFeeds, setShowFeeds] = useState(false);
+    const [feedListVersion, setFeedListVersion] = useState(0);
     const [showDemoNotice, setShowDemoNotice] = useState(() => demo && !demoNoticeSeen());
     const [viewMode, setViewMode] = useState<string>(() => {
         if (hasUserDefaultView()) return getConfig().defaultView;
@@ -64,6 +87,53 @@ function App() {
     const [selectedCalendarIds, setSelectedCalendarIds] = useState<number[] | null>(null);
     const [scheduleDaysLoaded, setScheduleDaysLoaded] = useState(30);
     const [loadingMoreSchedule, setLoadingMoreSchedule] = useState(false);
+
+    useEffect(() => {
+        function handleSubscriptionLink() {
+            const uri = takeSubscriptionURI();
+            if (uri === null) return;
+            if (demo) {
+                showToast('Feed subscriptions are unavailable in the demo', { error: true });
+                return;
+            }
+            void (async () => {
+                let parsed: URL;
+                try {
+                    parsed = new URL(uri);
+                } catch {
+                    showToast('Invalid calendar subscription link', { error: true });
+                    return;
+                }
+                if (!['webcal:', 'webcals:'].includes(parsed.protocol) || !parsed.hostname ||
+                    parsed.href.length > 2000 || /[\u0000-\u001f\u007f]/.test(uri)) {
+                    showToast('Invalid calendar subscription link', { error: true });
+                    return;
+                }
+                // A page can link directly to MyCal's fragment, so the fragment
+                // alone does not prove that the browser's webcal handler was used.
+                const confirmed = await showConfirm(`Subscribe to a calendar feed from ${parsed.host}?\n${parsed.href}`, {
+                    title: 'Subscribe to Calendar', okText: 'Subscribe', cancelText: 'Cancel'
+                });
+                if (!confirmed) return;
+                try {
+                    const feeds = await api.feeds.list();
+                    if (feeds.some(feed => comparableFeedURI(feed.url) === comparableFeedURI(parsed.href))) {
+                        showToast('Already subscribed to this feed');
+                    } else {
+                        await api.feeds.create({ url: parsed.href, refresh_interval_minutes: 60 });
+                        showToast('Calendar feed added');
+                    }
+                    setFeedListVersion(version => version + 1);
+                    setShowFeeds(true);
+                } catch (err: any) {
+                    showToast(err.message || 'Could not add calendar feed', { error: true });
+                }
+            })();
+        }
+        window.addEventListener('hashchange', handleSubscriptionLink);
+        handleSubscriptionLink();
+        return () => window.removeEventListener('hashchange', handleSubscriptionLink);
+    }, []);
 
     useEffect(() => {
         document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
@@ -592,6 +662,7 @@ function App() {
             )}
             {!demo && showFeeds && (
                 <FeedsDialog onClose={() => setShowFeeds(false)}
+                             reloadVersion={feedListVersion}
                              onRefreshed={() => { loadEvents(); loadCalendars(); }} />
             )}
             {showDemoNotice && <DemoDialog onClose={() => setShowDemoNotice(false)} />}

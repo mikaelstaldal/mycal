@@ -2177,6 +2177,19 @@ body {
     border-top: 1px solid var(--border-light);
     padding-top: 12px;
 }
+.feed-handler {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    border-top: 1px solid var(--border-light);
+    margin-top: 12px;
+    padding-top: 12px;
+}
+.feed-handler span {
+    color: var(--text-subtle);
+    font-size: 0.8em;
+}
 
 /* Confirm dialog */
 .confirm-dialog {
@@ -2217,6 +2230,7 @@ body {
     line-height: 1.5;
     margin-bottom: 20px;
     white-space: pre-line;
+    overflow-wrap: anywhere;
 }
 
 .confirm-dialog-actions {

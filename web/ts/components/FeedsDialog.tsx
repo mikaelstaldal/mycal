@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'preact/hooks';
 import { api } from '../api/client.js';
 import { COLORS } from '../util/colors.js';
 import { showConfirm } from '../util/confirm.js';
+import { showToast } from '../util/toast.js';
 import { Icon } from './Icon.js';
 import type { components } from '../api/types.js';
 type Feed = components['schemas']['Feed'];
@@ -10,14 +11,16 @@ type Feed = components['schemas']['Feed'];
 interface FeedsDialogProps {
     onClose: () => void;
     onRefreshed?: () => void;
+    reloadVersion?: number;
 }
 
-export function FeedsDialog({ onClose, onRefreshed }: FeedsDialogProps): VNode | null {
+export function FeedsDialog({ onClose, onRefreshed, reloadVersion }: FeedsDialogProps): VNode | null {
     const [feeds, setFeeds] = useState<Feed[]>([]);
     const [showAdd, setShowAdd] = useState(false);
     const [loading, setLoading] = useState(true);
     const [refreshingId, setRefreshingId] = useState<number | null>(null);
     const [error, setError] = useState('');
+    const [registrationRequested, setRegistrationRequested] = useState(false);
     const dialogRef = useRef<HTMLDialogElement | null>(null);
 
     useEffect(() => {
@@ -25,7 +28,7 @@ export function FeedsDialog({ onClose, onRefreshed }: FeedsDialogProps): VNode |
             dialogRef.current.showModal();
         }
         loadFeedsData();
-    }, []);
+    }, [reloadVersion]);
 
     async function loadFeedsData() {
         try {
@@ -84,6 +87,19 @@ export function FeedsDialog({ onClose, onRefreshed }: FeedsDialogProps): VNode |
         return d.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' } as any);
     }
 
+    function registerWebcalHandler() {
+        try {
+            // The fragment keeps subscription URIs (often carrying tokens) out
+            // of the HTTP request sent when the browser opens MyCal.
+            const handlerURL = new URL('#subscribe=%s', document.baseURI).href;
+            navigator.registerProtocolHandler('webcal', handlerURL);
+            setRegistrationRequested(true);
+            showToast('Allow MyCal to handle webcal links in your browser');
+        } catch (err: any) {
+            setError(err.message || 'Could not register webcal links');
+        }
+    }
+
     return (
         <dialog ref={dialogRef} class="event-dialog feeds-dialog" onClose={onClose}>
             <div class="dialog-header">
@@ -136,6 +152,21 @@ export function FeedsDialog({ onClose, onRefreshed }: FeedsDialogProps): VNode |
                     <button onClick={() => setShowAdd(true)}>Add Feed</button>
                 </div>
             )}
+            <div class="feed-handler">
+                <button onClick={registerWebcalHandler}
+                        disabled={location.protocol !== 'https:' || !navigator.registerProtocolHandler}>
+                    Use MyCal for webcal links
+                </button>
+                {location.protocol !== 'https:' ? (
+                    <span>Available when MyCal is opened over HTTPS.</span>
+                ) : !navigator.registerProtocolHandler ? (
+                    <span>This browser does not support webcal link handlers.</span>
+                ) : registrationRequested ? (
+                    <span>Allow MyCal in your browser’s prompt, then choose it for webcal links.</span>
+                ) : (
+                    <span>Open calendar links from other websites in MyCal.</span>
+                )}
+            </div>
         </dialog>
     );
 }
