@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/mikaelstaldal/go-server-common/httputil"
@@ -32,7 +33,7 @@ func (s *FeedService) Create(req *api.CreateFeedRequest) (*model.Feed, error) {
 		return nil, fmt.Errorf("%w: %s", ErrValidation, err.Error())
 	}
 	rawURL := req.URL.String()
-	if err := httputil.ValidateExternalURL(rawURL); err != nil {
+	if _, err := feedFetchURL(rawURL); err != nil {
 		return nil, fmt.Errorf("%w: %s", ErrValidation, err.Error())
 	}
 
@@ -90,7 +91,7 @@ func (s *FeedService) Update(id int64, req *api.UpdateFeedRequest) (*model.Feed,
 	}
 	if req.URL.Set {
 		rawURL := req.URL.Value.String()
-		if err := httputil.ValidateExternalURL(rawURL); err != nil {
+		if _, err := feedFetchURL(rawURL); err != nil {
 			return nil, fmt.Errorf("%w: %s", ErrValidation, err.Error())
 		}
 		existing.URL = rawURL
@@ -191,11 +192,12 @@ func (s *FeedService) doRefresh(feed *model.Feed) {
 
 func (s *FeedService) fetchAndImport(feedURL string, calendarID int64, eventColor string) (int, error) {
 	// Re-validate stored feed URLs on every refresh, not just at create time.
-	if err := httputil.ValidateExternalURL(feedURL); err != nil {
+	fetchURL, err := feedFetchURL(feedURL)
+	if err != nil {
 		return 0, err
 	}
 	client := httputil.NewSafeHTTPClient(30 * time.Second)
-	resp, err := client.Get(feedURL)
+	resp, err := client.Get(fetchURL)
 	if err != nil {
 		return 0, fmt.Errorf("failed to fetch URL: %v", err)
 	}
@@ -243,6 +245,24 @@ func (s *FeedService) fetchAndImport(feedURL string, calendarID int64, eventColo
 		imported++
 	}
 	return imported, nil
+}
+
+// feedFetchURL keeps the subscription URI as entered, but fetches webcal(s) over
+// HTTPS. The shared safe client accepts only HTTP(S) and checks each connection
+// and redirect for private addresses.
+func feedFetchURL(rawURL string) (string, error) {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return "", fmt.Errorf("invalid URL")
+	}
+	if u.Scheme == "webcal" || u.Scheme == "webcals" {
+		u.Scheme = "https"
+	}
+	fetchURL := u.String()
+	if err := httputil.ValidateExternalURL(fetchURL); err != nil {
+		return "", err
+	}
+	return fetchURL, nil
 }
 
 func (s *FeedService) RefreshAllDue() {

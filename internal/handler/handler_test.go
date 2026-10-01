@@ -3,6 +3,7 @@ package handler_test
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -124,6 +125,34 @@ func createTestEvent(t *testing.T, ts *httptest.Server) api.Event {
 	resp := postJSON(t, ts.URL+"/api/v1/events", body)
 	require.Equal(t, http.StatusCreated, resp.StatusCode, "create event")
 	return decodeJSON[api.Event](t, resp)
+}
+
+func TestFeedSubscriptionWebcalURL(t *testing.T) {
+	ts := setupTestServer(t)
+	resp := postJSON(t, ts.URL+"/api/v1/feeds", map[string]any{
+		"url": "webcal://1.1.1.1/calendar.ics?token=a%2Fb",
+	})
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
+	created := decodeJSON[api.Feed](t, resp)
+	assert.Equal(t, "webcal://1.1.1.1/calendar.ics?token=a%2Fb", created.URL.String())
+
+	updateURL := ts.URL + "/api/v1/feeds/" + fmt.Sprint(created.ID)
+	data, err := json.Marshal(map[string]any{"url": "webcals://1.1.1.1/updated.ics"})
+	require.NoError(t, err)
+	req, err := http.NewRequest(http.MethodPut, updateURL, bytes.NewReader(data))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err = http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	updated := decodeJSON[api.Feed](t, resp)
+	assert.Equal(t, "webcals://1.1.1.1/updated.ics", updated.URL.String())
+
+	resp = postJSON(t, ts.URL+"/api/v1/feeds", map[string]any{
+		"url": "webcal://127.0.0.1/private.ics",
+	})
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 }
 
 // --- CRUD tests ---

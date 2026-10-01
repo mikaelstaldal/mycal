@@ -175,9 +175,9 @@ function AddFeedForm({ onAdd, onCancel }: AddFeedFormProps): VNode | null {
     return (
         <div class="feed-add-form">
             <label>
-                Feed URL
+                Feed URL (HTTP, HTTPS, webcal, or webcals)
                 <input type="url" value={url} onInput={(e: Event) => setUrl((e.target as HTMLInputElement).value)}
-                       placeholder="https://calendar.google.com/..." />
+                       placeholder="webcal://example.com/calendar.ics" />
             </label>
             <label>
                 Calendar name (optional)

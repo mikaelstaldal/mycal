@@ -384,6 +384,7 @@ paths:
       summary: Create a feed subscription
       description: |
         Creates a feed subscription that periodically re-imports events from an ICS URL.
+        Accepts HTTP, HTTPS, webcal, and webcals URIs. Webcal URIs are fetched over HTTPS.
         Events with the same ICS UID are deduplicated automatically.
 
         ```bash
@@ -621,6 +622,7 @@ components:
           type: string
           format: uri
           maxLength: 2000
+          description: Subscription URI as entered; webcal and webcals URIs are fetched over HTTPS.
         calendar_id:
           type: integer
           format: int64
@@ -665,6 +667,7 @@ components:
           type: string
           format: uri
           maxLength: 2000
+          description: HTTP, HTTPS, webcal, or webcals URI for an iCalendar feed.
         calendar_name:
           type: string
           maxLength: 100
@@ -684,6 +687,7 @@ components:
           type: string
           format: uri
           maxLength: 2000
+          description: HTTP, HTTPS, webcal, or webcals URI for an iCalendar feed.
         calendar_name:
           type: string
           maxLength: 100
