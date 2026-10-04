@@ -126,7 +126,7 @@ done
 # assets is not a guard against staleness; it is a guard against staleness in the
 # two files nobody was going to edit alone.
 #
-# vendor/ is excluded because it is committed rather than emitted, and the demo
+# third_party/ is excluded because it is committed rather than emitted, and the demo
 # worker's output is included — it is served the same way and goes stale the
 # same way.
 stale=0
@@ -143,7 +143,7 @@ while IFS= read -r path; do
         stale=$((stale + 1))
     fi
     checked=$((checked + 1))
-done < <(find web/static \( -name '*.js' -o -name '*.css' \) -not -path '*/vendor/*' | sort)
+done < <(find web/static \( -name '*.js' -o -name '*.css' \) -not -path '*/third_party/*' | sort)
 
 # A find that matches nothing would report zero stale files and read as a pass —
 # the empty-set failure this suite has been bitten by before.

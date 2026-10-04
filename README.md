@@ -172,7 +172,7 @@ or CSRF rejects writes made from inside the page with a 403. `test-e2e.sh` handl
 - **Backend:** Go with `net/http` (Go 1.22+ routing)
 - **Database:** SQLite via [modernc.org/sqlite](https://pkg.go.dev/modernc.org/sqlite) (pure Go, no CGO)
 - **Frontend:** [Preact](https://preactjs.com/) with JSX, written in TypeScript (`web/ts/`) and compiled by `tsc`
-- **Vendoring:** Preact, [Quill](https://quilljs.com/) and [Leaflet](https://leafletjs.com/) are committed under `web/static/vendor/` and loaded via an import map — no CDN at runtime
+- **Vendoring:** Preact, [Quill](https://quilljs.com/) and [Leaflet](https://leafletjs.com/) are committed under `web/static/third_party/` and loaded via an import map — no CDN at runtime
 - **API:** described in [openapi.yaml](openapi.yaml); Go server stubs generated with [ogen](https://ogen.dev/), TypeScript types with [openapi-typescript](https://github.com/openapi-ts/openapi-typescript)
 
 ## Operations Guide

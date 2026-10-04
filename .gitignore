@@ -7,7 +7,7 @@
 *.gen.go
 web/ts/api/types.ts
 web/static/**/*.js
-!web/static/vendor/**
+!web/static/third_party/**
 
 # Local agent / editor state
 /.claude/settings.local.json

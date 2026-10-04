@@ -36,7 +36,7 @@ node --test web/ts/*.test.mjs            # all of them
 ## Architecture
 
 **Frontend** (`web/static/`, embedded via `web/embed.go`):
-- Preact loaded from vendor files via import map in `index.html` (`vendor/preact/preact.module.js`, `…/hooks.module.js`, `…/jsx-runtime.module.js`)
+- Preact loaded from vendor files via import map in `index.html` (`third_party/preact/preact.module.js`, `…/hooks.module.js`, `…/jsx-runtime.module.js`)
 - `web/ts/app.tsx` is the root component (compiled to `web/static/app.js` by `tsc`)
 - Native `<dialog>` element for the event form (no client-side routing)
 - API calls go through the centralized client in `api/client.ts`: a single `request<T>` helper with network retry, 401-reload, 404 `NotFoundError`, exposed as a namespaced `api.*` surface (`api.events`, `api.calendars`, `api.feeds`, `api.preferences`, `api.import`)
@@ -196,8 +196,8 @@ node --test web/ts/*.test.mjs            # all of them
     drops to 4px there. The left edge still holds.
 - Icons are Lucide, rendered inline as `<svg stroke="currentColor">` by `components/Icon.tsx`. The
   vendored bundle carries **only** the icons listed in the `ICONS` array of
-  `web/ts/vendor/gen-lucide.mjs` — to use a new one, add its kebab-case name there, re-run
-  `web/ts/vendor/rebuild.sh`, and commit the regenerated `web/static/vendor/lucide-<version>.js`.
+  `web/ts/third_party/gen-lucide.mjs` — to use a new one, add its kebab-case name there, re-run
+  `web/ts/third_party/rebuild.sh`, and commit the regenerated `web/static/third_party/lucide-<version>.js`.
   `<Icon>` silently renders nothing for a name that is not in the bundle.
 - The one deliberate exception is `components/Logo.tsx`, the app mark in the top bar's
   `.brand-logo` badge. It is MyCal's own glyph, not a Lucide icon, so it is hand-written inline
@@ -219,9 +219,9 @@ node --test web/ts/*.test.mjs            # all of them
 - `web/ts/tsconfig.json`: target ES2020, module/moduleResolution Node16, `jsx: react-jsx` + `jsxImportSource: preact` (automatic runtime — no `import { h }`), `strict: true`
 - `web/ts/package.json` contains `{ "type": "module" }` — **required** so `tsc` emits ESM under Node16; without it the output is CommonJS `require()` and the browser shows a blank page
 - Directory taxonomy: `api/` (client + generated types), `util/` (lowercase utilities), `components/` (reusable widgets), `layout/` (Nav, sidebars), `views/` (calendar views). Component files are `PascalCase.tsx`; utilities are `lowercase.ts`
-- Vendored preact `.d.ts` live under `web/ts/vendor/preact/` (referenced via tsconfig `paths`, excluded from the build); Leaflet/Quill/Lucide ambient declarations live in `web/ts/vendor/` (Lucide's bundle is mapped to the bare specifier `lucide-icons` in both tsconfig `paths` and the `index.html` import map)
+- Vendored preact `.d.ts` live under `web/ts/third_party/preact/` (referenced via tsconfig `paths`, excluded from the build); Leaflet/Quill/Lucide ambient declarations live in `web/ts/third_party/` (Lucide's bundle is mapped to the bare specifier `lucide-icons` in both tsconfig `paths` and the `index.html` import map)
 - Relative imports use `.js` extensions (TypeScript ESM convention — tsc resolves `.ts`/`.tsx`, emits `.js`)
-- Every `.js` under `web/static/` outside `web/static/vendor/**` is emitted by `tsc` — do not edit directly; `.gitignore` keeps those out of Git. The rest of what lives there is hand-maintained and tracked, and is edited in place: `app.css`, `index.html` and the favicons
+- Every `.js` under `web/static/` outside `web/static/third_party/**` is emitted by `tsc` — do not edit directly; `.gitignore` keeps those out of Git. The rest of what lives there is hand-maintained and tracked, and is edited in place: `app.css`, `index.html` and the favicons
 
 ## The app logo is governed from outside this repo
 

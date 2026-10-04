@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Maintainer-only script. Fetches the pinned upstream sources for the vendored
 # browser libraries (Preact, Leaflet, Quill, Lucide) via npm and copies each into
-# web/static/vendor/ under a version-stamped filename, plus Preact's prebuilt ESM
+# web/static/third_party/ under a version-stamped filename, plus Preact's prebuilt ESM
 # modules and .d.ts type stubs.
 #
 # Every served asset filename is version-stamped (e.g. leaflet-1.9.4.js,
@@ -10,8 +10,8 @@
 # referenced BY HAND from three places, which MUST be updated whenever a version
 # bumps — this script prints the current names at the end as a reminder:
 #   - web/static/index.html            (import map: preact, preact/hooks, preact/jsx-runtime)
-#   - web/ts/components/MapPicker.tsx   (vendor/leaflet.js, vendor/leaflet.css)
-#   - web/ts/components/RichEditor.tsx  (vendor/quill.js, vendor/quill.snow.css)
+#   - web/ts/components/MapPicker.tsx   (third_party/leaflet.js, third_party/leaflet.css)
+#   - web/ts/components/RichEditor.tsx  (third_party/quill.js, third_party/quill.snow.css)
 #
 # The Lucide bundle is the one generated asset here: gen-lucide.mjs (committed,
 # fs-only, no network) trims lucide-static's icon set down to the icons the UI
@@ -33,7 +33,7 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
 VENDOR_DIR="$(pwd)"
-BROWSER_OUT="$VENDOR_DIR/../../static/vendor"    # served, version-stamped assets
+BROWSER_OUT="$VENDOR_DIR/../../static/third_party"    # served, version-stamped assets
 PREACT_OUT="$BROWSER_OUT/preact"                 # runtime ESM modules served to the browser
 PREACT_TYPES="$VENDOR_DIR/preact"                # .d.ts type stubs (compile-time only)
 
@@ -63,8 +63,8 @@ mkdir -p "$PREACT_OUT" "$BROWSER_OUT/images" \
 #
 # Preact ships self-contained ESM (dist/*.module.js) plus its own .d.ts, so no
 # bundling is needed — copy them verbatim. The runtime modules go to
-# web/static/vendor/preact/ (served, version-stamped, loaded via the import map);
-# the .d.ts go to web/ts/vendor/preact/ (compile-time only, resolved via the
+# web/static/third_party/preact/ (served, version-stamped, loaded via the import map);
+# the .d.ts go to web/ts/third_party/preact/ (compile-time only, resolved via the
 # tsconfig `paths` entries, so they are NOT version-stamped). hooks.module.js and
 # jsxRuntime.module.js import the bare specifier "preact", so the import map — not
 # a relative path inside them — resolves it; the version-stamped filename only
@@ -145,14 +145,14 @@ Wrote version-stamped vendored assets under $BROWSER_OUT/:
 
 Reminder: these filenames are referenced by hand — update on a version bump:
   web/static/index.html (import map)
-    preact             -> ./vendor/preact/preact-$PREACT_VER.module.js
-    preact/hooks       -> ./vendor/preact/hooks-$PREACT_VER.module.js
-    preact/jsx-runtime -> ./vendor/preact/jsx-runtime-$PREACT_VER.module.js
-    lucide-icons       -> ./vendor/lucide-$LUCIDE_VER.js
+    preact             -> ./third_party/preact/preact-$PREACT_VER.module.js
+    preact/hooks       -> ./third_party/preact/hooks-$PREACT_VER.module.js
+    preact/jsx-runtime -> ./third_party/preact/jsx-runtime-$PREACT_VER.module.js
+    lucide-icons       -> ./third_party/lucide-$LUCIDE_VER.js
   web/ts/components/MapPicker.tsx
-    vendor/leaflet.css -> vendor/leaflet-$LEAFLET_VER.css
-    vendor/leaflet.js  -> vendor/leaflet-$LEAFLET_VER.js
+    third_party/leaflet.css -> third_party/leaflet-$LEAFLET_VER.css
+    third_party/leaflet.js  -> third_party/leaflet-$LEAFLET_VER.js
   web/ts/components/RichEditor.tsx
-    vendor/quill.snow.css -> vendor/quill-$QUILL_VER.snow.css
-    vendor/quill.js       -> vendor/quill-$QUILL_VER.js
+    third_party/quill.snow.css -> third_party/quill-$QUILL_VER.snow.css
+    third_party/quill.js       -> third_party/quill-$QUILL_VER.js
 EOF

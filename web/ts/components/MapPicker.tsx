@@ -29,11 +29,11 @@ function loadLeaflet(): Promise<void> {
     leafletLoadPromise = new Promise((resolve, reject) => {
         const link = document.createElement('link');
         link.rel = 'stylesheet';
-        link.href = 'vendor/leaflet-1.9.4.css';
+        link.href = 'third_party/leaflet-1.9.4.css';
         document.head.appendChild(link);
 
         const script = document.createElement('script');
-        script.src = 'vendor/leaflet-1.9.4.js';
+        script.src = 'third_party/leaflet-1.9.4.js';
         script.async = true;
         script.onload = () => { leafletLoaded = true; resolve(); };
         script.onerror = () => { leafletLoadPromise = null; reject(new Error('Failed to load Leaflet')); };

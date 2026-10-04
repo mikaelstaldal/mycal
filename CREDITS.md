@@ -53,7 +53,7 @@ mycal itself is Copyright 2026 Mikael Ståldal, licensed under the Apache Licens
 mycal is written in [Go](https://go.dev/), licensed under BSD-3-Clause. The Go standard
 library is statically linked into the binary.
 
-## Frontend (JavaScript), vendored in `web/static/vendor/`
+## Frontend (JavaScript), vendored in `web/static/third_party/`
 
 These files are served to the browser and embedded in the mycal binary.
 
@@ -81,9 +81,9 @@ libraries:
 
 ### Type declarations only
 
-The packages under `web/ts/vendor/node_modules/` supply TypeScript type declarations at
-compile time and are not shipped. `web/ts/vendor/leaflet.d.ts` and `web/ts/vendor/quill.d.ts`
-are hand-written ambient declarations original to this project. `web/ts/vendor/preact/`
+The packages under `web/ts/third_party/node_modules/` supply TypeScript type declarations at
+compile time and are not shipped. `web/ts/third_party/leaflet.d.ts` and `web/ts/third_party/quill.d.ts`
+are hand-written ambient declarations original to this project. `web/ts/third_party/preact/`
 contains Preact's own `.d.ts` files (MIT).
 
 ## Map data and external services
