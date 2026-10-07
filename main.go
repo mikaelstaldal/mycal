@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -25,6 +26,7 @@ import (
 
 	"github.com/mikaelstaldal/go-server-common/auth"
 	"github.com/mikaelstaldal/go-server-common/csrf"
+	"github.com/mikaelstaldal/go-server-common/hostguard"
 	"github.com/mikaelstaldal/go-server-common/httputil"
 	commonsqlite "github.com/mikaelstaldal/go-server-common/sqlite"
 	commonweb "github.com/mikaelstaldal/go-server-common/web"
@@ -329,7 +331,7 @@ func main() {
 	basicAuthFile := flag.String("basic-auth-file", "", "enable HTTP basic auth with username and password from given file in htpasswd format (bcrypt only)")
 	basicAuthRealm := flag.String("basic-auth-realm", "mycal", "realm for HTTP basic auth")
 	httpsMode := flag.Bool("https", false, "set Strict-Transport-Security header (use when served behind a TLS-terminating proxy)")
-	publicURL := flag.String("public-url", "", "Public-facing base URL for CSRF validation, e.g. https://example.com (defaults to http://<addr>:<port>)")
+	publicURL := flag.String("public-url", "", "Public-facing base URL for Host and CSRF validation, e.g. https://example.com (required for wildcard binds and reverse proxies)")
 	exportICS := flag.String("export-ics", "", "export all events to an .ics file and exit")
 	demoServer := flag.Bool("demo-server", false, "serve the backend-less demo: no database is opened, the browser stores all data locally")
 	demoBundle := flag.String("demo-bundle", "", "write a self-contained static demo site to this new directory and exit (takes no -data)")
@@ -351,6 +353,14 @@ func main() {
 		basicAuthFile:  *basicAuthFile,
 		basicAuthRealm: *basicAuthRealm,
 		httpsMode:      *httpsMode,
+	}
+
+	// Reject invalid listener policy before opening or migrating storage. Export
+	// and static bundle modes do not open an HTTP listener.
+	if *exportICS == "" && *demoBundle == "" {
+		if _, err := hostguard.New(opts.publicURL, opts.addr, opts.port); err != nil {
+			log.Fatalf("%v", err)
+		}
 	}
 
 	// Demo mode is handled before anything touches storage: it has no database
@@ -571,16 +581,14 @@ func mountStatic(mux *http.ServeMux, indexHTML []byte) error {
 	return nil
 }
 
-// serveHTTP wraps mux in the standard middleware chain — CSRF, security
-// headers, optional basic auth, global request body limit — and serves it until
-// the process is signalled to stop. onShutdown, when non-nil, runs before the
-// graceful shutdown begins.
-func serveHTTP(mux http.Handler, opts httpServerOptions, onShutdown func()) error {
-	serverOrigin, err := csrf.ResolveServerOrigin(opts.publicURL, opts.addr, opts.port)
+// buildHTTPHandler applies the shared deployment policy to every route, with
+// Host validation outside authentication, CSRF, and routing.
+func buildHTTPHandler(mux http.Handler, opts httpServerOptions) (http.Handler, error) {
+	policy, err := hostguard.New(opts.publicURL, opts.addr, opts.port)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	httpHandler := csrf.Middleware(serverOrigin)(mux)
+	httpHandler := csrf.MiddlewareOrigins(policy.Origins()...)(mux)
 
 	hsts := ""
 	if opts.httpsMode {
@@ -598,14 +606,24 @@ func serveHTTP(mux http.Handler, opts httpServerOptions, onShutdown func()) erro
 		// username validator is passed.
 		htpasswd, err := auth.LoadHtpasswdStrict(opts.basicAuthFile, nil)
 		if err != nil {
-			return fmt.Errorf("load htpasswd: %w", err)
+			return nil, fmt.Errorf("load htpasswd: %w", err)
 		}
 		httpHandler = htpasswd.Middleware(opts.basicAuthRealm)(httpHandler)
 		log.Printf("basic authentication enabled")
 	}
 	httpHandler = http.MaxBytesHandler(httpHandler, 10*1024*1024) // 10 MiB global request body limit (matches import endpoint)
 
-	serverAddr := fmt.Sprintf("%s:%d", opts.addr, opts.port)
+	return policy.Middleware(httpHandler), nil
+}
+
+// serveHTTP serves the protected handler until signalled to stop. onShutdown
+// runs before graceful shutdown when non-nil.
+func serveHTTP(mux http.Handler, opts httpServerOptions, onShutdown func()) error {
+	httpHandler, err := buildHTTPHandler(mux, opts)
+	if err != nil {
+		return err
+	}
+	serverAddr := net.JoinHostPort(opts.addr, fmt.Sprint(opts.port))
 	srv := &http.Server{
 		Addr:              serverAddr,
 		Handler:           httpHandler,

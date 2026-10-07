@@ -35,15 +35,38 @@ Open http://localhost:8080 in your browser.
 | Flag                | Default                | Description                                                                                              |
 |---------------------|------------------------|----------------------------------------------------------------------------------------------------------|
 | `-port`             | 8080                   | port to listen on                                                                                        |
-| `-addr`             | `127.0.0.1`            | address to listen on (use `0.0.0.0` to bind all interfaces)                                              |
+| `-addr`             | `127.0.0.1`            | address to listen on (wildcard binds require `-public-url`)                                              |
 | `-data`             | `data`                 | directory to store data in                                                                               |
-| `-public-url`       | `http://<addr>:<port>` | public-facing base URL for CSRF validation (required behind a reverse proxy), e.g. `https://example.com` |
+| `-public-url`       | *(local authorities)* | public-facing base URL for Host and CSRF validation (required for wildcard binds and reverse proxies), e.g. `https://example.com/mycal` |
 | `-https`            | false                  | set `Strict-Transport-Security` header (use when served behind a TLS-terminating proxy)                  |
 | `-basic-auth-file`  | *(disabled)*           | enable HTTP basic auth with username and password from given file in htpasswd format (bcrypt only)       |
 | `-basic-auth-realm` | `mycal`                | realm for HTTP basic auth                                                                                |
 | `-export-ics`       |                        | export all events to an .ics file and exit                                                               |
 | `-demo-server`      |                        | run the browser-only demo (no database, no REST API); see [Demo mode](#demo-mode)                        |
 | `-demo-bundle`      |                        | write a static demo site to this new directory and exit                                                  |
+
+### Host validation and reverse proxies
+
+All HTTP routes, including the UI, API, calendar feeds and demo server, reject
+foreign or malformed request Hosts with HTTP 421 before authentication and routing.
+Without `-public-url`, allowed authorities are the concrete bind address plus
+`localhost`, `127.0.0.1` and `[::1]`, at the listener port. Browser writes from
+these local HTTP origins are allowed by CSRF validation too.
+
+Set `-public-url` to the browser-facing URL when using a reverse proxy or a
+wildcard bind (`-addr 0.0.0.0`, `-addr ::`, or an empty address). For example:
+
+```bash
+./mycal -addr 0.0.0.0 -port 8089 -public-url https://calendar.example.com:8443/mycal -https
+```
+
+The public authority and HTTPS origin are allowed alongside the local authorities.
+Include any custom public port; the URL path does not affect Host or CSRF checks.
+A proxy must preserve the public Host or send an allowed local Host, and strip the
+public path prefix before forwarding. Forwarded headers such as
+`X-Forwarded-Host` do not grant access. `-https` enables HSTS; it does not change
+the local listener from HTTP to HTTPS. Static demo bundles use their hosting
+server's Host policy.
 
 ### Authentication
 
@@ -164,8 +187,8 @@ cd e2e && npm ci && npx playwright install chromium && cd ..
 
 Start the server by hand only if you have a reason to. The binary embeds `web/static/`, so one
 started before a rebuild serves the old assets and the tests then measure something other than
-what you changed; and `-public-url` has to match the tests' base URL (`http://localhost:8089`)
-or CSRF rejects writes made from inside the page with a 403. `test-e2e.sh` handles both.
+what you changed. `test-e2e.sh` configures the public URL as `http://localhost:8089`;
+the shared Host and CSRF policy also allows the local HTTP aliases at the listener port.
 
 ## Tech Stack
 
