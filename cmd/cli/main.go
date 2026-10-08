@@ -29,13 +29,17 @@ Without a token flag or MYCAL_TOKEN_FILE, no Authorization header is sent.
 
 Commands:
   calendars list
-  events list -from RFC3339 -to RFC3339 [-calendars ID[,ID...]]
-  events search -q TEXT [-from RFC3339 -to RFC3339] [-calendars ID[,ID...]]
+  events list -from DATE -to DATE [-calendars ID[,ID...]]
+  events search -q TEXT [-from DATE -to DATE] [-calendars ID[,ID...]]
   events get ID
   events ics ID
   calendars ics [-calendars ID[,ID...]]
 
 JSON and iCalendar responses go to stdout unchanged; errors go to stderr.
+Dates accept RFC3339, YYYY-MM-DD, or YYYY-MM-DD[T or space]HH:MM[:SS].
+Missing time defaults to 00:00:00; missing timezone uses the local timezone.
+During a repeated daylight-saving hour, use an explicit offset to select the time.
+Recurrence timestamps in event IDs must include a timezone and are sent unchanged.
 Calendar 0 is the default calendar. Event IDs can include recurrence timestamps.
 HTTP is allowed only for literal loopback addresses; remote servers require HTTPS.
 Redirects and environment HTTP proxies are disabled.
@@ -171,8 +175,8 @@ func parseCommand(args []string) (string, string, url.Values, error) {
 	fs := flag.NewFlagSet("query", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	calendars := fs.String("calendars", "", "comma-separated calendar IDs")
-	from := fs.String("from", "", "inclusive RFC3339 timestamp")
-	to := fs.String("to", "", "exclusive RFC3339 timestamp")
+	from := fs.String("from", "", "inclusive date or timestamp")
+	to := fs.String("to", "", "exclusive date or timestamp")
 	search := fs.String("q", "", "search text")
 	if err := fs.Parse(args[2:]); err != nil {
 		return "", "", nil, err
@@ -199,15 +203,16 @@ func parseCommand(args []string) (string, string, url.Values, error) {
 	}
 	for key, value := range map[string]string{"from": *from, "to": *to} {
 		if value != "" {
-			if _, err := time.Parse(time.RFC3339, value); err != nil {
-				return "", "", nil, err
+			stamp, err := parseDateTime(value)
+			if err != nil {
+				return "", "", nil, fmt.Errorf("-%s: %w", key, err)
 			}
-			q.Set(key, value)
+			q.Set(key, stamp.Format(time.RFC3339Nano))
 		}
 	}
 	if *from != "" && *to != "" {
-		start, _ := time.Parse(time.RFC3339, *from)
-		end, _ := time.Parse(time.RFC3339, *to)
+		start, _ := time.Parse(time.RFC3339Nano, q.Get("from"))
+		end, _ := time.Parse(time.RFC3339Nano, q.Get("to"))
 		if !start.Before(end) {
 			return "", "", nil, errors.New("-from must precede -to")
 		}
@@ -224,4 +229,23 @@ func parseCommand(args []string) (string, string, url.Values, error) {
 		}
 	}
 	return http.MethodGet, path, q, nil
+}
+
+// parseDateTime preserves explicit offsets and interprets unzoned input locally.
+func parseDateTime(value string) (time.Time, error) {
+	if stamp, err := time.Parse(time.RFC3339Nano, value); err == nil {
+		return stamp, nil
+	}
+	for _, layout := range []string{"2006-01-02T15:04:05", "2006-01-02T15:04", "2006-01-02 15:04:05", "2006-01-02 15:04", "2006-01-02"} {
+		if stamp, err := time.ParseInLocation(layout, value, time.Local); err == nil {
+			// ParseInLocation can move a nonexistent local wall time across a DST gap.
+			wall, _ := time.Parse(layout, value)
+			const wallLayout = "2006-01-02T15:04:05.999999999"
+			if stamp.Format(wallLayout) != wall.Format(wallLayout) {
+				return time.Time{}, fmt.Errorf("local time %q does not exist in %s", value, time.Local)
+			}
+			return stamp, nil
+		}
+	}
+	return time.Time{}, fmt.Errorf("invalid date or timestamp %q", value)
 }

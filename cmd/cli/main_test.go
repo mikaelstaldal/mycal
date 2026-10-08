@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -60,4 +61,60 @@ func TestReadCLI(t *testing.T) {
 	require.Error(t, run([]string{"-token-file", file, "-token-stdin", "calendars", "list"}, strings.NewReader("token"), &out))
 	require.Error(t, run([]string{"-token-stdin", "calendars", "list"}, strings.NewReader("two tokens"), &out))
 	require.Error(t, run([]string{"-token-stdin", "calendars", "list"}, strings.NewReader(strings.Repeat("x", 4097)), &out))
+}
+
+func TestFlexibleDates(t *testing.T) {
+	location, err := time.LoadLocation("Europe/Stockholm")
+	require.NoError(t, err)
+	original := time.Local
+	time.Local = location
+	t.Cleanup(func() { time.Local = original })
+	for _, tc := range []struct{ input, want string }{
+		{"2026-10-08", "2026-10-08T00:00:00+02:00"},
+		{"2026-12-08", "2026-12-08T00:00:00+01:00"},
+		{"2026-10-08T09:30", "2026-10-08T09:30:00+02:00"},
+		{"2026-10-08T09:30:12.123", "2026-10-08T09:30:12.123+02:00"},
+		{"2026-10-08 09:30:12", "2026-10-08T09:30:12+02:00"},
+		{"2026-10-08T09:30:12Z", "2026-10-08T09:30:12Z"},
+		{"2026-10-08T09:30:12-05:00", "2026-10-08T09:30:12-05:00"},
+	} {
+		t.Run(tc.input, func(t *testing.T) {
+			stamp, err := parseDateTime(tc.input)
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, stamp.Format(time.RFC3339Nano))
+		})
+	}
+	for _, input := range []string{"2026-02-30", "2026-10-08T24:00", "09:30", "2026-10-08junk", "2026-03-29T02:30"} {
+		_, err := parseDateTime(input)
+		assert.Error(t, err)
+	}
+	for _, command := range []string{"list", "search"} {
+		args := []string{"events", command, "-from", "2026-10-25", "-to", "2026-10-26"}
+		if command == "search" {
+			args = append(args, "-q", "meeting")
+		}
+		_, _, q, err := parseCommand(args)
+		require.NoError(t, err)
+		assert.Equal(t, "2026-10-25T00:00:00+02:00", q.Get("from"))
+		assert.Equal(t, "2026-10-26T00:00:00+01:00", q.Get("to"))
+	}
+	for _, command := range []string{"get", "ics"} {
+		for _, id := range []string{"42_2026-10-08T09:30:00+02:00", "42_2026-10-08T07:30:00Z", "42_2026-10-08T09:30:00.000+02:00"} {
+			args := []string{"events", command, id}
+			_, path, _, err := parseCommand(args)
+			require.NoError(t, err)
+			expected := "/events/" + id
+			if command == "ics" {
+				expected += "/ics"
+			}
+			assert.Equal(t, expected, path)
+			assert.Equal(t, id, args[2])
+		}
+		_, _, _, err := parseCommand([]string{"events", command, "42_2026-10-08T09:30"})
+		assert.Error(t, err, "event IDs require a zoned recurrence timestamp")
+	}
+	_, _, _, err = parseCommand([]string{"events", "list", "-from", "2026-10-09", "-to", "2026-10-08"})
+	assert.Error(t, err)
+	_, _, _, err = parseCommand([]string{"events", "list", "-from", "2026-10-08T03:00:00Z", "-to", "2026-10-08T04:00"})
+	assert.Error(t, err, "compare instants after resolving the local offset")
 }

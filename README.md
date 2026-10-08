@@ -247,7 +247,7 @@ MYCAL_URL=https://example.com/mycal ./mycal-token -credentials-file ./credential
 chmod 600 token
 MYCAL_URL=https://example.com/mycal MYCAL_TOKEN_FILE=./token ./mycal-cli calendars list
 MYCAL_URL=https://example.com/mycal ./mycal-cli -token-file ./token events list \
-  -from 2026-10-01T00:00:00Z -to 2026-11-01T00:00:00Z -calendars 1
+  -from 2026-10-01 -to 2026-11-01 -calendars 1
 MYCAL_URL=https://example.com/mycal ./mycal-cli -token-file ./token events search -q meeting
 MYCAL_URL=https://example.com/mycal ./mycal-cli -token-file ./token calendars ics > calendar.ics
 MYCAL_URL=https://example.com/mycal ./mycal-token -credentials-file ./credentials revoke calendar-reader
@@ -261,7 +261,12 @@ Authorization header. Both clients preserve deployment path prefixes, require
 HTTPS except for literal loopback addresses, disable environment HTTP proxies,
 and refuse redirects. JSON and iCalendar output is passed through to stdout;
 errors go to stderr with a nonzero exit status. Run either client with `help` for
-all commands and flags.
+all commands and flags. Dates accept RFC 3339 timestamps, `YYYY-MM-DD`, and
+`YYYY-MM-DDTHH:MM[:SS]` (a space can replace `T`). Missing time means midnight;
+missing timezone means the machine's local timezone. Local times in a daylight-saving
+gap are rejected; use an explicit offset to distinguish the two times during a
+repeated hour. Recurrence timestamps in event IDs must include their timezone
+and are sent unchanged.
 
 The API exposes full-access `GET/POST /api/v1/tokens` and
 `DELETE /api/v1/tokens/{slug}`. Send a token as `Authorization: Bearer SECRET`.

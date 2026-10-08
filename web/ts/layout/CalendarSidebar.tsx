@@ -80,7 +80,7 @@ export function CalendarSidebar({ calendars, selectedCalendarIds, onToggleCalend
                            onClick={(e: MouseEvent) => { e.preventDefault(); onToggleCalendar(cal.id); }}>
                         <input type="checkbox" checked={isChecked} readOnly />
                         <span class="calendar-dot" style={`background: ${cal.color}`} />
-                        <span class="calendar-sidebar-name" title={cal.name}>{cal.name}</span>
+                        <span class="calendar-sidebar-name" title={`${cal.name} (ID: ${cal.id})`}>{cal.name}</span>
                         <button class="calendar-edit-trigger" onClick={(e: MouseEvent) => startEdit(cal, e)} title="Edit calendar" aria-label="Edit calendar"><Icon name="pencil" size={12} /></button>
                     </label>
                 );
