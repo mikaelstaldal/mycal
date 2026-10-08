@@ -1,4 +1,8 @@
 generator:
+  # Token management uses the dedicated token handler. Add every new top-level
+  # API resource to this filter so its server implementation is generated.
+  filters:
+    path_regex: "^(/api/v1/(preferences|calendars|events|import|feeds)|/calendar[.]ics)"
   convenient_errors: "on"
   features:
     disable:

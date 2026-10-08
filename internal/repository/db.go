@@ -107,6 +107,18 @@ var currentSchemaVersion = len(migrations)
 var migrations = [][]string{
 	append(append([]string{}, schemaV1...), schemaV1Indexes...),
 	{`ALTER TABLE events ADD COLUMN note_slug TEXT NOT NULL DEFAULT ''`},
+	{`CREATE TABLE api_tokens (
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
+ slug TEXT NOT NULL UNIQUE,
+ name TEXT NOT NULL,
+ token_hash BLOB NOT NULL UNIQUE,
+ created_at TEXT NOT NULL,
+ expires_at TEXT NOT NULL
+ )`, `CREATE TABLE api_token_calendars (
+ token_id INTEGER NOT NULL REFERENCES api_tokens(id) ON DELETE CASCADE,
+ calendar_id INTEGER NOT NULL REFERENCES calendars(id) ON DELETE CASCADE,
+ PRIMARY KEY(token_id, calendar_id)
+ )`},
 }
 
 // initSchema refuses a pre-user_version database and hands everything else to

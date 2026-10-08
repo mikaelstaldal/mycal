@@ -221,3 +221,49 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+
+## API tokens and command-line clients
+
+`./build.sh` also builds `mycal-token` and `mycal-cli`. Tokens grant read-only
+access to one or more calendars, including the default calendar (ID `0`). They
+allow calendar listing, event listing and search, individual events and recurrence
+instances, and iCalendar exports. Collections contain only granted calendars.
+Tokens cannot change events, manage tokens, read preferences or access feeds or
+the web UI. Tokens expire and can be revoked; only their SHA-256 hashes are stored.
+Scoped recurring views omit overrides outside the grant and retain the original
+parent occurrence. Revocation slugs identify current tokens and can be reused
+once revoked or expired. The management API accepts any future expiry; the CLI
+limits lifetimes to ten years.
+
+`mycal-token` creates and revokes tokens using full access (Basic authentication
+when enabled). Store a single `username:password` line in a credentials file, or
+use `-user USER` to prompt for a password without echo. Servers without Basic
+auth need no credentials. Creation prints only the secret to stdout and its
+revocation slug to stderr; the secret cannot be retrieved later.
+
+```bash
+MYCAL_URL=https://example.com/mycal ./mycal-token -credentials-file ./credentials \
+  create -name 'Calendar reader' -lifetime 30d -calendars 0,1 > token
+chmod 600 token
+MYCAL_URL=https://example.com/mycal MYCAL_TOKEN_FILE=./token ./mycal-cli calendars list
+MYCAL_URL=https://example.com/mycal ./mycal-cli -token-file ./token events list \
+  -from 2026-10-01T00:00:00Z -to 2026-11-01T00:00:00Z -calendars 1
+MYCAL_URL=https://example.com/mycal ./mycal-cli -token-file ./token events search -q meeting
+MYCAL_URL=https://example.com/mycal ./mycal-cli -token-file ./token calendars ics > calendar.ics
+MYCAL_URL=https://example.com/mycal ./mycal-token -credentials-file ./credentials revoke calendar-reader
+```
+
+Keep credential and token files readable only by their owner. Put global flags
+before the command. `MYCAL_URL` defaults both clients to a server URL; `-url`
+overrides it. `MYCAL_TOKEN_FILE` supplies the read client's token file; explicit
+`-token-file` or `-token-stdin` overrides it. Without a token, the client sends no
+Authorization header. Both clients preserve deployment path prefixes, require
+HTTPS except for literal loopback addresses, disable environment HTTP proxies,
+and refuse redirects. JSON and iCalendar output is passed through to stdout;
+errors go to stderr with a nonzero exit status. Run either client with `help` for
+all commands and flags.
+
+The API exposes full-access `GET/POST /api/v1/tokens` and
+`DELETE /api/v1/tokens/{slug}`. Send a token as `Authorization: Bearer SECRET`.
+Invalid, expired or revoked tokens return `401`; prohibited routes or methods
+return `403`. An individual event outside the scope returns `404`.

@@ -10,12 +10,22 @@ import (
 )
 
 type SQLiteRepository struct {
-	db *sql.DB
+	db database
 }
+
+// database permits a repository to read from a pinned SQLite snapshot.
+type database interface {
+	Query(string, ...any) (*sql.Rows, error)
+	QueryRow(string, ...any) *sql.Row
+	Exec(string, ...any) (sql.Result, error)
+}
+
+// NewSnapshotRepository wraps a transaction; its lifetime is owned by the caller.
+func NewSnapshotRepository(tx *sql.Tx) *SQLiteRepository { return &SQLiteRepository{db: tx} }
 
 // NewSQLiteRepository wraps an already-opened database. Schema migrations are
 // run by OpenDB, not here, so this can wrap a read-only connection too.
-func NewSQLiteRepository(db *sql.DB) (*SQLiteRepository, error) {
+func NewSQLiteRepository(db database) (*SQLiteRepository, error) {
 	return &SQLiteRepository{db: db}, nil
 }
 

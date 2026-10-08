@@ -34,6 +34,7 @@ import (
 	"github.com/mikaelstaldal/mycal/internal/ical"
 	"github.com/mikaelstaldal/mycal/internal/repository"
 	"github.com/mikaelstaldal/mycal/internal/service"
+	"github.com/mikaelstaldal/mycal/internal/token"
 	"github.com/mikaelstaldal/mycal/web"
 )
 
@@ -521,7 +522,11 @@ func main() {
 		log.Fatalf("build index.html: %v", err)
 	}
 
+	tokenStore := &token.Store{DB: db}
+	opts.tokenStore = tokenStore
 	mux := http.NewServeMux()
+	mux.HandleFunc("/api/v1/tokens", tokenStore.Management)
+	mux.HandleFunc("/api/v1/tokens/", tokenStore.Management)
 	mux.Handle("/api/v1/", apiRouter)
 	mux.Handle("GET /calendar.ics", apiRouter)
 	if err := mountStatic(mux, indexHTML); err != nil {
@@ -547,6 +552,7 @@ func main() {
 // httpServerOptions carries the deployment-level settings shared by the real
 // server and the demo server.
 type httpServerOptions struct {
+	tokenStore     *token.Store
 	addr           string
 	port           int
 	publicURL      string
@@ -588,17 +594,8 @@ func buildHTTPHandler(mux http.Handler, opts httpServerOptions) (http.Handler, e
 	if err != nil {
 		return nil, err
 	}
-	httpHandler := csrf.MiddlewareOrigins(policy.Origins()...)(mux)
+	httpHandler := mux
 
-	hsts := ""
-	if opts.httpsMode {
-		hsts = "max-age=31536000; includeSubDomains"
-	}
-	httpHandler = httputil.SecurityHeaders(httputil.SecurityHeadersOptions{
-		CSP:            opts.csp,
-		ReferrerPolicy: "strict-origin-when-cross-origin",
-		HSTS:           hsts,
-	})(httpHandler)
 	if opts.basicAuthFile != "" {
 		// Strict: every non-blank line must be a "username:bcrypt-hash" pair, so a
 		// login the operator believes in cannot silently not exist. Usernames carry
@@ -611,6 +608,22 @@ func buildHTTPHandler(mux http.Handler, opts httpServerOptions) (http.Handler, e
 		httpHandler = htpasswd.Middleware(opts.basicAuthRealm)(httpHandler)
 		log.Printf("basic authentication enabled")
 	}
+	if opts.tokenStore != nil {
+		httpHandler = opts.tokenStore.Bearer(httpHandler, func(tx *sql.Tx, allowed map[int64]bool) http.Handler {
+			repo := &repository.ScopedRepository{SQLiteRepository: repository.NewSnapshotRepository(tx), Allowed: allowed}
+			return handler.NewRouter(service.NewEventService(repo, repo), nil, nil, service.NewCalendarService(repo))
+		})
+	}
+	httpHandler = csrf.MiddlewareOrigins(policy.Origins()...)(httpHandler)
+	hsts := ""
+	if opts.httpsMode {
+		hsts = "max-age=31536000; includeSubDomains"
+	}
+	httpHandler = httputil.SecurityHeaders(httputil.SecurityHeadersOptions{
+		CSP:            opts.csp,
+		ReferrerPolicy: "strict-origin-when-cross-origin",
+		HSTS:           hsts,
+	})(httpHandler)
 	httpHandler = http.MaxBytesHandler(httpHandler, 10*1024*1024) // 10 MiB global request body limit (matches import endpoint)
 
 	return policy.Middleware(httpHandler), nil

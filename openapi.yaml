@@ -3,13 +3,100 @@ info:
   title: MyCal API
   description: >
     Calendar API with event management and iCalendar support.
+    Full access uses Basic authentication when configured. Bearer API tokens allow
+    only GET calendar listing, event listing and search, individual events and
+    recurrence instances, and iCalendar exports. Collections are restricted to
+    granted calendars. Invalid, expired or revoked tokens return 401; prohibited
+    routes and methods return 403; out-of-scope individual events return 404.
     All endpoints are under `/api/v1`. Datetimes use RFC 3339 format
     (or `YYYY-MM-DD` for all-day events). Errors return `{"error": "message"}`.
   version: 1.0.0
 servers:
   - url: http://localhost:8080
     description: Local development server
+# Keep new top-level API resources in internal/.ogen.yml's generation filter.
 paths:
+  /api/v1/tokens:
+    get:
+      security: [{BasicAuth: []}, {}]
+      summary: List API tokens (full access only)
+      responses:
+        "200":
+          description: Token metadata; secrets are never returned again
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [total, items]
+                properties:
+                  total:
+                    type: integer
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/APIToken'
+        default:
+          $ref: '#/components/responses/Error'
+    post:
+      security: [{BasicAuth: []}, {}]
+      summary: Create a read-only calendar-scoped API token (full access only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, expires_at, calendar_ids]
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 200
+                expires_at:
+                  type: string
+                  format: date-time
+                  description: Must be in the future
+                calendar_ids:
+                  type: array
+                  minItems: 1
+                  uniqueItems: true
+                  items:
+                    type: integer
+                    format: int64
+                    minimum: 0
+      responses:
+        "201":
+          description: Created token; save the secret now
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/APIToken'
+                  - type: object
+                    required: [token]
+                    properties:
+                      token:
+                        type: string
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/tokens/{slug}:
+    delete:
+      security: [{BasicAuth: []}, {}]
+      summary: Revoke an API token (full access only)
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+            maxLength: 220
+            pattern: '^[a-z0-9]+(-[a-z0-9]+)*$'
+      responses:
+        "204":
+          description: Revoked
+        default:
+          $ref: '#/components/responses/Error'
+
   /api/v1/preferences:
     get:
       summary: Get all preferences
@@ -560,6 +647,15 @@ paths:
         default:
           $ref: "#/components/responses/Error"
 components:
+  securitySchemes:
+    BasicAuth:
+      type: http
+      scheme: basic
+      description: Full access; required only when the server enables Basic authentication.
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: Read-only calendar scope; only the GET routes described above accept tokens.
   parameters:
     EventId:
       name: id
@@ -578,6 +674,25 @@ components:
           schema:
             $ref: "#/components/schemas/Error"
   schemas:
+    APIToken:
+      type: object
+      required: [slug, name, created_at, expires_at, calendar_ids]
+      properties:
+        slug:
+          type: string
+        name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+        calendar_ids:
+          type: array
+          items:
+            type: integer
+            format: int64
     Preferences:
       type: object
       description: >
