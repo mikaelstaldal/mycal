@@ -210,3 +210,16 @@ func TestCredentialsFileAndStdinWithOrWithoutNewline(t *testing.T) {
 		}
 	}
 }
+
+func TestHelpWithoutConfiguration(t *testing.T) {
+	t.Setenv("MYCAL_URL", "invalid")
+	t.Setenv("MYCAL_USER", "user")
+	for _, args := range [][]string{{"-help"}, {"--help"}, {"-h"}, {"create", "-help"}, {"revoke", "-help"}} {
+		t.Run(strings.Join(args, " "), func(t *testing.T) {
+			var out, errOut bytes.Buffer
+			require.NoError(t, run(args, strings.NewReader(""), &out, &errOut))
+			assert.Equal(t, usage, out.String())
+			assert.Empty(t, errOut.String())
+		})
+	}
+}

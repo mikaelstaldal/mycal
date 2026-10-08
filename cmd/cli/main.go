@@ -20,6 +20,7 @@ import (
 const usage = `Usage: mycal-cli [global flags] <command> [command flags]
 
 Global flags (before the command):
+  -help             Print help and exit successfully
   -url URL          Server base URL, including optional path (default MYCAL_URL or http://127.0.0.1:8080)
   -token-file PATH  Read API token from a file (default MYCAL_TOKEN_FILE)
   -token-stdin      Read API token from standard input
@@ -70,11 +71,15 @@ func run(args []string, stdin io.Reader, stdout io.Writer) error {
 		_, _ = io.WriteString(stdout, usage)
 		return nil
 	}
-	endpoint, err := clihttp.ParseBaseURL(*base)
+	method, path, query, err := parseCommand(command)
 	if err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			_, _ = io.WriteString(stdout, usage)
+			return nil
+		}
 		return err
 	}
-	method, path, query, err := parseCommand(command)
+	endpoint, err := clihttp.ParseBaseURL(*base)
 	if err != nil {
 		return err
 	}
@@ -144,6 +149,14 @@ func parseCommand(args []string) (string, string, url.Values, error) {
 	}
 	if len(args) < 2 {
 		return bad()
+	}
+	if (args[0] == "calendars" || args[0] == "events") && (args[1] == "-help" || args[1] == "--help" || args[1] == "-h") {
+		return "", "", nil, flag.ErrHelp
+	}
+	if len(args) == 3 && (args[2] == "-help" || args[2] == "--help" || args[2] == "-h") {
+		if (args[0] == "calendars" && args[1] == "list") || (args[0] == "events" && (args[1] == "get" || args[1] == "ics")) {
+			return "", "", nil, flag.ErrHelp
+		}
 	}
 	q := url.Values{}
 	if args[0] == "calendars" && args[1] == "list" && len(args) == 2 {

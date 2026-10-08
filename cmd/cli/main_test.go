@@ -118,3 +118,21 @@ func TestFlexibleDates(t *testing.T) {
 	_, _, _, err = parseCommand([]string{"events", "list", "-from", "2026-10-08T03:00:00Z", "-to", "2026-10-08T04:00"})
 	assert.Error(t, err, "compare instants after resolving the local offset")
 }
+
+func TestHelp(t *testing.T) {
+	t.Setenv("MYCAL_URL", "invalid")
+	t.Setenv("MYCAL_TOKEN_FILE", "/does/not/exist")
+	for _, args := range [][]string{{"-help"}, {"--help"}, {"-h"}, {"events", "-help"}, {"events", "list", "-help"}, {"events", "search", "-help"}, {"events", "get", "-help"}, {"events", "ics", "-help"}, {"calendars", "list", "-help"}, {"calendars", "ics", "-help"}} {
+		t.Run(strings.Join(args, " "), func(t *testing.T) {
+			var out bytes.Buffer
+			require.NoError(t, run(args, strings.NewReader(""), &out))
+			assert.Equal(t, usage, out.String())
+		})
+	}
+	for _, args := range [][]string{{"bogus", "-help"}, {"event", "-h"}} {
+		var out bytes.Buffer
+		require.ErrorContains(t, run(args, strings.NewReader(""), &out), "invalid command")
+		assert.Empty(t, out.String())
+	}
+
+}

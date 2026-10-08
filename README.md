@@ -260,8 +260,8 @@ overrides it. `MYCAL_TOKEN_FILE` supplies the read client's token file; explicit
 Authorization header. Both clients preserve deployment path prefixes, require
 HTTPS except for literal loopback addresses, disable environment HTTP proxies,
 and refuse redirects. JSON and iCalendar output is passed through to stdout;
-errors go to stderr with a nonzero exit status. Run either client with `help` for
-all commands and flags. Dates accept RFC 3339 timestamps, `YYYY-MM-DD`, and
+errors go to stderr with a nonzero exit status. Run either client with `help` or `-help` for
+all commands and flags. `-help` also works after a command. Dates accept RFC 3339 timestamps, `YYYY-MM-DD`, and
 `YYYY-MM-DDTHH:MM[:SS]` (a space can replace `T`). Missing time means midnight;
 missing timezone means the machine's local timezone. Local times in a daylight-saving
 gap are rejected; use an explicit offset to distinguish the two times during a
