@@ -23,6 +23,7 @@ export function Settings({ config, onConfigChange }: SettingsProps): VNode | nul
     const [open, setOpen] = useState(!isDemo() && new URLSearchParams(window.location.search).get('settings') === 'api-tokens');
     const [calendars, setCalendars] = useState<{ id: number; name: string }[]>([]);
     const [calendarError, setCalendarError] = useState('');
+    const [calendarsLoading, setCalendarsLoading] = useState(false);
     const [apiKeyError, setApiKeyError] = useState('');
     const [pendingApiKey, setPendingApiKey] = useState('');
     const [selectedProvider, setSelectedProvider] = useState(config.mapProvider || 'none');
@@ -43,7 +44,8 @@ export function Settings({ config, onConfigChange }: SettingsProps): VNode | nul
                     window.history.replaceState(null, '', url);
                 }
                 setCalendarError('');
-                void api.calendars.list().then(setCalendars).catch(() => setCalendarError('Could not load calendars.'));
+                setCalendarsLoading(true);
+                void api.calendars.list().then(setCalendars).catch(() => setCalendarError('Could not load calendars.')).finally(() => setCalendarsLoading(false));
             }
             setPendingApiKey(config.googleMapsApiKey || '');
             setSelectedProvider(config.mapProvider || 'none');
@@ -198,7 +200,7 @@ export function Settings({ config, onConfigChange }: SettingsProps): VNode | nul
                         <h2>API Tokens</h2>
                         <p>Device login creates a read-only calendar token. Existing create and revoke commands remain available in mycal-token.</p>
                         {calendarError && <p role="alert">{calendarError}</p>}
-                        <DeviceApproval resources={calendars} scopePrefix="calendar" />
+                        <DeviceApproval resources={calendars} scopePrefix="calendar" resourcesLoading={calendarsLoading} />
                     </section>}
                     <div class="dialog-actions">
                         <button onClick={handleClose}>Close</button>
