@@ -26,6 +26,9 @@ interface Route {
  */
 async function handleApiRequest(path: string, request: Request): Promise<Response> {
     try {
+        if (path === '/tokens' || path.startsWith('/tokens/') || path.startsWith('/oauth/')) {
+            return errorResponse(new ApiError(501, 'API tokens and device login are unavailable in demo mode'));
+        }
         const url = new URL(request.url);
         for (const route of ROUTES) {
             const match = route.pattern.exec(path);

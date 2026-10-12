@@ -36,7 +36,25 @@ var ErrValidation = errors.New("invalid token request")
 func invalid(message string) error { return fmt.Errorf("%w: %s", ErrValidation, message) }
 
 func (s Store) Create(name string, expiry time.Time, calendars []int64) (Record, string, error) {
+	tx, err := s.DB.Begin()
+	if err != nil {
+		return Record{}, "", err
+	}
+	defer tx.Rollback()
+	record, value, err := s.createTx(tx, name, expiry, calendars)
+	if err != nil {
+		return Record{}, "", err
+	}
+	if err := tx.Commit(); err != nil {
+		return Record{}, "", err
+	}
+	return record, value, nil
+}
+
+// createTx is shared by interactive issuance and the atomic device grant exchange.
+func (s Store) createTx(tx *sql.Tx, name string, expiry time.Time, calendars []int64) (Record, string, error) {
 	var record Record
+	var err error
 	if strings.TrimSpace(name) == "" || len(name) > 200 || !expiry.Truncate(time.Second).After(time.Now()) || len(calendars) == 0 || strings.IndexFunc(name, unicode.IsControl) >= 0 {
 		return record, "", invalid("name, future expiry, and at least one calendar are required")
 	}
@@ -46,11 +64,6 @@ func (s Store) Create(name string, expiry time.Time, calendars []int64) (Record,
 	}
 	value := "mycal_" + base64.RawURLEncoding.EncodeToString(secret)
 	digest := sha256.Sum256([]byte(value))
-	tx, err := s.DB.Begin()
-	if err != nil {
-		return record, "", err
-	}
-	defer tx.Rollback()
 	record = Record{Name: strings.TrimSpace(name), CreatedAt: time.Now().UTC().Format(time.RFC3339), ExpiresAt: expiry.UTC().Format(time.RFC3339), CalendarIDs: calendars}
 	if _, err := tx.Exec(`DELETE FROM api_tokens WHERE expires_at <= ?`, record.CreatedAt); err != nil {
 		return Record{}, "", err
@@ -85,9 +98,6 @@ func (s Store) Create(name string, expiry time.Time, calendars []int64) (Record,
 		if _, err := tx.Exec(`INSERT INTO api_token_calendars(token_id,calendar_id) VALUES(?,?)`, record.ID, id); err != nil {
 			return Record{}, "", err
 		}
-	}
-	if err := tx.Commit(); err != nil {
-		return Record{}, "", err
 	}
 	return record, value, nil
 }

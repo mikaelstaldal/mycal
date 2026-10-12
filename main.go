@@ -525,6 +525,7 @@ func main() {
 	tokenStore := &token.Store{DB: db}
 	opts.tokenStore = tokenStore
 	mux := http.NewServeMux()
+	token.MountDeviceGrant(mux, tokenStore.DeviceGrant(token.DeviceVerificationURI(opts.publicURL, opts.addr, opts.port)))
 	mux.HandleFunc("/api/v1/tokens", tokenStore.Management)
 	mux.HandleFunc("/api/v1/tokens/", tokenStore.Management)
 	mux.Handle("/api/v1/", apiRouter)
@@ -609,6 +610,7 @@ func buildHTTPHandler(mux http.Handler, opts httpServerOptions) (http.Handler, e
 		log.Printf("basic authentication enabled")
 	}
 	if opts.tokenStore != nil {
+		httpHandler = token.PublicDeviceAccess(httpHandler, mux)
 		httpHandler = opts.tokenStore.Bearer(httpHandler, func(tx *sql.Tx, allowed map[int64]bool) http.Handler {
 			repo := &repository.ScopedRepository{SQLiteRepository: repository.NewSnapshotRepository(tx), Allowed: allowed}
 			return handler.NewRouter(service.NewEventService(repo, repo), nil, nil, service.NewCalendarService(repo))

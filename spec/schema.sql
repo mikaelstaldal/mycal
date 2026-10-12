@@ -103,4 +103,28 @@ CREATE TABLE api_token_calendars (
  PRIMARY KEY(token_id, calendar_id)
  );
 
-PRAGMA user_version = 3;
+CREATE TABLE device_authorizations (
+ device_code_hash BLOB PRIMARY KEY NOT NULL,
+ user_code TEXT UNIQUE NOT NULL,
+ client_id TEXT NOT NULL,
+ name TEXT NOT NULL,
+ requested_scope TEXT NOT NULL,
+ requested_lifetime TEXT NOT NULL,
+ requester TEXT NOT NULL,
+ created_at TEXT NOT NULL,
+ expires_at TEXT NOT NULL,
+ last_poll_at TEXT NOT NULL DEFAULT '',
+ interval INTEGER NOT NULL,
+ status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','approved','denied')),
+ granted_scope TEXT NOT NULL DEFAULT '',
+ granted_expiry TEXT NOT NULL DEFAULT ''
+);
+
+CREATE TRIGGER device_authorizations_resource_deleted
+AFTER DELETE ON calendars BEGIN
+ DELETE FROM device_authorizations
+ WHERE status='approved'
+ AND instr(' ' || granted_scope || ' ', ' calendar:' || OLD.id || ' ') > 0;
+END;
+
+PRAGMA user_version = 4;

@@ -74,6 +74,10 @@ async function importRequest<T>(endpoint: string, contentOrUrl: string, calendar
 }
 
 export const api = {
+  device: {
+    get: (code: string) => request<components['schemas']['DeviceRequest']>('GET', `/oauth/device/${encodeURIComponent(code)}`),
+    decide: (code: string, decision: components['schemas']['DeviceDecision']) => request<{ approved: boolean }>('POST', `/oauth/device/${encodeURIComponent(code)}`, decision),
+  },
   events: {
     list(from: string, to: string, calendarIds?: number[] | null): Promise<Event[]> {
       let path = `/events?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;

@@ -106,7 +106,7 @@ export function DemoDialog({ onClose }: DemoDialogProps): VNode {
             <p>
                 A few features need a real server and are therefore not available here:
                 importing and exporting iCalendar files, subscribing to calendar feeds,
-                sharing an event by e-mail, and linking notes from MyNotes.
+                sharing an event by e-mail, linking notes from MyNotes, and API tokens (including device login).
             </p>
             <p>
                 Repeating events are missing too &mdash; the in-browser backend cannot

@@ -170,7 +170,7 @@ func TestTokenMigrationPreservesExistingCalendarData(t *testing.T) {
 	db, err := repository.OpenDB(path, 5000)
 	require.NoError(t, err)
 	// Reconstruct a v2 database containing production calendar and event data.
-	_, err = db.Exec(`DROP TABLE api_token_calendars; DROP TABLE api_tokens;
+	_, err = db.Exec(`DROP TRIGGER device_authorizations_resource_deleted; DROP TABLE device_authorizations; DROP TABLE api_token_calendars; DROP TABLE api_tokens;
  PRAGMA user_version=2;
  INSERT INTO calendars(id,name) VALUES(1,'Existing calendar');
  INSERT INTO events(id,title,start_time,end_time,calendar_id,note_slug) VALUES(1,'Existing event','2026-10-01T10:00:00Z','2026-10-01T11:00:00Z',1,'existing-note'); INSERT INTO feeds(id,url,calendar_id) VALUES(1,'https://example.com/calendar.ics',1)`)

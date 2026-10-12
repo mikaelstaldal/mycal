@@ -119,6 +119,7 @@ var migrations = [][]string{
  calendar_id INTEGER NOT NULL REFERENCES calendars(id) ON DELETE CASCADE,
  PRIMARY KEY(token_id, calendar_id)
  )`},
+	{deviceSchemaV4, deviceGrantScopeDeleteTrigger},
 }
 
 // initSchema refuses a pre-user_version database and hands everything else to

@@ -1,3 +1,5 @@
+import { api } from '../api/client.js';
+import { DeviceApproval } from './DeviceApproval.js';
 import { Fragment } from 'preact';
 import type { VNode } from 'preact';
 import { useState, useRef, useEffect } from 'preact/hooks';
@@ -18,7 +20,9 @@ interface SettingsProps {
 }
 
 export function Settings({ config, onConfigChange }: SettingsProps): VNode | null {
-    const [open, setOpen] = useState(false);
+    const [open, setOpen] = useState(!isDemo() && new URLSearchParams(window.location.search).get('settings') === 'api-tokens');
+    const [calendars, setCalendars] = useState<{ id: number; name: string }[]>([]);
+    const [calendarError, setCalendarError] = useState('');
     const [apiKeyError, setApiKeyError] = useState('');
     const [pendingApiKey, setPendingApiKey] = useState('');
     const [selectedProvider, setSelectedProvider] = useState(config.mapProvider || 'none');
@@ -32,6 +36,15 @@ export function Settings({ config, onConfigChange }: SettingsProps): VNode | nul
 
     useEffect(() => {
         if (open) {
+            if (!isDemo()) {
+                const url = new URL(window.location.href);
+                if (url.searchParams.get('settings') === 'api-tokens') {
+                    url.searchParams.delete('settings');
+                    window.history.replaceState(null, '', url);
+                }
+                setCalendarError('');
+                void api.calendars.list().then(setCalendars).catch(() => setCalendarError('Could not load calendars.'));
+            }
             setPendingApiKey(config.googleMapsApiKey || '');
             setSelectedProvider(config.mapProvider || 'none');
             setApiKeyError('');
@@ -181,6 +194,12 @@ export function Settings({ config, onConfigChange }: SettingsProps): VNode | nul
                             </label>
                         </Fragment>
                     )}
+                    {!isDemo() && <section>
+                        <h2>API Tokens</h2>
+                        <p>Device login creates a read-only calendar token. Existing create and revoke commands remain available in mycal-token.</p>
+                        {calendarError && <p role="alert">{calendarError}</p>}
+                        <DeviceApproval resources={calendars} scopePrefix="calendar" />
+                    </section>}
                     <div class="dialog-actions">
                         <button onClick={handleClose}>Close</button>
                     </div>
