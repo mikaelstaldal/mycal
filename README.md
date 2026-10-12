@@ -238,6 +238,10 @@ parent occurrence. Revocation slugs identify current tokens and can be reused
 once revoked or expired. The management API accepts any future expiry; the CLI
 limits lifetimes to ten years.
 
+Settings → API Tokens lists existing tokens and their calendar scope and expiry,
+and lets you revoke them after confirmation. This tab also supports manual device
+code approval.
+
 Use `mycal-token login` to obtain a token without giving the CLI your Basic-auth
 credentials:
 

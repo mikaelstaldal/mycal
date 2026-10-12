@@ -1,5 +1,4 @@
-import { api } from '../api/client.js';
-import { DeviceApproval } from './DeviceApproval.js';
+import { ApiTokens } from './ApiTokens.js';
 import { Fragment } from 'preact';
 import type { VNode } from 'preact';
 import { useState, useRef, useEffect } from 'preact/hooks';
@@ -21,9 +20,9 @@ interface SettingsProps {
 
 export function Settings({ config, onConfigChange }: SettingsProps): VNode | null {
     const [open, setOpen] = useState(!isDemo() && new URLSearchParams(window.location.search).get('settings') === 'api-tokens');
-    const [calendars, setCalendars] = useState<{ id: number; name: string }[]>([]);
-    const [calendarError, setCalendarError] = useState('');
-    const [calendarsLoading, setCalendarsLoading] = useState(false);
+    const [tab, setTab] = useState<'general' | 'api-tokens'>(!isDemo() && new URLSearchParams(window.location.search).get('settings') === 'api-tokens' ? 'api-tokens' : 'general');
+    // Load token management on demand, then retain its consent state across tab switches.
+    const [tokensOpened, setTokensOpened] = useState(tab === 'api-tokens');
     const [apiKeyError, setApiKeyError] = useState('');
     const [pendingApiKey, setPendingApiKey] = useState('');
     const [selectedProvider, setSelectedProvider] = useState(config.mapProvider || 'none');
@@ -43,9 +42,6 @@ export function Settings({ config, onConfigChange }: SettingsProps): VNode | nul
                     url.searchParams.delete('settings');
                     window.history.replaceState(null, '', url);
                 }
-                setCalendarError('');
-                setCalendarsLoading(true);
-                void api.calendars.list().then(setCalendars).catch(() => setCalendarError('Could not load calendars.')).finally(() => setCalendarsLoading(false));
             }
             setPendingApiKey(config.googleMapsApiKey || '');
             setSelectedProvider(config.mapProvider || 'none');
@@ -108,6 +104,19 @@ export function Settings({ config, onConfigChange }: SettingsProps): VNode | nul
                         <h2>Settings</h2>
                         <button class="close-btn" onClick={handleClose} title="Close" aria-label="Close"><Icon name="x" /></button>
                     </div>
+                    {!isDemo() && <div class="settings-tabs" role="tablist" aria-label="Settings sections" onKeyDown={e => {
+                        const tabs = Array.from(e.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
+                        const current = tabs.indexOf(document.activeElement as HTMLButtonElement);
+                        let next = current;
+                        if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') next = (current + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length;
+                        else if (e.key === 'Home') next = 0;
+                        else if (e.key === 'End') next = tabs.length - 1;
+                        else return;
+                        e.preventDefault(); tabs[next]?.click(); tabs[next]?.focus();
+                    }}>
+                        {(['general', 'api-tokens'] as const).map(value => <button key={value} type="button" class="small-btn" role="tab" id={`settings-tab-${value}`} aria-selected={tab === value} aria-controls={`settings-panel-${value}`} tabIndex={tab === value ? 0 : -1} onClick={() => { setTab(value); if (value === 'api-tokens') setTokensOpened(true); }}>{value === 'general' ? 'General' : 'API Tokens'}</button>)}
+                    </div>}
+                    <div hidden={tab !== 'general'} role={isDemo() ? undefined : 'tabpanel'} id="settings-panel-general" aria-labelledby={isDemo() ? undefined : 'settings-tab-general'} tabIndex={isDemo() ? undefined : 0}>
                     <label>
                         Default view
                         <select value={config.defaultView}
@@ -196,12 +205,8 @@ export function Settings({ config, onConfigChange }: SettingsProps): VNode | nul
                             </label>
                         </Fragment>
                     )}
-                    {!isDemo() && <section>
-                        <h2>API Tokens</h2>
-                        <p>Device login creates a read-only calendar token. Existing create and revoke commands remain available in mycal-token.</p>
-                        {calendarError && <p role="alert">{calendarError}</p>}
-                        <DeviceApproval resources={calendars} scopePrefix="calendar" resourcesLoading={calendarsLoading} />
-                    </section>}
+                    </div>
+                    {!isDemo() && tokensOpened && <div hidden={tab !== 'api-tokens'} role="tabpanel" id="settings-panel-api-tokens" aria-labelledby="settings-tab-api-tokens" tabIndex={0}><ApiTokens /></div>}
                     <div class="dialog-actions">
                         <button onClick={handleClose}>Close</button>
                     </div>

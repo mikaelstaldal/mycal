@@ -105,6 +105,7 @@ test('plain approval link clears URL and calendar loading error', async ({ page 
   await page.reload();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('tab', { name: 'API Tokens', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Approve device' })).toBeVisible();
   await expect(page.getByText('Could not load calendars.', { exact: true })).toHaveCount(0);
 });

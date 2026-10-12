@@ -1,5 +1,7 @@
 import { showNetworkErrorToast } from '../util/toast.js';
-import type { components } from './types.js';
+import type { components, paths } from './types.js';
+
+type TokenList = paths['/api/v1/tokens']['get']['responses'][200]['content']['application/json'];
 
 type Event = components['schemas']['Event'];
 type Calendar = components['schemas']['Calendar'];
@@ -74,6 +76,10 @@ async function importRequest<T>(endpoint: string, contentOrUrl: string, calendar
 }
 
 export const api = {
+  tokens: {
+    list: () => request<TokenList>('GET', '/tokens'),
+    revoke: (slug: string) => request<void>('DELETE', `/tokens/${encodeURIComponent(slug)}`),
+  },
   device: {
     get: (code: string) => request<components['schemas']['DeviceRequest']>('GET', `/oauth/device/${encodeURIComponent(code)}`),
     decide: (code: string, decision: components['schemas']['DeviceDecision']) => request<{ approved: boolean }>('POST', `/oauth/device/${encodeURIComponent(code)}`, decision),
