@@ -2005,8 +2005,15 @@ body {
     color: var(--danger);
     border-color: var(--danger);
 }
-.small-btn.danger:hover {
+.small-btn.danger:hover:not(:disabled) {
     background: var(--error-bg);
+}
+
+.small-btn:disabled {
+    background: var(--border);
+    color: var(--text-disabled);
+    border-color: var(--border);
+    cursor: not-allowed;
 }
 
 /* A Lucide glyph spun in place — used on the feed refresh button while its
