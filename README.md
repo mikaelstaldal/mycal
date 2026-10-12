@@ -80,7 +80,10 @@ htpasswd -Bc htpasswd admin
 ./mycal -basic-auth-file htpasswd
 ```
 
-When enabled, all endpoints (UI, API, and iCalendar feed) require valid credentials. The browser will prompt for a username and password automatically.
+When enabled, the UI, API, and iCalendar feed require valid credentials, except
+the CLI's device-authorization and polling endpoints used by `mycal-token login`.
+Approving a device request still requires full access. The browser will prompt
+for a username and password automatically.
 
 The htpasswd file is parsed strictly at startup: every non-blank line must be a `username:bcrypt-hash` pair with no duplicate usernames, and the file must not be empty. Anything else aborts startup — a bad entry named by file and line number, an entryless file by name — rather than silently leaving out a login you believe exists.
 
@@ -235,7 +238,30 @@ parent occurrence. Revocation slugs identify current tokens and can be reused
 once revoked or expired. The management API accepts any future expiry; the CLI
 limits lifetimes to ten years.
 
-`mycal-token` creates and revokes tokens using full access (Basic authentication
+Use `mycal-token login` to obtain a token without giving the CLI your Basic-auth
+credentials:
+
+```bash
+MYCAL_URL=https://example.com/mycal ./mycal-token login \
+  -name 'Calendar reader' -lifetime 30d -calendars 0,1 -out ./token
+```
+
+The CLI prints an approval URL and user code to stderr, then waits while you
+review the request in **Settings → API Tokens → Approve device**. Compare the
+code with your CLI, select the calendars to grant, and choose a lifetime before
+approving. The login request expires after ten minutes.
+
+`-name` is required. `-calendars` is an optional suggestion; the approver chooses
+the actual scope. The approval form starts with a granted lifetime of `30d`,
+so change it there if you want a different lifetime. Omit `-lifetime` to request
+`30d`; durations accept `s`, `m`,
+`h`, or `d`, up to ten years. With `-out`, the token is saved to a new file with
+mode `0600`; existing files are never overwritten. Without `-out`, only the token
+secret is printed to stdout. The revocation slug is printed to stderr; save it
+for `revoke`. `login` reads no credentials, ignores `MYCAL_USER`, and rejects
+explicit `-user`, `-credentials-file`, or `-credentials-stdin` options.
+
+The `create` and `revoke` commands use full access (Basic authentication
 when enabled). Store a single `username:password` line in a credentials file, or
 use `-user USER` to prompt for a password without echo. Servers without Basic
 auth need no credentials. Creation prints only the secret to stdout and its
