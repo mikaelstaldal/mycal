@@ -1,12 +1,12 @@
 module github.com/mikaelstaldal/mycal
 
-go 1.26.6
+go 1.26.9
 
 require (
 	github.com/go-faster/errors v0.7.1
 	github.com/go-faster/jx v1.2.0
 	github.com/microcosm-cc/bluemonday v1.0.27
-	github.com/mikaelstaldal/go-server-common v1.13.0
+	github.com/mikaelstaldal/go-server-common v1.13.1
 	github.com/ogen-go/ogen v1.22.0
 	github.com/stretchr/testify v1.11.1
 	modernc.org/sqlite v1.52.0
@@ -33,13 +33,13 @@ require (
 	github.com/shopspring/decimal v1.4.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.28.0 // indirect
-	golang.org/x/crypto v0.53.0
+	golang.org/x/crypto v0.58.0
 	golang.org/x/exp v0.0.0-20260312153236-7ab1446f8b90 // indirect
-	golang.org/x/net v0.56.0 // indirect
-	golang.org/x/sync v0.21.0 // indirect
-	golang.org/x/sys v0.46.0 // indirect
-	golang.org/x/term v0.44.0
-	golang.org/x/text v0.39.0
+	golang.org/x/net v0.60.0 // indirect
+	golang.org/x/sync v0.24.0 // indirect
+	golang.org/x/sys v0.49.0 // indirect
+	golang.org/x/term v0.47.0
+	golang.org/x/text v0.43.0
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
