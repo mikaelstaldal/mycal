@@ -265,13 +265,13 @@ explicit `-user`, `-credentials-file`, or `-credentials-stdin` options.
 The `create` and `revoke` commands use full access (Basic authentication
 when enabled). Store a single `username:password` line in a credentials file, or
 use `-user USER` to prompt for a password without echo. Servers without Basic
-auth need no credentials. Creation prints only the secret to stdout and its
+auth need no credentials. Creation writes the secret to a new private file with `-out` (mode `0600`, no
+overwrite), or prints it to stdout without `-out`, and prints its
 revocation slug to stderr; the secret cannot be retrieved later.
 
 ```bash
 MYCAL_URL=https://example.com/mycal ./mycal-token -credentials-file ./credentials \
-  create -name 'Calendar reader' -lifetime 30d -calendars 0,1 > token
-chmod 600 token
+  create -name 'Calendar reader' -lifetime 30d -calendars 0,1 -out ./token
 MYCAL_URL=https://example.com/mycal MYCAL_TOKEN_FILE=./token ./mycal-cli calendars list
 MYCAL_URL=https://example.com/mycal ./mycal-cli -token-file ./token events list \
   -from 2026-10-01 -to 2026-11-01 -calendars 1
