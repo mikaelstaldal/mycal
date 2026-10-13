@@ -1,6 +1,6 @@
 # MyCal user manual
 
-[Project overview](README.md) · [Development guide](DEVELOPMENT.md)
+[Project overview](../README.md) · [Development guide](DEVELOPMENT.md)
 
 ## Clients
 
@@ -22,7 +22,7 @@ In addition to the built-in web interface, there is also
 
 ## Getting Started
 
-To build from source, put Go (at least the version in [go.mod](go.mod)),
+To build from source, put Go (at least the version in [go.mod](../go.mod)),
 `tsc`, `openapi-typescript`, `ogen`, `golangci-lint`, and `node` on `$PATH`.
 See the [development guide](DEVELOPMENT.md) for build details.
 
@@ -34,18 +34,18 @@ Open http://localhost:8080 in your browser.
 
 ### Options
 
-| Flag                | Default                | Description                                                                                              |
-|---------------------|------------------------|----------------------------------------------------------------------------------------------------------|
-| `-port`             | 8080                   | port to listen on                                                                                        |
-| `-addr`             | `127.0.0.1`            | address to listen on (wildcard binds require `-public-url`)                                              |
-| `-data`             | `data`                 | directory to store data in                                                                               |
+| Flag                | Default               | Description                                                                                                                             |
+|---------------------|-----------------------|-----------------------------------------------------------------------------------------------------------------------------------------|
+| `-port`             | 8080                  | port to listen on                                                                                                                       |
+| `-addr`             | `127.0.0.1`           | address to listen on (wildcard binds require `-public-url`)                                                                             |
+| `-data`             | `data`                | directory to store data in                                                                                                              |
 | `-public-url`       | *(local authorities)* | public-facing base URL for Host and CSRF validation (required for wildcard binds and reverse proxies), e.g. `https://example.com/mycal` |
-| `-https`            | false                  | set `Strict-Transport-Security` header (use when served behind a TLS-terminating proxy)                  |
-| `-basic-auth-file`  | *(disabled)*           | enable HTTP basic auth with username and password from given file in htpasswd format (bcrypt only)       |
-| `-basic-auth-realm` | `mycal`                | realm for HTTP basic auth                                                                                |
-| `-export-ics`       |                        | export all events to an .ics file and exit                                                               |
-| `-demo-server`      |                        | run the browser-only demo (no database, no REST API); see [Demo mode](#demo-mode)                        |
-| `-demo-bundle`      |                        | write a static demo site to this new directory and exit                                                  |
+| `-https`            | false                 | set `Strict-Transport-Security` header (use when served behind a TLS-terminating proxy)                                                 |
+| `-basic-auth-file`  | *(disabled)*          | enable HTTP basic auth with username and password from given file in htpasswd format (bcrypt only)                                      |
+| `-basic-auth-realm` | `mycal`               | realm for HTTP basic auth                                                                                                               |
+| `-export-ics`       |                       | export all events to an .ics file and exit                                                                                              |
+| `-demo-server`      |                       | run the browser-only demo (no database, no REST API); see [Demo mode](#demo-mode)                                                       |
+| `-demo-bundle`      |                       | write a static demo site to this new directory and exit                                                                                 |
 
 ### Host validation and reverse proxies
 

@@ -1,8 +1,8 @@
 # MyCal development guide
 
-[Project overview](README.md) · [User manual](USER_MANUAL.md)
+[Project overview](../README.md) · [User manual](USER_MANUAL.md)
 
-See [AGENTS.md](AGENTS.md) for build prerequisites, architecture, and development conventions.
+See [AGENTS.md](../AGENTS.md) for build prerequisites, architecture, and development conventions.
 
 ## E2E Tests
 
@@ -32,11 +32,11 @@ the shared Host and CSRF policy also allows the local HTTP aliases at the listen
 - **Database:** SQLite via [modernc.org/sqlite](https://pkg.go.dev/modernc.org/sqlite) (pure Go, no CGO)
 - **Frontend:** [Preact](https://preactjs.com/) with JSX, written in TypeScript (`web/ts/`) and compiled by `tsc`
 - **Vendoring:** Preact, [Quill](https://quilljs.com/) and [Leaflet](https://leafletjs.com/) are committed under `web/static/third_party/` and loaded via an import map — no CDN at runtime
-- **API:** described in [openapi.yaml](openapi.yaml); Go server stubs generated with [ogen](https://ogen.dev/), TypeScript types with [openapi-typescript](https://github.com/openapi-ts/openapi-typescript)
+- **API:** described in [openapi.yaml](../openapi.yaml); Go server stubs generated with [ogen](https://ogen.dev/), TypeScript types with [openapi-typescript](https://github.com/openapi-ts/openapi-typescript)
 
 ## Publishing the demo
 
 The demo is published to GitHub Pages from `main` by
-[`.github/workflows/main.yml`](.github/workflows/main.yml), which builds the
+[`.github/workflows/main.yml`](../.github/workflows/main.yml), which builds the
 bundle for whatever URL Pages reports. Enable Pages with **GitHub Actions** as
 its source for that to work.
