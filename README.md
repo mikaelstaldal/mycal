@@ -8,9 +8,9 @@ Go backend, SQLite storage, a REST API, and an embedded web interface, shipped a
 
 ## Documentation
 
-- [User manual](USER_MANUAL.md) — getting started, configuration, and usage.
-- [Operations guide](OPERATIONS.md) — production deployment and authentication.
-- [Development guide](DEVELOPMENT.md) — building and working on the application.
+- [User manual](docs/USER_MANUAL.md) — getting started, configuration, and usage.
+- [Operations guide](docs/OPERATIONS.md) — production deployment and authentication.
+- [Development guide](docs/DEVELOPMENT.md) — building and working on the application.
 - [API reference](openapi.yaml).
 - [Credits](CREDITS.md).
 
