@@ -26,7 +26,7 @@ import (
 const usage = `Usage: mycal-token [global flags] <command> [command flags]
 
 Global flags (before the command):
-  -help             Print help and exit successfully
+  -help                   Print help and exit successfully
   -url URL                Server base URL, including optional path (default MYCAL_URL or http://127.0.0.1:8080)
   -user USER              Basic username (default MYCAL_USER); prompt for password
   -credentials-file PATH  Read one username:password line from a file
