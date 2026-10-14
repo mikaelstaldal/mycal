@@ -872,3 +872,58 @@ func TestUpdatePreferencesUnknownKey(t *testing.T) {
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 }
+
+func TestEventPaging(t *testing.T) {
+	ts := setupTestServer(t)
+	for i := 0; i < 3; i++ {
+		postJSON(t, ts.URL+"/api/v1/events", api.CreateEventRequest{
+			Title:     fmt.Sprintf("meeting %d", i),
+			StartTime: api.NewOptDateTime(mustTime("2026-03-10T10:00:00Z")),
+			EndTime:   api.NewOptDateTime(mustTime("2026-03-10T11:00:00Z")),
+		}).Body.Close()
+	}
+	for _, query := range []string{"q=meeting", "from=2026-03-01T00:00:00Z&to=2026-04-01T00:00:00Z"} {
+		for _, tc := range []struct {
+			paging        string
+			status, count int
+		}{
+			{"", 200, 3}, {"&limit=1&offset=1", 200, 1}, {"&offset=2", 200, 1},
+			{"&offset=99&limit=2", 200, 0}, {"&limit=200", 200, 3},
+			{"&limit=0", 400, 0}, {"&limit=201", 400, 0}, {"&offset=-1", 400, 0}, {"&limit=abc", 400, 0},
+		} {
+			resp, err := http.Get(ts.URL + "/api/v1/events?" + query + tc.paging)
+			require.NoError(t, err)
+			require.Equal(t, tc.status, resp.StatusCode, tc.paging)
+			if tc.status == 200 {
+				events := decodeJSON[[]api.Event](t, resp)
+				assert.Len(t, events, tc.count)
+				if tc.paging == "&limit=1&offset=1" {
+					assert.Equal(t, "meeting 1", events[0].Title)
+				}
+			} else {
+				resp.Body.Close()
+			}
+		}
+	}
+}
+
+func TestSearchPagingPreservesNewestFirst(t *testing.T) {
+	ts := setupTestServer(t)
+	for _, day := range []string{"10", "12", "11"} {
+		start := mustTime("2026-03-" + day + "T10:00:00Z")
+		postJSON(t, ts.URL+"/api/v1/events", api.CreateEventRequest{
+			Title:     "meeting " + day,
+			StartTime: api.NewOptDateTime(start),
+			EndTime:   api.NewOptDateTime(start.Add(time.Hour)),
+		}).Body.Close()
+	}
+	for _, paging := range []string{"", "&offset=0", "&limit=2"} {
+		resp, err := http.Get(ts.URL + "/api/v1/events?q=meeting&from=2026-03-01T00:00:00Z&to=2026-04-01T00:00:00Z" + paging)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		events := decodeJSON[[]api.Event](t, resp)
+		require.GreaterOrEqual(t, len(events), 2)
+		assert.Equal(t, "meeting 12", events[0].Title)
+		assert.Equal(t, "meeting 11", events[1].Title)
+	}
+}

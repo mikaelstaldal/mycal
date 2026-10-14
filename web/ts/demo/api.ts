@@ -195,6 +195,25 @@ function calendarNameAfterCreate(state: DemoState, e: DemoEvent): string {
 /** APIV1EventsGet — the list window, or a search when `q` is given. */
 async function apiV1EventsGet(ctx: { url: URL }): Promise<Response> {
     const params = ctx.url.searchParams;
+    // Mirrors service.pageEvents: page after filtering, expansion and overrides.
+    const paged = params.has('limit') || params.has('offset');
+    const readPageInt = (name: string, fallback: number, min: number, max: number): number => {
+        const raw = params.get(name);
+        if (raw === null) return fallback;
+        if (!/^[+-]?\d+$/.test(raw)) throw new ApiError(400, 'invalid ' + name);
+        const value = Number(raw);
+        if (!Number.isSafeInteger(value) || value < min || value > max) throw new ApiError(400, 'invalid ' + name);
+        return value;
+    };
+    const limit = readPageInt('limit', 0, 1, 200);
+    const offset = readPageInt('offset', 0, 0, Number.MAX_SAFE_INTEGER);
+    const page = (events: DemoEvent[]): DemoEvent[] => {
+        if (!paged) return events;
+        events.sort((a, b) => a.start_time < b.start_time ? (q ? 1 : -1) : a.start_time > b.start_time ? (q ? -1 : 1) :
+            a.id - b.id || (a.recurrence_original_start < b.recurrence_original_start ? -1 :
+                a.recurrence_original_start > b.recurrence_original_start ? 1 : 0));
+        return limit ? events.slice(offset, offset + limit) : events.slice(offset);
+    };
     const q = params.get('q') ?? '';
     if (byteLength(q) > MAX_SEARCH_QUERY_LENGTH) throw new ApiError(400, 'search query too long');
 
@@ -204,7 +223,7 @@ async function apiV1EventsGet(ctx: { url: URL }): Promise<Response> {
         const from = params.get('from') ?? '';
         const to = params.get('to') ?? '';
         return withStore('read', (state) =>
-            jsonResponse(eventsToAPI(state, search(state, q, normalizeParamTime(from), normalizeParamTime(to), calendarIDs))),
+            jsonResponse(eventsToAPI(state, page(search(state, q, normalizeParamTime(from), normalizeParamTime(to), calendarIDs)))),
         );
     }
 
@@ -216,7 +235,7 @@ async function apiV1EventsGet(ctx: { url: URL }): Promise<Response> {
     if (from === '' || to === '') {
         throw new ApiError(400, 'from and to must be RFC 3339 timestamps');
     }
-    return withStore('read', (state) => jsonResponse(eventsToAPI(state, listEvents(state, from, to, calendarIDs))));
+    return withStore('read', (state) => jsonResponse(eventsToAPI(state, page(listEvents(state, from, to, calendarIDs)))));
 }
 
 /**

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -140,6 +141,48 @@ func (s *EventService) Search(query, from, to string, calendarIDs []int64) ([]mo
 		events = []model.Event{}
 	}
 	return events, nil
+}
+
+// ListPage pages only after repository scoping, recurrence expansion and overrides.
+func (s *EventService) ListPage(from, to string, calendarIDs []int64, limit, offset int) ([]model.Event, error) {
+	events, err := s.List(from, to, calendarIDs)
+	if err != nil {
+		return nil, err
+	}
+	return pageEvents(events, limit, offset, false), nil
+}
+
+// SearchPage pages matching stored events after repository scoping.
+func (s *EventService) SearchPage(query, from, to string, calendarIDs []int64, limit, offset int) ([]model.Event, error) {
+	events, err := s.Search(query, from, to, calendarIDs)
+	if err != nil {
+		return nil, err
+	}
+	return pageEvents(events, limit, offset, true), nil
+}
+
+func pageEvents(events []model.Event, limit, offset int, newestFirst bool) []model.Event {
+	sort.Slice(events, func(i, j int) bool {
+		a, b := events[i], events[j]
+		if a.StartTime != b.StartTime {
+			if newestFirst {
+				return a.StartTime > b.StartTime
+			}
+			return a.StartTime < b.StartTime
+		}
+		if a.ID != b.ID {
+			return a.ID < b.ID
+		}
+		return a.RecurrenceOriginalStart < b.RecurrenceOriginalStart
+	})
+	if offset >= len(events) {
+		return []model.Event{}
+	}
+	events = events[offset:]
+	if limit > 0 && limit < len(events) {
+		events = events[:limit]
+	}
+	return events
 }
 
 func (s *EventService) GetByID(id int64) (*model.Event, error) {

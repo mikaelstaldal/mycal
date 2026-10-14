@@ -299,6 +299,11 @@ paths:
       summary: List or search events
       description: |
         List events in a time range (requires `from` and `to`), or search events by text (requires `q`).
+        When limit or offset is supplied, results are ordered by start_time (ascending for listing, descending for search), numeric event ID,
+        then recurrence_original_start. Listing expands recurrence and applies overrides before paging;
+        search returns matching stored events without expanding recurrence.
+        Pages are stable while the underlying data is unchanged. No total count is returned.
+        With neither paging parameter, existing ordering and unbounded behavior are preserved.
 
         ```bash
         # List events for a time range
@@ -315,6 +320,19 @@ paths:
         ```
 
       parameters:
+        - name: limit
+          in: query
+          description: Maximum results (1–200). Omitted means unbounded for backward compatibility.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+        - name: offset
+          in: query
+          description: Results to skip after calendar scoping and ordering. Defaults to 0.
+          schema:
+            type: integer
+            minimum: 0
         - name: from
           in: query
           description: Start of time range (RFC 3339). Required when not searching.

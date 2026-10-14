@@ -309,7 +309,13 @@ func (h *handlerImpl) APIV1EventsGet(ctx context.Context, params api.APIV1Events
 		if params.To.Set {
 			to = params.To.Value.UTC().Format(time.RFC3339)
 		}
-		events, err := h.svc.Search(q, from, to, calendarIDs)
+		var events []model.Event
+		var err error
+		if params.Limit.Set || params.Offset.Set {
+			events, err = h.svc.SearchPage(q, from, to, calendarIDs, params.Limit.Value, params.Offset.Value)
+		} else {
+			events, err = h.svc.Search(q, from, to, calendarIDs)
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -321,7 +327,13 @@ func (h *handlerImpl) APIV1EventsGet(ctx context.Context, params api.APIV1Events
 	}
 	from := params.From.Value.UTC().Format(time.RFC3339)
 	to := params.To.Value.UTC().Format(time.RFC3339)
-	events, err := h.svc.List(from, to, calendarIDs)
+	var events []model.Event
+	var err error
+	if params.Limit.Set || params.Offset.Set {
+		events, err = h.svc.ListPage(from, to, calendarIDs, params.Limit.Value, params.Offset.Value)
+	} else {
+		events, err = h.svc.List(from, to, calendarIDs)
+	}
 	if err != nil {
 		return nil, err
 	}
