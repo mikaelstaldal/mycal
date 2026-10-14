@@ -489,6 +489,8 @@ list. Correct either there first.
 
 The public `/openapi.yaml` and `/.well-known/api-catalog` endpoints and API
 response discovery links are governed by `../mysuite/spec/api-discovery.md`.
+The `mycal-mcp` server in `cmd/mcp` is governed by `../mysuite/spec/mcp-server.md`;
+the root `AGENTS.md` says what its drift test catches.
 
 ## Demo mode
 

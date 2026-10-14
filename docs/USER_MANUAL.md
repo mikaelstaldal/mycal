@@ -243,6 +243,35 @@ The API exposes full-access `GET/POST /api/v1/tokens` and
 Invalid, expired or revoked tokens return `401`; prohibited routes or methods
 return `403`. An individual event outside the scope returns `404`.
 
+### Use with an AI assistant (MCP)
+
+`./build.sh` also builds `mycal-mcp`, a [Model Context Protocol](https://modelcontextprotocol.io/)
+server that gives an MCP client such as Claude Code read access to your calendars
+with a token. The client starts it and talks to it over stdin/stdout. For example,
+in Claude Code:
+
+```bash
+claude mcp add mycal -- /path/to/mycal-mcp -url https://example.com/mycal -token-file /path/to/token
+```
+
+It takes the same `-url` and `-token-file` flags and `MYCAL_URL` and
+`MYCAL_TOKEN_FILE` defaults as `mycal-cli`; without a token it sends no
+Authorization header. It offers these resources:
+
+| URI | Contents |
+|---|---|
+| `mycal://calendars` | the calendars the token can read |
+| `mycal://events{?from,to,calendar_id*,limit,offset}` | events in a time range; `from` and `to` are required |
+| `mycal://events/{id}` | one event as JSON |
+| `mycal://events/{id}/ics` | one event as iCalendar |
+| `mycal://calendar.ics{?calendar_id*}` | whole calendars as iCalendar; `mycal://calendar.ics` is all of them |
+
+Dates take the same forms as in `mycal-cli`. A time in a resource URI must have its
+colons percent-encoded (`T10%3A00%3A00Z`); a date such as `2026-10-01` needs no
+encoding. Search is the `search_events` tool, taking `q` and optionally `from` and
+`to` together, `calendar_id`, `limit` and `offset`. A resource or search response
+over 1 MiB is refused rather than truncated. Run `./mycal-mcp -help` for details.
+
 ## Operations Guide
 
 See [OPERATIONS.md](OPERATIONS.md) for production installation, reverse proxy configuration, systemd service setup, and authentication.

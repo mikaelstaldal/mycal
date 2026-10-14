@@ -106,6 +106,17 @@ installed and in control before rendering, so the first request cannot escape it
 
 Always run `go mod tidy` after modifying the `go.mod` file.
 
+## MCP server
+
+`cmd/mcp` builds `mycal-mcp`, a stdio MCP server that is an HTTP client of the API,
+like `mycal-cli`, exposing exactly what an API token can reach: reads as `mycal://`
+resources, text search as the `search_events` tool. It is governed by
+`../mysuite/spec/mcp-server.md`; read the contract before changing what it exposes.
+`cmd/mcp`'s drift test probes every operation in `openapi.yaml` through the bearer
+middleware, so widening the token's surface fails it until the MCP server exposes
+the new operation or the contract excludes it. An operation missing from
+`openapi.yaml` is invisible to it.
+
 ## API
 
 The API is defined in the OpenAPI spec in `openapi.yaml`, update it whenever the API is changed. 
