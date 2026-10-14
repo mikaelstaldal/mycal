@@ -553,6 +553,7 @@ func main() {
 // httpServerOptions carries the deployment-level settings shared by the real
 // server and the demo server.
 type httpServerOptions struct {
+	demo           bool
 	tokenStore     *token.Store
 	addr           string
 	port           int
@@ -616,6 +617,7 @@ func buildHTTPHandler(mux http.Handler, opts httpServerOptions) (http.Handler, e
 			return handler.NewRouter(service.NewEventService(repo, repo), nil, nil, service.NewCalendarService(repo))
 		})
 	}
+	httpHandler = apiDiscovery(httpHandler, opts.demo)
 	httpHandler = csrf.MiddlewareOrigins(policy.Origins()...)(httpHandler)
 	hsts := ""
 	if opts.httpsMode {
@@ -628,7 +630,11 @@ func buildHTTPHandler(mux http.Handler, opts httpServerOptions) (http.Handler, e
 	})(httpHandler)
 	httpHandler = http.MaxBytesHandler(httpHandler, 10*1024*1024) // 10 MiB global request body limit (matches import endpoint)
 
-	return policy.Middleware(httpHandler), nil
+	httpHandler = policy.Middleware(httpHandler)
+	if !opts.demo {
+		httpHandler = apiDescriptionLink(httpHandler)
+	}
+	return httpHandler, nil
 }
 
 // serveHTTP serves the protected handler until signalled to stop. onShutdown
@@ -674,13 +680,24 @@ func serveHTTP(mux http.Handler, opts httpServerOptions, onShutdown func()) erro
 // browser-local storage. No database is opened, no feeds are refreshed, and no
 // sibling apps are assumed — a demo has no server to relay anything to.
 func runDemoServer(opts httpServerOptions) error {
+	mux, opts, err := buildDemoRoutes(opts)
+	if err != nil {
+		return err
+	}
+	log.Printf("demo mode: no database; the browser stores all data locally")
+	return serveHTTP(mux, opts, nil)
+}
+
+// buildDemoRoutes shares the real demo setup with in-process HTTP tests.
+func buildDemoRoutes(opts httpServerOptions) (*http.ServeMux, httpServerOptions, error) {
+	opts.demo = true
 	importMapHash, err := commonweb.ImportMapCSPHash(web.Static)
 	if err != nil {
-		return fmt.Errorf("compute importmap CSP hash: %w", err)
+		return nil, opts, fmt.Errorf("compute importmap CSP hash: %w", err)
 	}
 	indexHTML, configScriptHash, err := buildIndexHTML(web.Static, "/", serverConfig{Demo: true})
 	if err != nil {
-		return fmt.Errorf("build index.html: %w", err)
+		return nil, opts, fmt.Errorf("build index.html: %w", err)
 	}
 	opts.csp = contentSecurityPolicy("'self' " + importMapHash + " " + configScriptHash)
 
@@ -691,11 +708,9 @@ func runDemoServer(opts httpServerOptions) error {
 	// would try to parse a page of HTML as JSON.
 	mux.HandleFunc("/api/v1/", demoAPIUnavailable)
 	if err := mountStatic(mux, indexHTML); err != nil {
-		return err
+		return nil, opts, err
 	}
-
-	log.Printf("demo mode: no database; the browser stores all data locally")
-	return serveHTTP(mux, opts, nil)
+	return mux, opts, nil
 }
 
 func printVersion() {

@@ -485,6 +485,11 @@ build, which is a second shipped surface and is what Pages publishes. `app-name-
 the authority on what each app's suite must assert; §8.1 carries the per-app breakdown of this
 list. Correct either there first.
 
+## API discovery
+
+The public `/openapi.yaml` and `/.well-known/api-catalog` endpoints and API
+response discovery links are governed by `../mysuite/spec/api-discovery.md`.
+
 ## Demo mode
 
 - **Intercepting at the network layer is the point**: the frontend is unchanged

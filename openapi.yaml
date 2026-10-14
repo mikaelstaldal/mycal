@@ -12,8 +12,8 @@ info:
     (or `YYYY-MM-DD` for all-day events). Errors return `{"error": "message"}`.
   version: 1.0.0
 servers:
-  - url: http://localhost:8080
-    description: Local development server
+  - url: /
+    description: Current origin (paths include /api/v1)
 # Keep new top-level API resources in internal/.ogen.yml's generation filter.
 paths:
   /api/v1/oauth/device_authorization:
