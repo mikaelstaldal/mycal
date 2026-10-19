@@ -448,6 +448,7 @@ func (s *EventService) CreateOrUpdateOverride(parentID int64, instanceStart stri
 
 	// Create a new override as a copy of the parent with updates applied
 	override := &model.Event{
+		CalendarID:              parent.CalendarID,
 		Title:                   parent.Title,
 		Description:             parent.Description,
 		StartTime:               instanceStart,

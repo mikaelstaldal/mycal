@@ -120,6 +120,9 @@ var migrations = [][]string{
  PRIMARY KEY(token_id, calendar_id)
  )`},
 	{deviceSchemaV4, deviceGrantScopeDeleteTrigger},
+	{`UPDATE events SET calendar_id = (SELECT p.calendar_id FROM events p WHERE p.id = events.recurrence_parent_id)
+ WHERE recurrence_parent_id IS NOT NULL
+ AND EXISTS (SELECT 1 FROM events p WHERE p.id = events.recurrence_parent_id)`},
 }
 
 // initSchema refuses a pre-user_version database and hands everything else to

@@ -24,20 +24,46 @@ func (r *ScopedRepository) ids(requested []int64) []int64 {
 	}
 	return ids
 }
+
+// visible also checks the parent so a misfiled override cannot cross token scopes.
+func (r *ScopedRepository) visible(e *model.Event) (bool, error) {
+	if !r.Allowed[e.CalendarID] {
+		return false, nil
+	}
+	if e.RecurrenceParentID != nil {
+		parent, err := r.SQLiteRepository.GetByID(*e.RecurrenceParentID)
+		if err != nil {
+			return false, err
+		}
+		return parent != nil && r.Allowed[parent.CalendarID], nil
+	}
+	return true, nil
+}
 func (r *ScopedRepository) events(events []model.Event, err error) ([]model.Event, error) {
+	if err != nil {
+		return nil, err
+	}
 	result := []model.Event{}
 	for _, e := range events {
-		if r.Allowed[e.CalendarID] {
+		ok, err := r.visible(&e)
+		if err != nil {
+			return nil, err
+		}
+		if ok {
 			result = append(result, e)
 		}
 	}
-	return result, err
+	return result, nil
 }
 func (r *ScopedRepository) event(e *model.Event, err error) (*model.Event, error) {
-	if e != nil && !r.Allowed[e.CalendarID] {
+	if err != nil || e == nil {
 		return nil, err
 	}
-	return e, err
+	ok, err := r.visible(e)
+	if !ok || err != nil {
+		return nil, err
+	}
+	return e, nil
 }
 func (r *ScopedRepository) List(from, to string, ids []int64) ([]model.Event, error) {
 	return r.events(r.SQLiteRepository.List(from, to, r.ids(ids)))

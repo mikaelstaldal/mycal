@@ -763,6 +763,7 @@ func TestCreateOrUpdateOverride_NewOverride(t *testing.T) {
 		getByIDFn: func(id int64) (*model.Event, error) {
 			return &model.Event{
 				ID:             parentID,
+				CalendarID:     7,
 				Title:          "Weekly",
 				StartTime:      "2026-02-01T09:00:00Z",
 				EndTime:        "2026-02-01T10:00:00Z",
@@ -773,6 +774,7 @@ func TestCreateOrUpdateOverride_NewOverride(t *testing.T) {
 			return nil, nil // no existing override
 		},
 		createFn: func(event *model.Event) error {
+			assert.Equal(t, int64(7), event.CalendarID)
 			event.ID = 100
 			return nil
 		},
@@ -782,6 +784,7 @@ func TestCreateOrUpdateOverride_NewOverride(t *testing.T) {
 	e, err := svc.CreateOrUpdateOverride(parentID, "2026-02-08T09:00:00Z", req)
 	require.NoError(t, err)
 	assert.Equal(t, "Modified Instance", e.Title)
+	assert.Equal(t, int64(7), e.CalendarID)
 	require.NotNil(t, e.RecurrenceParentID)
 	assert.Equal(t, parentID, *e.RecurrenceParentID)
 	assert.Equal(t, "2026-02-08T09:00:00Z", e.RecurrenceOriginalStart)

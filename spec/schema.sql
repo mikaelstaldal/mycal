@@ -127,4 +127,4 @@ AFTER DELETE ON calendars BEGIN
  AND instr(' ' || granted_scope || ' ', ' calendar:' || OLD.id || ' ') > 0;
 END;
 
-PRAGMA user_version = 4;
+PRAGMA user_version = 5;
