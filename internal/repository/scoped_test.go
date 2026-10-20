@@ -56,7 +56,7 @@ func TestMigrationRepairsOverrideCalendar(t *testing.T) {
 	override := &model.Event{Title: "Edited", RecurrenceParentID: &parent.ID, StartTime: parent.StartTime, EndTime: parent.EndTime}
 	require.NoError(t, repo.Create(override))
 	// Simulate the previous schema with its incorrectly filed override.
-	_, err = repo.db.Exec("PRAGMA user_version = 4")
+	_, err = repo.db.Exec("DROP INDEX idx_events_feed_id; ALTER TABLE events DROP COLUMN feed_id; PRAGMA user_version = 4")
 	require.NoError(t, err)
 	db, err := OpenDB(MemoryDSN(t.Name()), 0)
 	require.NoError(t, err)

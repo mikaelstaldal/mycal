@@ -32,7 +32,7 @@ CREATE TABLE events (
 		calendar_id      INTEGER NOT NULL DEFAULT 0,
 		created_at       TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
 		updated_at       TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
-	, note_slug TEXT NOT NULL DEFAULT '');
+	, note_slug TEXT NOT NULL DEFAULT '', feed_id INTEGER REFERENCES feeds(id) ON DELETE SET NULL);
 
 CREATE INDEX idx_events_start_time ON events(start_time);
 
@@ -127,4 +127,6 @@ AFTER DELETE ON calendars BEGIN
  AND instr(' ' || granted_scope || ' ', ' calendar:' || OLD.id || ' ') > 0;
 END;
 
-PRAGMA user_version = 5;
+CREATE INDEX idx_events_feed_id ON events(feed_id);
+
+PRAGMA user_version = 6;

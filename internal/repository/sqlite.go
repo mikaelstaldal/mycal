@@ -512,3 +512,89 @@ func (r *SQLiteRepository) DeleteCalendarIfUnused(id int64) error {
 		AND NOT EXISTS (SELECT 1 FROM feeds WHERE calendar_id = ?)`, id, id, id)
 	return err
 }
+
+// ReplaceFeedEvents commits a complete snapshot without touching other calendar
+// members. Any failure leaves the previous snapshot intact.
+func (r *SQLiteRepository) ReplaceFeedEvents(feed *model.Feed, events []model.Event) error {
+	feedID := feed.ID
+	db, ok := r.db.(*sql.DB)
+	if !ok {
+		return errors.New("feed replacement requires a database")
+	}
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Acquire the write lock and reject a response for a changed/deleted feed.
+	result, err := tx.Exec("UPDATE feeds SET id=id WHERE id=? AND url=? AND calendar_id=?", feed.ID, feed.URL, feed.CalendarID)
+	if err != nil {
+		return err
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected != 1 {
+		return errors.New("feed changed during refresh")
+	}
+	// Preserve stable-UID rows, including local edits, links and overrides.
+	rows, err := tx.Query("SELECT "+selectColumnsBase+fromEventsJoin+" WHERE e.feed_id = ?", feedID)
+	if err != nil {
+		return err
+	}
+	var previous []model.Event
+	for rows.Next() {
+		event, scanErr := scanEvent(rows)
+		if scanErr != nil {
+			rows.Close()
+			return scanErr
+		}
+		previous = append(previous, event)
+	}
+	err = rows.Err()
+	rows.Close()
+	if err != nil {
+		return err
+	}
+	byUID := make(map[string]int)
+	for i := range events {
+		if events[i].IcsUID != "" {
+			byUID[events[i].IcsUID] = i
+		}
+	}
+	retained := make(map[int]bool)
+	for _, old := range previous {
+		index, found := byUID[old.IcsUID]
+		if found && !retained[index] {
+			retained[index] = true
+			continue
+		}
+		// Overrides cannot survive removal of their feed parent.
+		if _, err = tx.Exec("DELETE FROM events WHERE recurrence_parent_id = ? OR id = ?", old.ID, old.ID); err != nil {
+			return err
+		}
+	}
+	snapshot := NewSnapshotRepository(tx)
+	for i := range events {
+		if retained[i] {
+			continue
+		}
+		if err = snapshot.Create(&events[i]); err != nil {
+			return err
+		}
+		if _, err = tx.Exec("UPDATE events SET feed_id = ? WHERE id = ?", feedID, events[i].ID); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+// UpdateFeedRefreshStatus never overwrites subscription settings changed during
+// the network request.
+func (r *SQLiteRepository) UpdateFeedRefreshStatus(feed *model.Feed) error {
+	_, err := r.db.Exec(`UPDATE feeds SET last_refreshed_at=?, last_error=?
+ WHERE id=? AND url=? AND calendar_id=?`, feed.LastRefreshedAt, feed.LastError, feed.ID, feed.URL, feed.CalendarID)
+	return err
+}

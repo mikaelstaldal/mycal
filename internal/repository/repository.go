@@ -18,6 +18,8 @@ type EventRepository interface {
 }
 
 type FeedRepository interface {
+	ReplaceFeedEvents(feed *model.Feed, events []model.Event) error
+	UpdateFeedRefreshStatus(feed *model.Feed) error
 	CreateFeed(feed *model.Feed) error
 	GetFeedByID(id int64) (*model.Feed, error)
 	ListFeeds() ([]model.Feed, error)

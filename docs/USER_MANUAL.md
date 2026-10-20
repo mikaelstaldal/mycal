@@ -164,6 +164,22 @@ MyCal for webcal links if prompted. When a link opens MyCal, confirm the subscri
 The browser handler covers `webcal:` links; `webcals:` can be added manually. MyCal fetches
 both webcal schemes over HTTPS.
 
+### Subscribed feed refreshes
+
+Each refresh synchronizes a feed's events with its latest complete calendar,
+with limits of 10 MiB and 10,000 events per response. Failed or oversized responses
+leave the previous snapshot intact. Feeds sharing a calendar do not replace each
+other's events or manually created events.
+
+Events with a stable UID retain their IDs and local edits while that UID remains
+in the feed. Events without a UID, or whose UID changes, are replaced on refresh.
+Events removed from the feed, including their local edits and recurrence overrides,
+are removed from MyCal. Deleting a subscription keeps its imported events.
+
+Events imported by versions before per-feed ownership was introduced cannot be
+reliably attributed to a subscription. They remain untouched; the first refresh
+after upgrading can therefore leave historical duplicates that need manual cleanup.
+
 ## API tokens and command-line clients
 
 `./build.sh` also builds `mycal-token` and `mycal-cli`. Tokens grant read-only

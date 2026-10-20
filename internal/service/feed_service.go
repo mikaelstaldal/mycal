@@ -1,6 +1,8 @@
 package service
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -16,6 +18,9 @@ import (
 )
 
 const maxFeedImportSize = 10 * 1024 * 1024 // 10 MiB
+const maxFeedEvents = 10000
+
+var errFeedLimit = errors.New("feed exceeds import limit")
 
 type FeedService struct {
 	feedRepo  repository.FeedRepository
@@ -173,26 +178,29 @@ func (s *FeedService) doRefresh(feed *model.Feed) {
 			eventColor = cal.Color
 		}
 	}
-	imported, err := s.fetchAndImport(feed.URL, feed.CalendarID, eventColor)
+	imported, err := s.fetchAndImport(feed, eventColor)
 	now := time.Now().UTC().Format(time.RFC3339)
 	feed.LastRefreshedAt = now
 	if err != nil {
 		log.Printf("feed %d refresh error: %v", feed.ID, err)
 		feed.LastError = "feed refresh failed"
+		if errors.Is(err, errFeedLimit) {
+			feed.LastError = errFeedLimit.Error()
+		}
 	} else {
 		feed.LastError = ""
 		if imported > 0 {
-			log.Printf("feed %d: imported %d new events", feed.ID, imported)
+			log.Printf("feed %d: synchronized %d events", feed.ID, imported)
 		}
 	}
-	if updateErr := s.feedRepo.UpdateFeed(feed); updateErr != nil {
+	if updateErr := s.feedRepo.UpdateFeedRefreshStatus(feed); updateErr != nil {
 		log.Printf("feed %d: failed to update after refresh: %v", feed.ID, updateErr)
 	}
 }
 
-func (s *FeedService) fetchAndImport(feedURL string, calendarID int64, eventColor string) (int, error) {
+func (s *FeedService) fetchAndImport(feed *model.Feed, eventColor string) (int, error) {
 	// Re-validate stored feed URLs on every refresh, not just at create time.
-	fetchURL, err := feedFetchURL(feedURL)
+	fetchURL, err := feedFetchURL(feed.URL)
 	if err != nil {
 		return 0, err
 	}
@@ -208,45 +216,44 @@ func (s *FeedService) fetchAndImport(feedURL string, calendarID int64, eventColo
 		return 0, fmt.Errorf("URL returned status %d", resp.StatusCode)
 	}
 
-	events, err := ical.Decode(io.LimitReader(resp.Body, maxFeedImportSize))
-	if err != nil {
-		return 0, fmt.Errorf("failed to parse iCalendar data: %v", err)
-	}
+	return s.importFeedSnapshot(feed, eventColor, resp.Body)
+}
 
-	// Collect all UIDs to check existence in a single query.
-	var uidsToCheck []string
-	for _, e := range events {
-		if e.ImportUID != "" && e.RecurrenceOriginalStart == "" {
-			uidsToCheck = append(uidsToCheck, e.ImportUID)
-		}
-	}
-	existingUIDs, err := s.eventRepo.FilterExistingIcsUIDs(uidsToCheck)
+// importFeedSnapshot validates the entire response before replacing stored events.
+func (s *FeedService) importFeedSnapshot(feed *model.Feed, eventColor string, body io.Reader) (int, error) {
+	data, err := io.ReadAll(io.LimitReader(body, maxFeedImportSize+1))
 	if err != nil {
-		return 0, fmt.Errorf("failed to check existing UIDs: %v", err)
+		return 0, err
 	}
-
-	imported := 0
+	if len(data) > maxFeedImportSize {
+		return 0, errFeedLimit
+	}
+	events, err := ical.DecodeSnapshot(bytes.NewReader(data))
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse iCalendar data: %w", err)
+	}
+	if len(events) > maxFeedEvents {
+		return 0, errFeedLimit
+	}
+	snapshot := make([]model.Event, 0, len(events))
 	for _, e := range events {
 		if e.RecurrenceOriginalStart != "" {
-			continue // skip overrides for now
-		}
-		if e.ImportUID != "" && existingUIDs[e.ImportUID] {
 			continue
 		}
 		ev, err := buildEventForImport(e)
 		if err != nil {
-			continue
+			return 0, fmt.Errorf("invalid feed event: %w", err)
 		}
-		ev.CalendarID = calendarID
+		ev.CalendarID = feed.CalendarID
 		if eventColor != "" && ev.Color == "" {
 			ev.Color = eventColor
 		}
-		if err := s.eventRepo.Create(ev); err != nil {
-			continue
-		}
-		imported++
+		snapshot = append(snapshot, *ev)
 	}
-	return imported, nil
+	if err := s.feedRepo.ReplaceFeedEvents(feed, snapshot); err != nil {
+		return 0, err
+	}
+	return len(snapshot), nil
 }
 
 // feedFetchURL keeps the subscription URI as entered, but fetches webcal(s) over

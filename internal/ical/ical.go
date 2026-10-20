@@ -200,6 +200,16 @@ func formatICalTime(t time.Time) string {
 
 // Decode parses an iCalendar document and returns the events found.
 func Decode(r io.Reader) ([]model.Event, error) {
+	return decode(r, false)
+}
+
+// DecodeSnapshot rejects incomplete calendars and invalid events so a failed
+// feed response cannot replace a previously valid snapshot with partial data.
+func DecodeSnapshot(r io.Reader) ([]model.Event, error) {
+	return decode(r, true)
+}
+
+func decode(r io.Reader, strict bool) ([]model.Event, error) {
 	lines, err := unfoldLines(r)
 	if err != nil {
 		return nil, fmt.Errorf("reading ical: %w", err)
@@ -208,6 +218,8 @@ func Decode(r io.Reader) ([]model.Event, error) {
 	tzMap := parseVTimezones(lines)
 
 	var events []model.Event
+	var components []string
+	var calendarSeen bool
 	var inEvent bool
 	var inAlarm bool
 	var props []string
@@ -215,6 +227,26 @@ func Decode(r io.Reader) ([]model.Event, error) {
 
 	for _, line := range lines {
 		upper := strings.ToUpper(strings.TrimSpace(line))
+		if strict {
+			if strings.HasPrefix(upper, "BEGIN:") {
+				component := strings.TrimPrefix(upper, "BEGIN:")
+				if len(components) == 0 {
+					if component != "VCALENDAR" || calendarSeen {
+						return nil, fmt.Errorf("invalid calendar envelope")
+					}
+					calendarSeen = true
+				}
+				components = append(components, component)
+			} else if strings.HasPrefix(upper, "END:") {
+				component := strings.TrimPrefix(upper, "END:")
+				if len(components) == 0 || components[len(components)-1] != component {
+					return nil, fmt.Errorf("unbalanced calendar component")
+				}
+				components = components[:len(components)-1]
+			} else if upper != "" && len(components) == 0 {
+				return nil, fmt.Errorf("data outside calendar")
+			}
+		}
 		if upper == "BEGIN:VEVENT" {
 			inEvent = true
 			props = nil
@@ -225,6 +257,8 @@ func Decode(r io.Reader) ([]model.Event, error) {
 			inEvent = false
 			if ev, ok := parseEvent(props, alarmProps, tzMap); ok {
 				events = append(events, ev)
+			} else if strict {
+				return nil, fmt.Errorf("invalid calendar event")
 			}
 			continue
 		}
@@ -243,6 +277,10 @@ func Decode(r io.Reader) ([]model.Event, error) {
 				props = append(props, line)
 			}
 		}
+	}
+
+	if strict && (!calendarSeen || len(components) != 0) {
+		return nil, fmt.Errorf("incomplete calendar")
 	}
 
 	return events, nil
