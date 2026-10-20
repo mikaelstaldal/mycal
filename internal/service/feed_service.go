@@ -8,11 +8,11 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/mikaelstaldal/go-server-common/httputil"
 	"github.com/mikaelstaldal/mycal/internal/api"
 	"github.com/mikaelstaldal/mycal/internal/ical"
 	"github.com/mikaelstaldal/mycal/internal/model"
 	"github.com/mikaelstaldal/mycal/internal/repository"
+	"github.com/mikaelstaldal/mycal/internal/safehttp"
 )
 
 const maxFeedImportSize = 10 * 1024 * 1024 // 10 MiB
@@ -196,7 +196,7 @@ func (s *FeedService) fetchAndImport(feedURL string, calendarID int64, eventColo
 	if err != nil {
 		return 0, err
 	}
-	client := httputil.NewSafeHTTPClient(30 * time.Second)
+	client := safehttp.NewSafeHTTPClient(30 * time.Second)
 	resp, err := client.Get(fetchURL)
 	if err != nil {
 		return 0, fmt.Errorf("failed to fetch URL: %v", err)
@@ -259,7 +259,7 @@ func feedFetchURL(rawURL string) (string, error) {
 		u.Scheme = "https"
 	}
 	fetchURL := u.String()
-	if err := httputil.ValidateExternalURL(fetchURL); err != nil {
+	if err := safehttp.ValidateExternalURL(fetchURL); err != nil {
 		return "", err
 	}
 	return fetchURL, nil
