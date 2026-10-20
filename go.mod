@@ -1,13 +1,13 @@
 module github.com/mikaelstaldal/mycal
 
-go 1.26.9
+go 1.26.10
 
 require (
 	github.com/go-faster/errors v0.8.0
 	github.com/go-faster/jx v1.2.0
 	github.com/google/jsonschema-go v0.4.3
 	github.com/microcosm-cc/bluemonday v1.0.27
-	github.com/mikaelstaldal/go-server-common v1.13.2
+	github.com/mikaelstaldal/go-server-common v1.15.0
 	github.com/ogen-go/ogen v1.24.0
 	github.com/stretchr/testify v1.11.1
 	modernc.org/sqlite v1.52.0

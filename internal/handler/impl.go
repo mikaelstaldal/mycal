@@ -11,10 +11,10 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/mikaelstaldal/go-server-common/httputil"
 	"github.com/mikaelstaldal/mycal/internal/api"
 	"github.com/mikaelstaldal/mycal/internal/ical"
 	"github.com/mikaelstaldal/mycal/internal/model"
-	"github.com/mikaelstaldal/mycal/internal/safehttp"
 	"github.com/mikaelstaldal/mycal/internal/service"
 )
 
@@ -216,10 +216,12 @@ func parseCalendarIDsFromParams(calendarIDs []int, calendarNames []string, calSv
 
 // getImportReaderFromURL fetches iCalendar data from the given URL.
 func getImportReaderFromURL(rawURL string) (io.ReadCloser, error) {
-	if err := safehttp.ValidateExternalURL(rawURL); err != nil {
+	if err := httputil.ValidateExternalURL(rawURL); err != nil {
 		return nil, badRequest(err.Error())
 	}
-	client := safehttp.NewSafeHTTPClient(10 * time.Second)
+	client := httputil.NewSafeHTTPClient(10 * time.Second)
+	// This client serves one fetch; do not retain idle connections.
+	client.Transport.(*http.Transport).DisableKeepAlives = true
 	resp, err := client.Get(rawURL)
 	if err != nil {
 		return nil, badRequest("failed to fetch URL")
