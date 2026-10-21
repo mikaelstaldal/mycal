@@ -25,16 +25,20 @@ test('delete calendar confirms, cancels, and protects the default', async ({ pag
   const row = page.locator('.calendar-sidebar-item').filter({ hasText: 'Delete test' });
   await row.hover();
   await row.getByRole('button', { name: 'Edit calendar', exact: true }).click();
-  page.once('dialog', async dialog => {
-    expect(dialog.message()).toContain('Delete test');
-    expect(dialog.message()).toContain('all of its events');
-    await dialog.dismiss();
-  });
   await page.getByRole('button', { name: 'Delete calendar', exact: true }).click();
+  const confirmation = page.getByRole('dialog', { name: 'Delete Calendar', exact: true });
+  await expect(confirmation).toContainText('Delete test');
+  await expect(confirmation).toContainText('all of its events and feed subscriptions');
+  await expect(confirmation.getByRole('button', { name: 'Keep', exact: true })).toBeFocused();
+  await confirmation.getByRole('button', { name: 'Keep', exact: true }).click();
+  await expect(confirmation).toBeHidden();
   expect((await (await request.get('/api/v1/calendars')).json()).some((c: { id: number }) => c.id === calendar.id)).toBeTruthy();
-  page.once('dialog', dialog => dialog.accept());
-  const deleted = page.waitForResponse(response => response.request().method() === 'DELETE' && response.url().endsWith(`/calendars/${calendar.id}`));
   await page.getByRole('button', { name: 'Delete calendar', exact: true }).click();
+  await page.keyboard.press('Escape');
+  await expect(confirmation).toBeHidden();
+  await page.getByRole('button', { name: 'Delete calendar', exact: true }).click();
+  const deleted = page.waitForResponse(response => response.request().method() === 'DELETE' && response.url().endsWith(`/calendars/${calendar.id}`));
+  await confirmation.getByRole('button', { name: 'Delete', exact: true }).click();
   expect((await deleted).status()).toBe(204);
   await expect(page.locator('.calendar-sidebar')).toBeHidden();
   await expect(page.getByText('Keep default event', { exact: true })).toBeVisible();

@@ -1,5 +1,6 @@
 import type { VNode } from 'preact';
 import { useState } from 'preact/hooks';
+import { showConfirm } from '../util/confirm.js';
 import { COLORS } from '../util/colors.js';
 import { Icon } from '../components/Icon.js';
 import type { components } from '../api/types.js';
@@ -63,7 +64,12 @@ export function CalendarSidebar({ calendars, selectedCalendarIds, onToggleCalend
                             <div class="calendar-edit-actions">
                                 {cal.id !== 0 && <button class="calendar-edit-btn" title="Delete calendar" aria-label="Delete calendar"
                                     onClick={async () => {
-                                        if (window.confirm(`Delete calendar "${cal.name}" and all of its events and feed subscriptions? This cannot be undone.`)) {
+                                        if (await showConfirm(`Delete calendar "${cal.name}" and all of its events and feed subscriptions? This cannot be undone.`, {
+                                            title: 'Delete Calendar',
+                                            okText: 'Delete',
+                                            cancelText: 'Keep',
+                                            danger: true,
+                                        })) {
                                             await onDeleteCalendar(cal.id);
                                             setEditingId(null);
                                         }
