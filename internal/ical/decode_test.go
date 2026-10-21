@@ -295,3 +295,39 @@ func TestDecodeUnknownTZIDNoVTimezone(t *testing.T) {
 	// No timezone info available, parsed as-is (no offset applied)
 	assert.Equal(t, "2025-01-15T09:00:00Z", events[0].StartTime)
 }
+
+func TestExtractIANAFromTZID(t *testing.T) {
+	for _, name := range []string{"UTC", "Europe/Stockholm", "America/Argentina/Buenos_Aires"} {
+		for _, prefix := range []string{"", "/vendor.example/version/", strings.Repeat("/a", 100) + "/"} {
+			t.Run(prefix+name, func(t *testing.T) {
+				loc := tryExtractIANAFromTZID(prefix + name)
+				require.NotNil(t, loc)
+				assert.Equal(t, name, loc.String())
+			})
+		}
+	}
+	assert.Nil(t, tryExtractIANAFromTZID(strings.Repeat("/a", 40000)))
+	assert.Nil(t, tryExtractIANAFromTZID(strings.Repeat("x", maxTZIDBytes)+"/Europe/Stockholm"))
+	assert.Nil(t, tryExtractIANAFromTZID("Unknown/Nowhere"))
+	// The byte limit includes the vendor prefix, and accepts exactly the limit.
+	prefix := strings.Repeat("x", maxTZIDBytes-len("/Europe/Stockholm"))
+	require.NotNil(t, tryExtractIANAFromTZID(prefix+"/Europe/Stockholm"))
+}
+
+func TestDecodeOversizedFoldedTZID(t *testing.T) {
+	// Folding must not bypass the TZID bound, including fixed-offset fallback.
+	tzid := strings.Repeat("/a", 40000)
+	input := "BEGIN:VCALENDAR\r\nBEGIN:VTIMEZONE\r\nTZID:" + tzid[:40000] +
+		"\r\n " + tzid[40000:] + "\r\nBEGIN:STANDARD\r\nTZOFFSETTO:+0200\r\n" +
+		"END:STANDARD\r\nEND:VTIMEZONE\r\nBEGIN:VEVENT\r\n" +
+		"DTSTART;TZID=" + tzid + ":20250115T100000\r\n" +
+		"DTEND;TZID=" + tzid + ":20250115T110000\r\nSUMMARY:Test\r\n" +
+		"END:VEVENT\r\nEND:VCALENDAR\r\n"
+	lines, err := unfoldLines(strings.NewReader(input))
+	require.NoError(t, err)
+	assert.Empty(t, parseVTimezones(lines))
+	events, err := Decode(strings.NewReader(input))
+	require.NoError(t, err)
+	require.Len(t, events, 1)
+	assert.Equal(t, "2025-01-15T10:00:00Z", events[0].StartTime)
+}

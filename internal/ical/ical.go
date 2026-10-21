@@ -302,7 +302,7 @@ func parseVTimezones(lines []string) map[string]*time.Location {
 			continue
 		}
 		if upper == "END:VTIMEZONE" {
-			if tzid != "" {
+			if tzid != "" && len(tzid) <= maxTZIDBytes {
 				// First try to extract an IANA name from the TZID
 				if loc := tryExtractIANAFromTZID(tzid); loc != nil {
 					tzMap[tzid] = loc
@@ -341,20 +341,28 @@ func parseVTimezones(lines []string) map[string]*time.Location {
 	return tzMap
 }
 
-// tryExtractIANAFromTZID tries to find an IANA timezone name within a path-style TZID
-// like "/citadel.org/20250101_1/Europe/Stockholm" by trying progressively shorter
-// suffixes with time.LoadLocation.
+// maxTZIDBytes bounds zoneinfo lookups for untrusted calendar timezone identifiers.
+const maxTZIDBytes = 256
+
+// tryExtractIANAFromTZID finds an IANA name in a vendor-prefixed TZID.
+// IANA names have at most three components; try those suffixes longest first.
 func tryExtractIANAFromTZID(tzid string) *time.Location {
-	// First try the TZID directly
+	if len(tzid) > maxTZIDBytes {
+		return nil
+	}
 	if loc, err := time.LoadLocation(tzid); err == nil {
 		return loc
 	}
-	// Try path suffixes: for "/citadel.org/20250101_1/Europe/Stockholm",
-	// try "Europe/Stockholm", then "Stockholm"
-	parts := strings.Split(tzid, "/")
-	for i := 1; i < len(parts); i++ {
-		candidate := strings.Join(parts[i:], "/")
-		if loc, err := time.LoadLocation(candidate); err == nil {
+	var starts [3]int
+	count := 0
+	for i := len(tzid) - 1; i >= 0 && count < len(starts); i-- {
+		if tzid[i] == '/' {
+			starts[count] = i + 1
+			count++
+		}
+	}
+	for i := count - 1; i >= 0; i-- {
+		if loc, err := time.LoadLocation(tzid[starts[i]:]); err == nil {
 			return loc
 		}
 	}
@@ -686,6 +694,9 @@ func parseICalTime(value, params string, tzMap map[string]*time.Location) string
 	for _, part := range strings.Split(params, ";") {
 		if strings.HasPrefix(strings.ToUpper(part), "TZID=") {
 			tzName := part[5:]
+			if len(tzName) > maxTZIDBytes {
+				continue
+			}
 			if l, err := time.LoadLocation(tzName); err == nil {
 				loc = l
 			} else if tzMap != nil {
