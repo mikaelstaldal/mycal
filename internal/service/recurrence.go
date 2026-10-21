@@ -11,6 +11,9 @@ import (
 
 const maxExpansions = 1000
 
+// Bound work even when candidates are invalid or do not match a BY filter.
+const maxExpansionAttempts = maxExpansions * 10
+
 // byDayEntry represents a parsed BYDAY value like "2MO" (2nd Monday) or "MO" (every Monday).
 type byDayEntry struct {
 	Offset  int          // 0 means every occurrence, positive = nth, negative = nth from the end
@@ -238,6 +241,7 @@ func expandSimple(startTime time.Time, freq string, interval int, untilTime, to 
 func expandWithByParams(startTime time.Time, freq string, interval int, byDay []byDayEntry, byMonthDay []int, byMonth []int, untilTime, to time.Time, count int) []time.Time {
 	var candidates []time.Time
 	generated := 0
+	attempts := 0
 
 	switch freq {
 	case "WEEKLY":
@@ -259,7 +263,8 @@ func expandWithByParams(startTime time.Time, freq string, interval int, byDay []
 		}
 	case "DAILY":
 		// DAILY with BY* params: generate daily candidates, filter by params
-		for i := 0; generated < maxExpansions; i++ {
+		for i := 0; generated < maxExpansions && attempts < maxExpansionAttempts; i++ {
+			attempts++
 			if count > 0 && generated >= count {
 				break
 			}
@@ -290,6 +295,7 @@ func expandWithByParams(startTime time.Time, freq string, interval int, byDay []
 func expandWeeklyByDay(startTime time.Time, interval int, byDay []byDayEntry, untilTime, to time.Time, count int) []time.Time {
 	var candidates []time.Time
 	generated := 0
+	attempts := 0
 
 	// Find the start of the week containing startTime (use Monday as week start for RFC 5545)
 	weekStart := startTime
@@ -304,6 +310,10 @@ func expandWeeklyByDay(startTime time.Time, interval int, byDay []byDayEntry, un
 		}
 
 		for _, entry := range byDay {
+			if attempts >= maxExpansionAttempts || generated >= maxExpansions {
+				return candidates
+			}
+			attempts++
 			dayOffset := int(entry.Weekday) - int(time.Monday)
 			if dayOffset < 0 {
 				dayOffset += 7
@@ -338,6 +348,7 @@ func expandWeeklyByDay(startTime time.Time, interval int, byDay []byDayEntry, un
 func expandMonthlyByDay(startTime time.Time, interval int, byDay []byDayEntry, untilTime, to time.Time, count int) []time.Time {
 	var candidates []time.Time
 	generated := 0
+	attempts := 0
 
 	for monthIdx := 0; generated < maxExpansions; monthIdx++ {
 		// Use first-of-month arithmetic to avoid day-overflow issues
@@ -346,6 +357,10 @@ func expandMonthlyByDay(startTime time.Time, interval int, byDay []byDayEntry, u
 		year, month := currentMonth.Year(), currentMonth.Month()
 
 		for _, entry := range byDay {
+			if attempts >= maxExpansionAttempts || generated >= maxExpansions {
+				return candidates
+			}
+			attempts++
 			if entry.Offset != 0 {
 				// Nth weekday of the month (e.g., 2nd Monday, last Friday)
 				t, ok := nthWeekdayOfMonth(year, month, entry.Weekday, entry.Offset)
@@ -376,6 +391,10 @@ func expandMonthlyByDay(startTime time.Time, interval int, byDay []byDayEntry, u
 					diff += 7
 				}
 				for day := 1 + diff; day <= daysInMonth(year, month); day += 7 {
+					if attempts >= maxExpansionAttempts || generated >= maxExpansions {
+						return candidates
+					}
+					attempts++
 					instStart := time.Date(year, month, day,
 						startTime.Hour(), startTime.Minute(), startTime.Second(), 0, startTime.Location())
 					if instStart.Before(startTime) {
@@ -406,6 +425,7 @@ func expandMonthlyByDay(startTime time.Time, interval int, byDay []byDayEntry, u
 func expandMonthlyByMonthDay(startTime time.Time, interval int, byMonthDay []int, untilTime, to time.Time, count int) []time.Time {
 	var candidates []time.Time
 	generated := 0
+	attempts := 0
 
 	for monthIdx := 0; generated < maxExpansions; monthIdx++ {
 		baseMonth := time.Date(startTime.Year(), startTime.Month(), 1, 0, 0, 0, 0, startTime.Location())
@@ -414,6 +434,10 @@ func expandMonthlyByMonthDay(startTime time.Time, interval int, byMonthDay []int
 		maxDay := daysInMonth(year, month)
 
 		for _, day := range byMonthDay {
+			if attempts >= maxExpansionAttempts || generated >= maxExpansions {
+				return candidates
+			}
+			attempts++
 			actualDay := day
 			if day < 0 {
 				actualDay = maxDay + day + 1
@@ -450,11 +474,16 @@ func expandMonthlyByMonthDay(startTime time.Time, interval int, byMonthDay []int
 func expandYearlyByMonth(startTime time.Time, interval int, byMonth []int, byMonthDay []int, untilTime, to time.Time, count int) []time.Time {
 	var candidates []time.Time
 	generated := 0
+	attempts := 0
 
 	for yearIdx := 0; generated < maxExpansions; yearIdx++ {
 		year := startTime.Year() + yearIdx*interval
 
 		for _, m := range byMonth {
+			if attempts >= maxExpansionAttempts || generated >= maxExpansions {
+				return candidates
+			}
+			attempts++
 			if m < 1 || m > 12 {
 				continue
 			}
@@ -467,6 +496,10 @@ func expandYearlyByMonth(startTime time.Time, interval int, byMonth []int, byMon
 			}
 
 			for _, day := range days {
+				if attempts >= maxExpansionAttempts || generated >= maxExpansions {
+					return candidates
+				}
+				attempts++
 				actualDay := day
 				if day < 0 {
 					actualDay = maxDay + day + 1
@@ -504,12 +537,17 @@ func expandYearlyByMonth(startTime time.Time, interval int, byMonth []int, byMon
 func expandYearlyByDay(startTime time.Time, interval int, byDay []byDayEntry, untilTime, to time.Time, count int) []time.Time {
 	var candidates []time.Time
 	generated := 0
+	attempts := 0
 
 	for yearIdx := 0; generated < maxExpansions; yearIdx++ {
 		year := startTime.Year() + yearIdx*interval
 		month := startTime.Month()
 
 		for _, entry := range byDay {
+			if attempts >= maxExpansionAttempts || generated >= maxExpansions {
+				return candidates
+			}
+			attempts++
 			if entry.Offset != 0 {
 				t, ok := nthWeekdayOfMonth(year, month, entry.Weekday, entry.Offset)
 				if !ok {

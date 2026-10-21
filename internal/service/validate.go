@@ -404,6 +404,10 @@ func validateByDay(s string) error {
 	if len(s) > maxRecurrenceListLen {
 		return fmt.Errorf("recurrence_by_day must be at most %d characters", maxRecurrenceListLen)
 	}
+	if len(strings.Split(s, ",")) > 749 {
+		return fmt.Errorf("recurrence_by_day must contain at most 749 entries")
+	}
+
 	for _, part := range strings.Split(s, ",") {
 		part = strings.TrimSpace(part)
 		if len(part) < 2 {
@@ -424,6 +428,14 @@ func validateByDay(s string) error {
 			}
 		}
 	}
+	seen := make(map[byDayEntry]bool)
+	for _, entry := range parseByDay(s) {
+		if seen[entry] {
+			return fmt.Errorf("recurrence_by_day contains duplicate values")
+		}
+		seen[entry] = true
+	}
+
 	return nil
 }
 
@@ -434,6 +446,10 @@ func validateByMonthDay(s string) error {
 	if len(s) > maxRecurrenceListLen {
 		return fmt.Errorf("recurrence_by_monthday must be at most %d characters", maxRecurrenceListLen)
 	}
+	if len(strings.Split(s, ",")) > 62 {
+		return fmt.Errorf("recurrence_by_monthday must contain at most 62 entries")
+	}
+
 	for _, part := range strings.Split(s, ",") {
 		part = strings.TrimSpace(part)
 		n, err := strconv.Atoi(part)
@@ -444,6 +460,14 @@ func validateByMonthDay(s string) error {
 			return fmt.Errorf("recurrence_by_monthday values must be between -31 and 31, not zero")
 		}
 	}
+	seen := make(map[int]bool)
+	for _, entry := range parseIntList(s) {
+		if seen[entry] {
+			return fmt.Errorf("recurrence_by_monthday contains duplicate values")
+		}
+		seen[entry] = true
+	}
+
 	return nil
 }
 
@@ -454,6 +478,10 @@ func validateByMonth(s string) error {
 	if len(s) > maxRecurrenceListLen {
 		return fmt.Errorf("recurrence_by_month must be at most %d characters", maxRecurrenceListLen)
 	}
+	if len(strings.Split(s, ",")) > 12 {
+		return fmt.Errorf("recurrence_by_month must contain at most 12 entries")
+	}
+
 	for _, part := range strings.Split(s, ",") {
 		part = strings.TrimSpace(part)
 		n, err := strconv.Atoi(part)
@@ -464,6 +492,14 @@ func validateByMonth(s string) error {
 			return fmt.Errorf("recurrence_by_month values must be between 1 and 12")
 		}
 	}
+	seen := make(map[int]bool)
+	for _, entry := range parseIntList(s) {
+		if seen[entry] {
+			return fmt.Errorf("recurrence_by_month contains duplicate values")
+		}
+		seen[entry] = true
+	}
+
 	return nil
 }
 

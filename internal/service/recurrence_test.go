@@ -1,6 +1,7 @@
 package service
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -244,4 +245,63 @@ func TestParseIntList(t *testing.T) {
 
 	result = parseIntList("")
 	assert.Nil(t, result)
+}
+
+// Existing stored rules bypass write validation. Skipped candidates must still
+// consume the work budget, including invalid dates and missing nth weekdays.
+func TestExpansionAttemptBudget(t *testing.T) {
+	start := parseTime("2026-01-01T10:00:00Z")
+	to := start.AddDate(100, 0, 0)
+	invalidDays := make([]int, maxExpansionAttempts)
+	for i := range invalidDays {
+		invalidDays[i] = 32
+	}
+	invalidDays = append(invalidDays, 1)
+	assert.Empty(t, expandMonthlyByMonthDay(start, 1, invalidDays, time.Time{}, to, 0))
+	assert.Empty(t, expandYearlyByMonth(start, 1, []int{2}, invalidDays, time.Time{}, to, 0))
+
+	invalidWeekdays := make([]byDayEntry, maxExpansionAttempts)
+	for i := range invalidWeekdays {
+		invalidWeekdays[i] = byDayEntry{Offset: 6, Weekday: time.Monday}
+	}
+	invalidWeekdays = append(invalidWeekdays, byDayEntry{Offset: 1, Weekday: time.Monday})
+	assert.Empty(t, expandMonthlyByDay(start, 1, invalidWeekdays, time.Time{}, to, 0))
+	assert.Empty(t, expandYearlyByDay(start, 1, invalidWeekdays, time.Time{}, to, 0))
+}
+
+func TestExpansionGeneratedLimitWithinPeriod(t *testing.T) {
+	start := parseTime("2026-01-01T10:00:00Z")
+	days := make([]int, maxExpansions+1)
+	for i := range days {
+		days[i] = 1
+	}
+	assert.Len(t, expandYearlyByMonth(start, 1, []int{1}, days, time.Time{}, start.AddDate(1, 0, 0), 0), maxExpansions)
+}
+
+func TestRecurrenceListValidationLimits(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		validate  func(string) error
+		valid     string
+		duplicate string
+		limit     int
+	}{
+		{"month", validateByMonth, "1,12", "2,+02", 12},
+		{"monthday", validateByMonthDay, "-31,31", "30,+030", 62},
+		{"weekday", validateByDay, "MO,1MO,-53SU", "1MO,+01MO", 749},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			require.NoError(t, tc.validate(tc.valid))
+			require.ErrorContains(t, tc.validate(tc.duplicate), "duplicate")
+			require.ErrorContains(t, tc.validate(strings.Repeat("1,", tc.limit)+"1"), "at most")
+		})
+	}
+}
+
+func TestExpansionLegacyRepetitiveInvalidRule(t *testing.T) {
+	e := makeEvent("YEARLY", "2026-01-01T10:00:00Z", "2026-01-01T11:00:00Z")
+	e.RecurrenceByMonth = strings.TrimSuffix(strings.Repeat("2,", 2500), ",")
+	e.RecurrenceByMonthDay = strings.TrimSuffix(strings.Repeat("30,", 1666), ",")
+	// Preserve the existing simple-expansion fallback while bounding its work.
+	assert.Len(t, expandRecurring(e, parseTime("2026-01-01T00:00:00Z"), parseTime("2026-02-01T00:00:00Z")), 1)
 }

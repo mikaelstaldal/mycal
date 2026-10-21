@@ -366,6 +366,10 @@ function validateByDay(s: string): void {
     if (byteLength(s) > MAX_RECURRENCE_LIST_LEN) {
         throw validationError('recurrence_by_day must be at most ' + MAX_RECURRENCE_LIST_LEN + ' characters');
     }
+    if (s.split(',').length > 749) {
+        throw validationError('recurrence_by_day must contain at most 749 entries');
+    }
+    const seen = new Set<string>();
     for (const raw of s.split(',')) {
         const part = raw.trim();
         if (part.length < 2) throw validationError('recurrence_by_day contains invalid entry: "' + part + '"');
@@ -383,6 +387,9 @@ function validateByDay(s: string): void {
                 throw validationError('recurrence_by_day offset must be between -53 and 53, not zero');
             }
         }
+        const key = String(part.length > 2 ? parseInt(part.slice(0, -2), 10) : 0) + part.slice(-2);
+        if (seen.has(key)) throw validationError('recurrence_by_day contains duplicate values');
+        seen.add(key);
     }
 }
 
@@ -391,6 +398,10 @@ function validateByMonthDay(s: string): void {
     if (byteLength(s) > MAX_RECURRENCE_LIST_LEN) {
         throw validationError('recurrence_by_monthday must be at most ' + MAX_RECURRENCE_LIST_LEN + ' characters');
     }
+    if (s.split(',').length > 62) {
+        throw validationError('recurrence_by_monthday must contain at most 62 entries');
+    }
+    const seen = new Set<string>();
     for (const raw of s.split(',')) {
         const part = raw.trim();
         if (!/^[+-]?\d+$/.test(part)) {
@@ -400,6 +411,9 @@ function validateByMonthDay(s: string): void {
         if (n === 0 || n < -31 || n > 31) {
             throw validationError('recurrence_by_monthday values must be between -31 and 31, not zero');
         }
+        const key = String(n);
+        if (seen.has(key)) throw validationError('recurrence_by_monthday contains duplicate values');
+        seen.add(key);
     }
 }
 
@@ -408,6 +422,10 @@ function validateByMonth(s: string): void {
     if (byteLength(s) > MAX_RECURRENCE_LIST_LEN) {
         throw validationError('recurrence_by_month must be at most ' + MAX_RECURRENCE_LIST_LEN + ' characters');
     }
+    if (s.split(',').length > 12) {
+        throw validationError('recurrence_by_month must contain at most 12 entries');
+    }
+    const seen = new Set<string>();
     for (const raw of s.split(',')) {
         const part = raw.trim();
         if (!/^[+-]?\d+$/.test(part)) {
@@ -415,6 +433,9 @@ function validateByMonth(s: string): void {
         }
         const n = parseInt(part, 10);
         if (n < 1 || n > 12) throw validationError('recurrence_by_month values must be between 1 and 12');
+        const key = String(n);
+        if (seen.has(key)) throw validationError('recurrence_by_month contains duplicate values');
+        seen.add(key);
     }
 }
 
