@@ -118,6 +118,7 @@ export const api = {
   },
 
   calendars: {
+    delete: (id: number) => request<void>('DELETE', `/calendars/${encodeURIComponent(id)}`),
     list: () =>
       request<Calendar[]>('GET', '/calendars'),
 

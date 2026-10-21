@@ -598,3 +598,37 @@ func (r *SQLiteRepository) UpdateFeedRefreshStatus(feed *model.Feed) error {
  WHERE id=? AND url=? AND calendar_id=?`, feed.LastRefreshedAt, feed.LastError, feed.ID, feed.URL, feed.CalendarID)
 	return err
 }
+
+// DeleteCalendar atomically removes a calendar and its events and subscriptions.
+func (r *SQLiteRepository) DeleteCalendar(id int64) error {
+	if id == 0 {
+		return errors.New("cannot delete the default calendar")
+	}
+	db, ok := r.db.(*sql.DB)
+	if !ok {
+		return errors.New("calendar deletion requires a database")
+	}
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	result, err := tx.Exec("DELETE FROM calendars WHERE id = ?", id)
+	if err != nil {
+		return err
+	}
+	n, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return sql.ErrNoRows
+	}
+	if _, err := tx.Exec("DELETE FROM events WHERE calendar_id = ?", id); err != nil {
+		return err
+	}
+	if _, err := tx.Exec("DELETE FROM feeds WHERE calendar_id = ?", id); err != nil {
+		return err
+	}
+	return tx.Commit()
+}

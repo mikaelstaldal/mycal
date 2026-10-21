@@ -50,6 +50,7 @@ const ROUTES: Route[] = [
     { method: 'PATCH', pattern: /^\/events\/([^/]+)$/, handler: apiV1EventsIDPatch },
     { method: 'DELETE', pattern: /^\/events\/([^/]+)$/, handler: apiV1EventsIDDelete },
     { method: 'GET', pattern: /^\/calendars$/, handler: apiV1CalendarsGet },
+    { method: 'DELETE', pattern: /^\/calendars\/([^/]+)$/, handler: apiV1CalendarsIDDelete },
     { method: 'PATCH', pattern: /^\/calendars\/([^/]+)$/, handler: apiV1CalendarsIDPatch },
     { method: 'GET', pattern: /^\/preferences$/, handler: apiV1PreferencesGet },
     { method: 'PATCH', pattern: /^\/preferences$/, handler: apiV1PreferencesPatch },
@@ -726,4 +727,17 @@ function allowedPreferences(state: DemoState): Record<string, string> {
         result[key] = key in state.preferences ? state.preferences[key] : def;
     }
     return result;
+}
+
+/** APIV1CalendarsIDDelete / CalendarService.Delete — delete a non-default calendar and its events. */
+async function apiV1CalendarsIDDelete(ctx: { params: string[] }): Promise<Response> {
+    const id = Number(ctx.params[0]);
+    if (!Number.isSafeInteger(id)) throw new ApiError(400, 'invalid id');
+    if (id === 0) throw validationError('cannot delete the default calendar');
+    return withStore('write', state => {
+        if (!state.calendars.some(c => c.id === id)) throw notFoundError();
+        state.calendars = state.calendars.filter(c => c.id !== id);
+        state.events = state.events.filter(e => e.calendar_id !== id);
+        return noContentResponse();
+    });
 }

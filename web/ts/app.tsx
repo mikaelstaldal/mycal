@@ -256,6 +256,22 @@ function App() {
         }
     }
 
+    async function handleDeleteCalendar(id: number) {
+        try {
+            await api.calendars.delete(id);
+            const remainingIds = calendars.filter(cal => cal.id !== id).map(cal => cal.id);
+            setSelectedCalendarIds(prev => {
+                if (prev === null || remainingIds.length <= 1) return null;
+                const next = prev.filter(calId => remainingIds.includes(calId));
+                return next.length === remainingIds.length ? null : next;
+            });
+            await loadCalendars();
+            await loadEvents();
+        } catch (err) {
+            showToast(err instanceof Error ? err.message : 'Failed to delete calendar', { error: true });
+        }
+    }
+
     function handlePrev() {
         if (viewMode === 'schedule') {
             setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - 7));
@@ -561,6 +577,7 @@ function App() {
                                              selectedCalendarIds={selectedCalendarIds}
                                              onToggleCalendar={handleToggleCalendar}
                                              onToggleAll={handleToggleAll}
+                                             onDeleteCalendar={handleDeleteCalendar}
                                              onEditCalendar={handleEditCalendar} />
                         ) : null}
                     </div>

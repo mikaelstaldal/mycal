@@ -41,4 +41,5 @@ type CalendarRepository interface {
 	CreateCalendar(cal *model.Calendar) error
 	UpdateCalendar(cal *model.Calendar) error
 	DeleteCalendarIfUnused(id int64) error
+	DeleteCalendar(id int64) error
 }

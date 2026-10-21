@@ -267,6 +267,21 @@ paths:
         default:
           $ref: "#/components/responses/Error"
   /api/v1/calendars/{id}:
+    delete:
+      summary: Delete a calendar
+      description: Deletes the calendar, all of its events and its feed subscriptions. The default calendar (id=0) cannot be deleted.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "204":
+          description: Calendar deleted
+        default:
+          $ref: "#/components/responses/Error"
     patch:
       summary: Update a calendar
       description: >

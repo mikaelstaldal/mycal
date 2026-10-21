@@ -10,10 +10,11 @@ interface CalendarSidebarProps {
     selectedCalendarIds: number[] | null;
     onToggleCalendar: (id: number) => void;
     onToggleAll: () => void;
+    onDeleteCalendar: (id: number) => Promise<void>;
     onEditCalendar: (id: number, data: { name: string; color: string }) => void;
 }
 
-export function CalendarSidebar({ calendars, selectedCalendarIds, onToggleCalendar, onToggleAll, onEditCalendar }: CalendarSidebarProps): VNode | null {
+export function CalendarSidebar({ calendars, selectedCalendarIds, onToggleCalendar, onToggleAll, onEditCalendar, onDeleteCalendar }: CalendarSidebarProps): VNode | null {
     const allSelected = selectedCalendarIds === null;
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editName, setEditName] = useState('');
@@ -60,6 +61,13 @@ export function CalendarSidebar({ calendars, selectedCalendarIds, onToggleCalend
                                    onKeyDown={handleKeyDown}
                                    ref={(el: HTMLInputElement | null) => { if (el) setTimeout(() => el.focus(), 0); }} />
                             <div class="calendar-edit-actions">
+                                {cal.id !== 0 && <button class="calendar-edit-btn" title="Delete calendar" aria-label="Delete calendar"
+                                    onClick={async () => {
+                                        if (window.confirm(`Delete calendar "${cal.name}" and all of its events and feed subscriptions? This cannot be undone.`)) {
+                                            await onDeleteCalendar(cal.id);
+                                            setEditingId(null);
+                                        }
+                                    }}><Icon name="trash-2" size={14} /></button>}
                                 <button class="calendar-edit-btn" onClick={handleSave} title="Save" aria-label="Save"><Icon name="check" size={14} /></button>
                                 <button class="calendar-edit-btn" onClick={handleCancel} title="Cancel" aria-label="Cancel"><Icon name="x" size={14} /></button>
                             </div>

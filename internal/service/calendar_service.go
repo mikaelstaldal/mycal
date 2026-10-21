@@ -1,6 +1,8 @@
 package service
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/mikaelstaldal/mycal/internal/model"
@@ -85,4 +87,15 @@ func (s *CalendarService) GetIDByName(name string) (int64, error) {
 		return 0, nil
 	}
 	return cal.ID, nil
+}
+
+func (s *CalendarService) Delete(id int64) error {
+	if id == 0 {
+		return fmt.Errorf("%w: cannot delete the default calendar", ErrValidation)
+	}
+	err := s.repo.DeleteCalendar(id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrNotFound
+	}
+	return err
 }

@@ -572,3 +572,7 @@ func (h *handlerImpl) CalendarIcsGet(ctx context.Context, params api.CalendarIcs
 	}
 	return api.CalendarIcsGetOK{Data: reader}, nil
 }
+
+func (h *handlerImpl) APIV1CalendarsIDDelete(ctx context.Context, params api.APIV1CalendarsIDDeleteParams) error {
+	return h.calSvc.Delete(params.ID)
+}
