@@ -20,6 +20,7 @@ export function FeedsDialog({ onClose, onRefreshed, reloadVersion }: FeedsDialog
     const [loading, setLoading] = useState(true);
     const [refreshingId, setRefreshingId] = useState<number | null>(null);
     const [error, setError] = useState('');
+    const [copyStatus, setCopyStatus] = useState('');
     const [registrationRequested, setRegistrationRequested] = useState(false);
     const dialogRef = useRef<HTMLDialogElement | null>(null);
 
@@ -71,6 +72,17 @@ export function FeedsDialog({ onClose, onRefreshed, reloadVersion }: FeedsDialog
         }
     }
 
+    async function handleCopyURL(url: string) {
+        setError('');
+        setCopyStatus('');
+        try {
+            await navigator.clipboard.writeText(url);
+            setCopyStatus('Feed URL copied');
+        } catch {
+            setError('Could not copy feed URL. Select the URL and copy it manually.');
+        }
+    }
+
     async function handleAdd(data: any) {
         try {
             await api.feeds.create(data);
@@ -107,6 +119,7 @@ export function FeedsDialog({ onClose, onRefreshed, reloadVersion }: FeedsDialog
                 <button class="close-btn" onClick={onClose} title="Close" aria-label="Close"><Icon name="x" /></button>
             </div>
             {error && <div class="feed-error">{error}</div>}
+            <div role="status">{copyStatus}</div>
             {loading ? (
                 <div class="feed-loading">Loading...</div>
             ) : (
@@ -128,6 +141,9 @@ export function FeedsDialog({ onClose, onRefreshed, reloadVersion }: FeedsDialog
                                         {feed.last_error && <div class="feed-item-error">{feed.last_error}</div>}
                                     </div>
                                     <div class="feed-item-actions">
+                                        <button class="feed-action-btn" onClick={() => handleCopyURL(feed.url)}>
+                                            Copy URL
+                                        </button>
                                         <button class="feed-action-btn" onClick={() => handleRefresh(feed.id)}
                                                 disabled={refreshingId === feed.id}
                                                 title="Refresh now" aria-label="Refresh now">
