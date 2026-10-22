@@ -359,6 +359,14 @@ func (s *EventService) Update(id int64, req *api.UpdateEventRequest) (*model.Eve
 		existing.Longitude = &v
 	}
 
+	// Apply start/end times
+	if req.StartDate.Set {
+		d := req.StartDate.Value
+		existing.StartTime = time.Date(d.Year(), d.Month(), d.Day(), 0, 0, 0, 0, time.UTC).Format(time.RFC3339)
+	}
+	if req.StartTime.Set {
+		existing.StartTime = req.StartTime.Value.UTC().Format(time.RFC3339)
+	}
 	// If Duration is set, recompute EndTime
 	if req.Duration.Set && req.Duration.Value != "" {
 		dur, err := model.ParseDuration(req.Duration.Value)
@@ -372,14 +380,6 @@ func (s *EventService) Update(id int64, req *api.UpdateEventRequest) (*model.Eve
 		existing.EndTime = start.Add(dur).Format(time.RFC3339)
 	}
 
-	// Apply start/end times
-	if req.StartDate.Set {
-		d := req.StartDate.Value
-		existing.StartTime = time.Date(d.Year(), d.Month(), d.Day(), 0, 0, 0, 0, time.UTC).Format(time.RFC3339)
-	}
-	if req.StartTime.Set {
-		existing.StartTime = req.StartTime.Value.UTC().Format(time.RFC3339)
-	}
 	if req.EndDate.Set {
 		d := req.EndDate.Value
 		endT := time.Date(d.Year(), d.Month(), d.Day(), 0, 0, 0, 0, time.UTC)
@@ -406,8 +406,8 @@ func (s *EventService) Update(id int64, req *api.UpdateEventRequest) (*model.Eve
 	// Validate final times are consistent
 	start, _ := time.Parse(time.RFC3339, existing.StartTime)
 	end, _ := time.Parse(time.RFC3339, existing.EndTime)
-	if !end.After(start) {
-		return nil, fmt.Errorf("%w: end_time must be after start_time", ErrValidation)
+	if err := validateEventSpan(start, end); err != nil {
+		return nil, fmt.Errorf("%w: %s", ErrValidation, err.Error())
 	}
 
 	if err := s.repo.Update(existing); err != nil {
@@ -534,6 +534,12 @@ func (s *EventService) CreateOrUpdateOverride(parentID int64, instanceStart stri
 	if req.Longitude.Set && !req.Longitude.Null {
 		v := req.Longitude.Value
 		override.Longitude = &v
+	}
+
+	start, _ := time.Parse(time.RFC3339, override.StartTime)
+	end, _ := time.Parse(time.RFC3339, override.EndTime)
+	if err := validateEventSpan(start, end); err != nil {
+		return nil, fmt.Errorf("%w: %s", ErrValidation, err.Error())
 	}
 
 	if err := s.repo.Create(override); err != nil {

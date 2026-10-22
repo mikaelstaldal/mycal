@@ -149,6 +149,12 @@ func ValidateCreateEventRequest(req *api.CreateEventRequest) (startTime, endTime
 		startTime = start.Format(time.RFC3339)
 	}
 
+	finalStart, _ := time.Parse(time.RFC3339, startTime)
+	finalEnd, _ := time.Parse(time.RFC3339, endTime)
+	if err := validateEventSpan(finalStart, finalEnd); err != nil {
+		return "", "", err
+	}
+
 	freq := ""
 	if req.RecurrenceFreq.Set {
 		freq = string(req.RecurrenceFreq.Value)
@@ -552,6 +558,23 @@ func validateRecurrenceFields(freq string, count int, until string, interval int
 	}
 	if err := validateDateList(rDates, "rdates"); err != nil {
 		return err
+	}
+	return nil
+}
+
+// validateEventSpan checks the final times after defaults, durations and updates are applied.
+func validateEventSpan(start, end time.Time) error {
+	if err := validateDateRange(start); err != nil {
+		return err
+	}
+	if err := validateDateRange(end); err != nil {
+		return err
+	}
+	if !end.After(start) {
+		return fmt.Errorf("end_time must be after start_time")
+	}
+	if end.Sub(start) > maxEventDuration {
+		return fmt.Errorf("event duration must not exceed 366 days")
 	}
 	return nil
 }

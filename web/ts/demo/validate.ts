@@ -241,6 +241,8 @@ function validateCreateEventRequest(req: RequestBody): { startTime: string; endT
         startTime = start.canonical;
     }
 
+    validateEventSpan(startTime, endTime);
+
     const freq = stringOr(req, 'recurrence_freq');
     const count = intOr(req, 'recurrence_count');
     const until = stringOr(req, 'recurrence_until');
@@ -536,3 +538,12 @@ const CSS_COLOR_NAMES = new Set([
     'tan', 'teal', 'thistle', 'tomato', 'turquoise',
     'violet', 'wheat', 'white', 'whitesmoke', 'yellow', 'yellowgreen',
 ]);
+
+/** validateEventSpan — validate the final times after merging updates and durations. */
+function validateEventSpan(start: string, end: string): void {
+    validateDateRange(yearOf(start));
+    validateDateRange(yearOf(end));
+    const span = instantOf(end) - instantOf(start);
+    if (!(span > 0)) throw validationError('end_time must be after start_time');
+    if (span > MAX_EVENT_DURATION_MS) throw validationError('event duration must not exceed 366 days');
+}

@@ -36,7 +36,7 @@ run tsc --project web/ts/demo/tsconfig.json
 # Frontend tests: node:test files under web/ts/ exercising the compiled output
 # in web/static/, so they must run after tsc. No package manager is involved —
 # `node` is the only prerequisite.
-run node --test web/ts/date-utils.test.mjs
+run node --test web/ts/*.test.mjs
 run go generate ./...
 run go build -trimpath -buildvcs=true -tags netgo -o "$OUTPUT_DIR/mycal" .
 run go build -trimpath -buildvcs=true -tags netgo -o "$OUTPUT_DIR/mycal-token" ./cmd/token

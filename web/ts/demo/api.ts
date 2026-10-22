@@ -511,7 +511,13 @@ function updateEvent(state: DemoState, id: number, req: RequestBody): DemoEvent 
     if (isSet(req, 'latitude') && !isNull(req, 'latitude')) existing.latitude = numberField(req, 'latitude');
     if (isSet(req, 'longitude') && !isNull(req, 'longitude')) existing.longitude = numberField(req, 'longitude');
 
-    // A new duration recomputes the end from the (still unchanged) start.
+    if (isSet(req, 'start_date')) {
+        existing.start_time = formatRFC3339(dateField(req, 'start_date'));
+    }
+    if (isSet(req, 'start_time')) {
+        existing.start_time = formatRFC3339(dateTimeField(req, 'start_time').date);
+    }
+    // A new duration recomputes the end from the merged start.
     if (isSet(req, 'duration') && stringField(req, 'duration') !== '') {
         const dur = parseDurationOrFail(stringField(req, 'duration'));
         if (parseRFC3339(existing.start_time) === null) {
@@ -520,12 +526,6 @@ function updateEvent(state: DemoState, id: number, req: RequestBody): DemoEvent 
         existing.end_time = endFromStart(existing.start_time, dur);
     }
 
-    if (isSet(req, 'start_date')) {
-        existing.start_time = formatRFC3339(dateField(req, 'start_date'));
-    }
-    if (isSet(req, 'start_time')) {
-        existing.start_time = formatRFC3339(dateTimeField(req, 'start_time').date);
-    }
     if (isSet(req, 'end_date')) {
         let endT = dateField(req, 'end_date');
         const startParsed = parseRFC3339(existing.start_time);
@@ -551,9 +551,7 @@ function updateEvent(state: DemoState, id: number, req: RequestBody): DemoEvent 
         }
     }
 
-    if (!(instantOf(existing.end_time) > instantOf(existing.start_time))) {
-        throw validationError('end_time must be after start_time');
-    }
+    validateEventSpan(existing.start_time, existing.end_time);
 
     existing.updated_at = nowRFC3339();
     return existing;
@@ -623,6 +621,8 @@ function createOrUpdateOverride(
     if (isSet(req, 'location')) override.location = sanitizeHTML(stringField(req, 'location'));
     if (isSet(req, 'latitude') && !isNull(req, 'latitude')) override.latitude = numberField(req, 'latitude');
     if (isSet(req, 'longitude') && !isNull(req, 'longitude')) override.longitude = numberField(req, 'longitude');
+
+    validateEventSpan(override.start_time, override.end_time);
 
     override.created_at = nowRFC3339();
     override.updated_at = override.created_at;
