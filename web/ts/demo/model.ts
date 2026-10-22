@@ -204,54 +204,21 @@ function parseDuration(s: string): number {
     if (s === '') throw new Error('empty duration');
     s = s.toUpperCase();
     if (!s.startsWith('P')) throw new Error('duration must start with P');
-    s = s.slice(1);
-
-    let total = 0;
-    let inTime = false;
-    let num = '';
-    for (const c of s) {
-        if (c === 'T') {
-            inTime = true;
-            continue;
-        }
-        if (c >= '0' && c <= '9') {
-            num += c;
-            continue;
-        }
-        const n = parseInt(num, 10);
-        if (num === '' || isNaN(n)) throw new Error('invalid duration number: ' + num);
-        num = '';
-
-        if (inTime) {
-            switch (c) {
-                case 'H':
-                    total += n * 3600000;
-                    break;
-                case 'M':
-                    total += n * 60000;
-                    break;
-                case 'S':
-                    total += n * 1000;
-                    break;
-                default:
-                    throw new Error('unknown time unit: ' + c);
-            }
-        } else {
-            switch (c) {
-                case 'D':
-                    total += n * MILLIS_PER_DAY;
-                    break;
-                case 'W':
-                    total += n * 7 * MILLIS_PER_DAY;
-                    break;
-                default:
-                    throw new Error('unknown date unit: ' + c);
-            }
-        }
+    const parts = /^P(?:([0-9]+)W|(?:([0-9]+)D)?(?:T(?:([0-9]+)H)?(?:([0-9]+)M)?(?:([0-9]+)S)?)?)$/.exec(s);
+    if (parts === null || s.endsWith('T')) throw new Error('invalid duration format');
+    // Integer seconds and bigint checks preserve Go's signed nanosecond limit exactly.
+    const units = [604800n, 86400n, 3600n, 60n, 1n];
+    const maxSeconds = 9223372036n;
+    let total = 0n;
+    for (let i = 0; i < units.length; i++) {
+        const value = parts[i + 1];
+        if (value === undefined) continue;
+        const n = BigInt(value);
+        if (n > (maxSeconds - total) / units[i]) throw new Error('duration out of range');
+        total += n * units[i];
     }
-
-    if (total <= 0) throw new Error('duration must be positive');
-    return total;
+    if (total <= 0n) throw new Error('duration must be positive');
+    return Number(total) * 1000;
 }
 
 // ── Composite event ids ──────────────────────────────────────────────────────

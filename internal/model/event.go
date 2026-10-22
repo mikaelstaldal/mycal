@@ -2,6 +2,8 @@ package model
 
 import (
 	"fmt"
+	"math"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -51,6 +53,9 @@ func (e *Event) IsRecurring() bool {
 
 const MaxCalendarNameLength = 100
 
+// Whole weeks or ordered day/time components; years, months and fractions are unsupported.
+var durationPattern = regexp.MustCompile(`^P(?:([0-9]+)W|(?:([0-9]+)D)?(?:T(?:([0-9]+)H)?(?:([0-9]+)M)?(?:([0-9]+)S)?)?)$`)
+
 // ParseDuration parses an ISO 8601 duration string like PT1H, PT30M, P1D, P1DT2H30M.
 func ParseDuration(s string) (time.Duration, error) {
 	if s == "" {
@@ -60,50 +65,22 @@ func ParseDuration(s string) (time.Duration, error) {
 	if !strings.HasPrefix(s, "P") {
 		return 0, fmt.Errorf("duration must start with P")
 	}
-	s = s[1:] // strip "P"
-
-	var total time.Duration
-	inTime := false
-
-	num := ""
-	for _, c := range s {
-		if c == 'T' {
-			inTime = true
-			continue
-		}
-		if c >= '0' && c <= '9' {
-			num += string(c)
-			continue
-		}
-		n, err := strconv.Atoi(num)
-		if err != nil {
-			return 0, fmt.Errorf("invalid duration number: %s", num)
-		}
-		num = ""
-
-		if inTime {
-			switch c {
-			case 'H':
-				total += time.Duration(n) * time.Hour
-			case 'M':
-				total += time.Duration(n) * time.Minute
-			case 'S':
-				total += time.Duration(n) * time.Second
-			default:
-				return 0, fmt.Errorf("unknown time unit: %c", c)
-			}
-		} else {
-			switch c {
-			case 'D':
-				total += time.Duration(n) * 24 * time.Hour
-			case 'W':
-				total += time.Duration(n) * 7 * 24 * time.Hour
-			default:
-				return 0, fmt.Errorf("unknown date unit: %c", c)
-			}
-		}
+	parts := durationPattern.FindStringSubmatch(s)
+	if parts == nil || strings.HasSuffix(s, "T") {
+		return 0, fmt.Errorf("invalid duration format")
 	}
-
+	units := [...]time.Duration{7 * 24 * time.Hour, 24 * time.Hour, time.Hour, time.Minute, time.Second}
+	var total time.Duration
+	for i, value := range parts[1:] {
+		if value == "" {
+			continue
+		}
+		n, err := strconv.ParseUint(value, 10, 64)
+		if err != nil || n > uint64((math.MaxInt64-total)/units[i]) {
+			return 0, fmt.Errorf("duration out of range")
+		}
+		total += time.Duration(n) * units[i]
+	}
 	if total <= 0 {
 		return 0, fmt.Errorf("duration must be positive")
 	}
