@@ -136,3 +136,46 @@ func TestHelp(t *testing.T) {
 	}
 
 }
+
+func TestCopyResponse(t *testing.T) {
+	payload := "SUMMARY:Meeting\x1b[2J\x1b[H\x1b[31mFAKE\r\n" +
+		"DESCRIPTION:å日本語\t\x00\x07\x7f\u009b31m\u009dtitle\xff\x9b\n"
+	t.Run("terminal", func(t *testing.T) {
+		var out bytes.Buffer
+		require.NoError(t, copyResponse(&out, strings.NewReader(payload), true))
+		assert.Equal(t, "SUMMARY:Meeting\\x1b[2J\\x1b[H\\x1b[31mFAKE\\r\n"+
+			"DESCRIPTION:å日本語\t\\x00\\a\\x7f\\u009b31m\\u009dtitle\\xff\\x9b\n", out.String())
+	})
+	t.Run("redirected", func(t *testing.T) {
+		var out bytes.Buffer
+		require.NoError(t, copyResponse(&out, strings.NewReader(payload), false))
+		assert.Equal(t, payload, out.String())
+	})
+}
+
+func TestRunICSRedirected(t *testing.T) {
+	payload := "BEGIN:VCALENDAR\r\nSUMMARY:Meeting\x1b[2J\u009b31m\r\nEND:VCALENDAR\r\n"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(payload))
+	}))
+	defer srv.Close()
+	t.Setenv("MYCAL_TOKEN_FILE", "")
+	for _, command := range [][]string{{"events", "ics", "1"}, {"calendars", "ics"}} {
+		var out bytes.Buffer
+		require.NoError(t, run(append([]string{"-url", srv.URL}, command...), strings.NewReader(""), &out))
+		assert.Equal(t, payload, out.String())
+	}
+}
+
+func TestRunEscapesHTTPErrorBody(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte("bad \x1b[2J\u009b31m\x07"))
+	}))
+	defer srv.Close()
+	t.Setenv("MYCAL_TOKEN_FILE", "")
+	var out bytes.Buffer
+	err := run([]string{"-url", srv.URL, "calendars", "ics"}, strings.NewReader(""), &out)
+	require.EqualError(t, err, "HTTP 500: bad \\x1b[2J\\u009b31m\\a")
+	assert.Empty(t, out.String())
+}

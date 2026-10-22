@@ -2,6 +2,7 @@
 package main
 
 import (
+	"bufio"
 	"errors"
 	"flag"
 	"fmt"
@@ -12,6 +13,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
+
+	"golang.org/x/term"
 
 	"github.com/mikaelstaldal/mycal/internal/clihttp"
 	"github.com/mikaelstaldal/mycal/internal/model"
@@ -36,7 +40,9 @@ Commands:
   events ics ID
   calendars ics [-calendars ID[,ID...]]
 
-JSON and iCalendar responses go to stdout unchanged; errors go to stderr.
+JSON and iCalendar responses go to stdout; errors go to stderr.
+Terminal output escapes control characters other than TAB and LF.
+Redirected or piped responses are unchanged.
 Dates accept RFC3339, YYYY-MM-DD, or YYYY-MM-DD[T or space]HH:MM[:SS].
 Missing time defaults to 00:00:00; missing timezone uses the local timezone.
 During a repeated daylight-saving hour, use an explicit offset to select the time.
@@ -134,13 +140,60 @@ func run(args []string, stdin io.Reader, stdout io.Writer) error {
 	defer func() { _ = response.Body.Close() }()
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		body, _ := io.ReadAll(io.LimitReader(response.Body, 4096))
-		return fmt.Errorf("HTTP %d: %s", response.StatusCode, strings.TrimSpace(string(body)))
+		var diagnostic strings.Builder
+		if err := copyResponse(&diagnostic, strings.NewReader(strings.TrimSpace(string(body))), true); err != nil {
+			return err
+		}
+		return fmt.Errorf("HTTP %d: %s", response.StatusCode, diagnostic.String())
 	}
 	if response.StatusCode == http.StatusNoContent {
 		return nil
 	}
-	_, err = io.Copy(stdout, response.Body)
-	return err
+	terminal := false
+	if file, ok := stdout.(*os.File); ok {
+		terminal = term.IsTerminal(int(file.Fd()))
+	}
+	return copyResponse(stdout, response.Body, terminal)
+}
+
+// copyResponse protects terminal displays without changing exported files or pipes.
+func copyResponse(dst io.Writer, src io.Reader, terminal bool) (err error) {
+	if !terminal {
+		_, err := io.Copy(dst, src)
+		return err
+	}
+	buffered := bufio.NewWriter(dst)
+	defer func() { err = errors.Join(err, buffered.Flush()) }()
+	reader := bufio.NewReader(src)
+	for {
+		r, size, err := reader.ReadRune()
+		if errors.Is(err, io.EOF) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		var text string
+		if r == unicode.ReplacementChar && size == 1 {
+			// Invalid UTF-8 may include a terminal's single-byte C1 controls.
+			if err := reader.UnreadRune(); err != nil {
+				return err
+			}
+			b, err := reader.ReadByte()
+			if err != nil {
+				return err
+			}
+			text = fmt.Sprintf("\\x%02x", b)
+		} else if unicode.IsControl(r) && r != '\t' && r != '\n' {
+			quoted := strconv.QuoteRune(r)
+			text = quoted[1 : len(quoted)-1]
+		} else {
+			text = string(r)
+		}
+		if _, err := io.WriteString(buffered, text); err != nil {
+			return err
+		}
+	}
 }
 
 func parseCommand(args []string) (string, string, url.Values, error) {
