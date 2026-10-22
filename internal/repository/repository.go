@@ -14,7 +14,6 @@ type EventRepository interface {
 	ListOverrides(parentIDs []int64, from, to string) ([]model.Event, error)
 	GetOverride(parentID int64, originalStart string) (*model.Event, error)
 	DeleteByParentID(parentID int64) error
-	FilterExistingIcsUIDs(uids []string) (map[string]bool, error)
 }
 
 type FeedRepository interface {

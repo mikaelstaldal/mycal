@@ -135,3 +135,67 @@ func TestFeedRefreshDoesNotOverwriteChangedSubscription(t *testing.T) {
 	assert.False(t, actual.Enabled)
 	assert.Empty(t, actual.LastError)
 }
+
+func TestFeedUIDCollisionsAreScopedToFeed(t *testing.T) {
+	db, err := repository.OpenDB(repository.MemoryDSN(t.Name()), 0)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = db.Close() })
+	repo, err := repository.NewSQLiteRepository(db)
+	require.NoError(t, err)
+	service := NewFeedService(repo, repo, repo)
+	work := &model.Calendar{Name: "Work"}
+	require.NoError(t, repo.CreateCalendar(work))
+	const uid = "work-meeting-123@corp"
+	manual := &model.Event{
+		Title: "Manual import", IcsUID: uid, CalendarID: work.ID,
+		StartTime: "2026-10-20T10:00:00Z", EndTime: "2026-10-20T11:00:00Z",
+	}
+	require.NoError(t, repo.Create(manual))
+	feeds := []*model.Feed{
+		{URL: "https://example.com/misc"},
+		{URL: "https://example.com/work", CalendarID: work.ID},
+		{URL: "https://example.com/work-other", CalendarID: work.ID},
+	}
+	for _, feed := range feeds {
+		require.NoError(t, repo.CreateFeed(feed))
+	}
+	refresh := func(feed *model.Feed, title string) {
+		t.Helper()
+		body := "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:" + uid +
+			"\r\nSUMMARY:" + title + "\r\nDTSTART:20261020T100000Z\r\nDTEND:20261020T110000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+		count, err := service.importFeedSnapshot(feed, "", strings.NewReader(body))
+		require.NoError(t, err)
+		assert.Equal(t, 1, count)
+	}
+	for i, feed := range feeds {
+		refresh(feed, fmt.Sprintf("Feed %d", i))
+	}
+	all, err := repo.ListAll(nil)
+	require.NoError(t, err)
+	require.Len(t, all, 4)
+	byTitle := make(map[string]model.Event)
+	for _, event := range all {
+		assert.Equal(t, uid, event.IcsUID)
+		byTitle[event.Title] = event
+	}
+	assert.Equal(t, int64(0), byTitle["Feed 0"].CalendarID)
+	assert.Equal(t, work.ID, byTitle["Feed 1"].CalendarID)
+	assert.Equal(t, work.ID, byTitle["Feed 2"].CalendarID)
+	assert.Equal(t, manual.ID, byTitle["Manual import"].ID)
+	// Subsequent refreshes retain each feed's own row, despite colliding UIDs.
+	for _, feed := range feeds {
+		refresh(feed, "Upstream change")
+	}
+	after, err := repo.ListAll(nil)
+	require.NoError(t, err)
+	assert.ElementsMatch(t, all, after)
+	// Removing one feed's event must leave all other sources intact.
+	_, err = service.importFeedSnapshot(feeds[0], "", strings.NewReader("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR\r\n"))
+	require.NoError(t, err)
+	remaining, err := repo.ListAll([]int64{work.ID})
+	require.NoError(t, err)
+	assert.Len(t, remaining, 3)
+	all, err = repo.ListAll(nil)
+	require.NoError(t, err)
+	assert.ElementsMatch(t, remaining, all)
+}

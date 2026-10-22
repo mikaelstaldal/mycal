@@ -15,25 +15,17 @@ import (
 
 // mockRepo implements repository.EventRepository with configurable behavior per test.
 type mockRepo struct {
-	listFn                  func(from, to string, calendarIDs []int64) ([]model.Event, error)
-	listAllFn               func(calendarIDs []int64) ([]model.Event, error)
-	listRecurringFn         func(to string, calendarIDs []int64) ([]model.Event, error)
-	searchFn                func(query, from, to string, calendarIDs []int64) ([]model.Event, error)
-	getByIDFn               func(id int64) (*model.Event, error)
-	createFn                func(event *model.Event) error
-	updateFn                func(event *model.Event) error
-	deleteFn                func(id int64) error
-	listOverridesFn         func(parentIDs []int64, from, to string) ([]model.Event, error)
-	getOverrideFn           func(parentID int64, originalStart string) (*model.Event, error)
-	deleteByParentIDFn      func(parentID int64) error
-	filterExistingIcsUIDsFn func(uids []string) (map[string]bool, error)
-}
-
-func (m *mockRepo) FilterExistingIcsUIDs(uids []string) (map[string]bool, error) {
-	if m.filterExistingIcsUIDsFn != nil {
-		return m.filterExistingIcsUIDsFn(uids)
-	}
-	return map[string]bool{}, nil
+	listFn             func(from, to string, calendarIDs []int64) ([]model.Event, error)
+	listAllFn          func(calendarIDs []int64) ([]model.Event, error)
+	listRecurringFn    func(to string, calendarIDs []int64) ([]model.Event, error)
+	searchFn           func(query, from, to string, calendarIDs []int64) ([]model.Event, error)
+	getByIDFn          func(id int64) (*model.Event, error)
+	createFn           func(event *model.Event) error
+	updateFn           func(event *model.Event) error
+	deleteFn           func(id int64) error
+	listOverridesFn    func(parentIDs []int64, from, to string) ([]model.Event, error)
+	getOverrideFn      func(parentID int64, originalStart string) (*model.Event, error)
+	deleteByParentIDFn func(parentID int64) error
 }
 
 func (m *mockRepo) List(from, to string, calendarIDs []int64) ([]model.Event, error) {
