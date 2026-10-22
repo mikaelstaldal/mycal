@@ -3,6 +3,7 @@ package service
 import (
 	"database/sql"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -1081,6 +1082,15 @@ func TestImport_ParentsAndOverrides(t *testing.T) {
 		},
 		{
 			Title:                   "Modified Instance",
+			RecurrenceFreq:          "DAILY",
+			RecurrenceCount:         3,
+			RecurrenceUntil:         "invalid",
+			RecurrenceInterval:      2,
+			RecurrenceByDay:         "MO",
+			RecurrenceByMonthDay:    "1",
+			RecurrenceByMonth:       "1",
+			ExDates:                 "invalid",
+			RDates:                  "invalid",
 			StartTime:               "2026-02-08T10:00:00Z",
 			EndTime:                 "2026-02-08T11:30:00Z",
 			RecurrenceOriginalStart: "2026-02-08T10:00:00Z",
@@ -1095,6 +1105,17 @@ func TestImport_ParentsAndOverrides(t *testing.T) {
 	override := createdEvents[1]
 	require.NotNil(t, override.RecurrenceParentID)
 	assert.Equal(t, int64(1), *override.RecurrenceParentID)
+	assert.Empty(t, override.RecurrenceFreq)
+	assert.Zero(t, override.RecurrenceCount)
+	assert.Empty(t, override.RecurrenceUntil)
+	assert.Zero(t, override.RecurrenceInterval)
+	assert.Empty(t, override.RecurrenceByDay)
+	assert.Empty(t, override.RecurrenceByMonthDay)
+	assert.Empty(t, override.RecurrenceByMonth)
+	assert.Empty(t, override.ExDates)
+	assert.Empty(t, override.RDates)
+	assert.Empty(t, override.IcsUID)
+
 }
 
 func TestImport_SkipsInvalidEvents(t *testing.T) {
@@ -1436,4 +1457,50 @@ func TestImportRejectsOversizedOverride(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 1, count)
 	assert.Equal(t, 1, created)
+}
+
+func TestImportOverrideValidation(t *testing.T) {
+	tests := []struct {
+		name   string
+		mutate func(*model.Event)
+	}{
+		{"empty title", func(e *model.Event) { e.Title = "" }},
+		{"long title", func(e *model.Event) { e.Title = strings.Repeat("x", maxTitleLength+1) }},
+		{"long description", func(e *model.Event) { e.Description = strings.Repeat("x", maxDescriptionLength+1) }},
+		{"long location", func(e *model.Event) { e.Location = strings.Repeat("x", maxLocationLength+1) }},
+		{"long categories", func(e *model.Event) { e.Categories = strings.Repeat("x", maxCategoriesLength+1) }},
+		{"invalid start", func(e *model.Event) { e.StartTime = "invalid" }},
+		{"reversed times", func(e *model.Event) { e.EndTime = "2026-01-01T09:00:00Z" }},
+		{"past date", func(e *model.Event) { e.StartTime = "1000-01-01T10:00:00Z" }},
+		{"future date", func(e *model.Event) { e.EndTime = "3000-01-01T10:00:00Z" }},
+		{"long span", func(e *model.Event) { e.EndTime = "2028-01-01T10:00:00Z" }},
+		{"duration", func(e *model.Event) { e.Duration = "invalid" }},
+		{"latitude", func(e *model.Event) { v := 91.0; e.Latitude = &v }},
+		{"longitude", func(e *model.Event) { v := -181.0; e.Longitude = &v }},
+		{"recurrence ID", func(e *model.Event) { e.RecurrenceOriginalStart = "invalid" }},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var created []*model.Event
+			svc := NewEventService(&mockRepo{createFn: func(e *model.Event) error {
+				e.ID = int64(len(created) + 1)
+				created = append(created, e)
+				return nil
+			}}, &mockCalRepo{})
+			parent := model.Event{Title: "Parent", StartTime: "2026-01-01T10:00:00Z",
+				EndTime: "2026-01-01T11:00:00Z", ImportUID: "test", RecurrenceFreq: "DAILY"}
+			valid := model.Event{Title: "Valid override", StartTime: parent.StartTime, EndTime: parent.EndTime,
+				ImportUID: "test", RecurrenceOriginalStart: parent.StartTime}
+			invalid := valid
+			tt.mutate(&invalid)
+			count, err := svc.Import([]model.Event{invalid, parent, valid}, "")
+			require.NoError(t, err)
+			assert.Equal(t, 2, count)
+			require.Len(t, created, 2)
+			assert.Equal(t, valid.Title, created[1].Title)
+			require.NotNil(t, created[1].RecurrenceParentID)
+			assert.Equal(t, created[0].ID, *created[1].RecurrenceParentID)
+			assert.Equal(t, valid.RecurrenceOriginalStart, created[1].RecurrenceOriginalStart)
+		})
+	}
 }

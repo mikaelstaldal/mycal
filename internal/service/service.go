@@ -739,38 +739,33 @@ func (s *EventService) Import(events []model.Event, calendarName string) (int, e
 
 	// Import overrides matched by ImportUID
 	for _, e := range overrides {
-		if e.Duration != "" {
-			if _, err := model.ParseDuration(e.Duration); err != nil {
-				continue
-			}
-		}
-		start, startErr := time.Parse(time.RFC3339, e.StartTime)
-		end, endErr := time.Parse(time.RFC3339, e.EndTime)
-		if startErr != nil || endErr != nil || validateEventSpan(start, end) != nil {
-			continue
-		}
 		parentID, ok := parentByUID[e.ImportUID]
 		if !ok {
 			continue
 		}
-		ev := &model.Event{
-			Title:                   sanitize.HTML(e.Title),
-			Description:             sanitize.HTML(e.Description),
-			StartTime:               e.StartTime,
-			EndTime:                 e.EndTime,
-			AllDay:                  e.AllDay,
-			Color:                   e.Color,
-			Duration:                e.Duration,
-			Categories:              e.Categories,
-			URL:                     e.URL,
-			ReminderMinutes:         e.ReminderMinutes,
-			Location:                e.Location,
-			Latitude:                e.Latitude,
-			Longitude:               e.Longitude,
-			CalendarID:              calendarID,
-			RecurrenceParentID:      &parentID,
-			RecurrenceOriginalStart: e.RecurrenceOriginalStart,
+		if _, err := time.Parse(time.RFC3339, e.RecurrenceOriginalStart); err != nil {
+			continue
 		}
+		// Overrides modify one occurrence; ignore recurrence rules on the child.
+		e.RecurrenceFreq = ""
+		e.RecurrenceCount = 0
+		e.RecurrenceUntil = ""
+		e.RecurrenceInterval = 0
+		e.RecurrenceByDay = ""
+		e.RecurrenceByMonthDay = ""
+		e.RecurrenceByMonth = ""
+		e.ExDates = ""
+		e.RDates = ""
+		e.ImportUID = ""
+		ev, err := buildEventForImport(e)
+		if err != nil {
+			continue
+		}
+		ev.Title = sanitize.HTML(ev.Title)
+		ev.Description = sanitize.HTML(ev.Description)
+		ev.CalendarID = calendarID
+		ev.RecurrenceParentID = &parentID
+		ev.RecurrenceOriginalStart = e.RecurrenceOriginalStart
 		if err := s.repo.Create(ev); err != nil {
 			continue
 		}
