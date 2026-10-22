@@ -313,3 +313,42 @@ func TestEncodeEmpty(t *testing.T) {
 	assert.Contains(t, output, "BEGIN:VCALENDAR")
 	assert.NotContains(t, output, "BEGIN:VEVENT")
 }
+
+func TestDecodeDurationValidation(t *testing.T) {
+	for _, duration := range []string{"PT1H", "PT5H", "garbage", "PT1H\rATTENDEE:mailto:evil@example.com"} {
+		for _, end := range []string{"", "DTEND:20260101T110000Z\r\n"} {
+			t.Run(duration+end, func(t *testing.T) {
+				input := "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nSUMMARY:Test\r\n" +
+					"DTSTART:20260101T100000Z\r\n" + end + "DURATION:" + duration +
+					"\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+				events, err := Decode(strings.NewReader(input))
+				require.NoError(t, err)
+				if duration != "PT1H" && duration != "PT5H" && end == "" {
+					assert.Empty(t, events)
+					return
+				}
+				require.Len(t, events, 1)
+				if (duration == "PT1H" || duration == "PT5H") && end == "" {
+					assert.Equal(t, duration, events[0].Duration)
+				} else {
+					assert.Empty(t, events[0].Duration)
+					var output bytes.Buffer
+					require.NoError(t, Encode(&output, events))
+					assert.Contains(t, output.String(), "DTEND:20260101T110000Z")
+					assert.NotContains(t, output.String(), "DURATION:")
+				}
+			})
+		}
+	}
+}
+
+func TestEncodeDurationStripsLineBreaks(t *testing.T) {
+	for _, allDay := range []bool{false, true} {
+		var output bytes.Buffer
+		require.NoError(t, Encode(&output, []model.Event{{
+			Title: "Test", StartTime: "2026-01-01T10:00:00Z", EndTime: "2026-01-01T11:00:00Z",
+			AllDay: allDay, Duration: "PT1H\r\nATTENDEE:mailto:evil@example.com",
+		}}))
+		assert.Contains(t, output.String(), "DURATION:PT1HATTENDEE:mailto:evil@example.com\r\n")
+	}
+}

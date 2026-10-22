@@ -1378,3 +1378,62 @@ func TestDelete_RepoError(t *testing.T) {
 	err := svc.Delete(1)
 	assert.ErrorIs(t, err, errRepo)
 }
+
+func TestImportDurationValidation(t *testing.T) {
+	for _, duration := range []string{"", "PT1H", "garbage", "PT1H\rATTENDEE:mailto:evil@example.com"} {
+		t.Run(duration, func(t *testing.T) {
+			valid := duration == "" || duration == "PT1H"
+			var created []*model.Event
+			svc := NewEventService(&mockRepo{createFn: func(e *model.Event) error {
+				e.ID = int64(len(created) + 1)
+				created = append(created, e)
+				return nil
+			}}, &mockCalRepo{})
+			event := model.Event{Title: "Test", StartTime: "2026-01-01T10:00:00Z",
+				EndTime: "2026-01-01T11:00:00Z", Duration: duration, ImportUID: "test"}
+			_, err := svc.ImportSingle([]model.Event{event}, "")
+			if valid {
+				require.NoError(t, err)
+				require.Len(t, created, 1)
+				assert.Equal(t, duration, created[0].Duration)
+			} else {
+				require.ErrorIs(t, err, ErrValidation)
+				assert.Empty(t, created)
+			}
+			created = nil
+			parent := event
+			parent.Duration = ""
+			parent.RecurrenceFreq = "DAILY"
+			event.RecurrenceOriginalStart = event.StartTime
+			count, err := svc.Import([]model.Event{parent, event}, "")
+			require.NoError(t, err)
+			if valid {
+				assert.Equal(t, 2, count)
+				require.Len(t, created, 2)
+				assert.Equal(t, duration, created[1].Duration)
+			} else {
+				assert.Equal(t, 1, count)
+				assert.Len(t, created, 1)
+			}
+		})
+	}
+}
+
+func TestImportRejectsOversizedOverride(t *testing.T) {
+	created := 0
+	svc := NewEventService(&mockRepo{createFn: func(e *model.Event) error {
+		created++
+		e.ID = int64(created)
+		return nil
+	}}, &mockCalRepo{})
+	parent := model.Event{Title: "Parent", StartTime: "2026-01-01T10:00:00Z",
+		EndTime: "2026-01-01T11:00:00Z", ImportUID: "test", RecurrenceFreq: "DAILY"}
+	override := parent
+	override.RecurrenceOriginalStart = parent.StartTime
+	override.EndTime = "2054-10-01T10:00:00Z"
+	override.Duration = "P1500W"
+	count, err := svc.Import([]model.Event{parent, override}, "")
+	require.NoError(t, err)
+	assert.Equal(t, 1, count)
+	assert.Equal(t, 1, created)
+}

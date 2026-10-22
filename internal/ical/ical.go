@@ -56,14 +56,14 @@ func Encode(w io.Writer, events []model.Event) error {
 		if e.AllDay {
 			fmt.Fprintf(&b, "DTSTART;VALUE=DATE:%s\r\n", start.UTC().Format("20060102"))
 			if e.Duration != "" {
-				fmt.Fprintf(&b, "DURATION:%s\r\n", e.Duration)
+				fmt.Fprintf(&b, "DURATION:%s\r\n", stripCRLF(e.Duration))
 			} else {
 				fmt.Fprintf(&b, "DTEND;VALUE=DATE:%s\r\n", end.UTC().Format("20060102"))
 			}
 		} else {
 			fmt.Fprintf(&b, "DTSTART:%s\r\n", formatICalTime(start))
 			if e.Duration != "" {
-				fmt.Fprintf(&b, "DURATION:%s\r\n", e.Duration)
+				fmt.Fprintf(&b, "DURATION:%s\r\n", stripCRLF(e.Duration))
 			} else {
 				fmt.Fprintf(&b, "DTEND:%s\r\n", formatICalTime(end))
 			}
@@ -480,6 +480,9 @@ func parseEvent(props []string, alarmProps []string, tzMap map[string]*time.Loca
 			dtend = parseICalTime(value, params, tzMap)
 		case "DURATION":
 			duration = value
+			if _, err := model.ParseDuration(duration); err != nil {
+				duration = ""
+			}
 		case "RRULE":
 			rrule = parseRRule(value, tzMap)
 		case "EXDATE":
@@ -504,6 +507,11 @@ func parseEvent(props []string, alarmProps []string, tzMap map[string]*time.Loca
 
 	if summary == "" || dtstart == "" {
 		return model.Event{}, false
+	}
+
+	// DTEND takes precedence if a non-conforming event supplies both properties.
+	if dtend != "" {
+		duration = ""
 	}
 
 	// If DURATION is set and no DTEND, compute DTEND

@@ -573,7 +573,13 @@ func buildEventForImport(e model.Event) (*model.Event, error) {
 			req.EndTime = api.NewOptDateTime(t)
 		}
 	}
-	// Don't pass Duration — EndTime is already computed by the iCal decoder.
+	// Validate Duration separately: EndTime is already computed by the iCal decoder,
+	// and create validation rejects supplying both Duration and EndTime.
+	if e.Duration != "" {
+		if _, err := model.ParseDuration(e.Duration); err != nil {
+			return nil, fmt.Errorf("%w: invalid duration: %s", ErrValidation, err)
+		}
+	}
 	if e.Description != "" {
 		req.Description = api.NewOptString(e.Description)
 	}
@@ -733,6 +739,16 @@ func (s *EventService) Import(events []model.Event, calendarName string) (int, e
 
 	// Import overrides matched by ImportUID
 	for _, e := range overrides {
+		if e.Duration != "" {
+			if _, err := model.ParseDuration(e.Duration); err != nil {
+				continue
+			}
+		}
+		start, startErr := time.Parse(time.RFC3339, e.StartTime)
+		end, endErr := time.Parse(time.RFC3339, e.EndTime)
+		if startErr != nil || endErr != nil || validateEventSpan(start, end) != nil {
+			continue
+		}
 		parentID, ok := parentByUID[e.ImportUID]
 		if !ok {
 			continue
