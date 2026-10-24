@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"github.com/mikaelstaldal/mycal/internal/clihttp"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -143,13 +142,13 @@ func TestCopyResponse(t *testing.T) {
 		"DESCRIPTION:å日本語\t\x00\x07\x7f\u009b31m\u009dtitle\xff\x9b\n"
 	t.Run("terminal", func(t *testing.T) {
 		var out bytes.Buffer
-		require.NoError(t, clihttp.CopyResponse(&out, strings.NewReader(payload), true))
-		assert.Equal(t, "SUMMARY:Meeting\\x1b[2J\\x1b[H\\x1b[31mFAKE\\r\n"+
-			"DESCRIPTION:å日本語\t\\x00\\a\\x7f\\u009b31m\\u009dtitle\\xff\\x9b\n", out.String())
+		require.NoError(t, copyResponse(&out, strings.NewReader(payload), true))
+		assert.Equal(t, "SUMMARY:Meeting\\u001b[2J\\u001b[H\\u001b[31mFAKE\r\n"+
+			"DESCRIPTION:å日本語\t\\u0000\\u0007\\u007f\\u009b31m\\u009dtitle\\xff\\x9b\n", out.String())
 	})
 	t.Run("redirected", func(t *testing.T) {
 		var out bytes.Buffer
-		require.NoError(t, clihttp.CopyResponse(&out, strings.NewReader(payload), false))
+		require.NoError(t, copyResponse(&out, strings.NewReader(payload), false))
 		assert.Equal(t, payload, out.String())
 	})
 }
@@ -177,6 +176,6 @@ func TestRunEscapesHTTPErrorBody(t *testing.T) {
 	t.Setenv("MYCAL_TOKEN_FILE", "")
 	var out bytes.Buffer
 	err := run([]string{"-url", srv.URL, "calendars", "ics"}, strings.NewReader(""), &out)
-	require.EqualError(t, err, "HTTP 500: bad \\x1b[2J\\u009b31m\\a")
+	require.EqualError(t, err, "HTTP 500: bad \\u001b[2J\\u009b31m\\u0007")
 	assert.Empty(t, out.String())
 }

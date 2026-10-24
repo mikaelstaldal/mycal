@@ -15,6 +15,7 @@ import (
 
 	"golang.org/x/term"
 
+	"github.com/mikaelstaldal/go-server-common/termsafe"
 	"github.com/mikaelstaldal/mycal/internal/clihttp"
 	"github.com/mikaelstaldal/mycal/internal/model"
 )
@@ -39,7 +40,7 @@ Commands:
   calendars ics [-calendars ID[,ID...]]
 
 JSON and iCalendar responses go to stdout; errors go to stderr.
-Terminal output escapes control characters other than TAB and LF.
+Terminal output escapes terminal and bidi controls; TAB, LF and CRLF are preserved.
 Redirected or piped responses are unchanged.
 Dates accept RFC3339, YYYY-MM-DD, or YYYY-MM-DD[T or space]HH:MM[:SS].
 Missing time defaults to 00:00:00; missing timezone uses the local timezone.
@@ -52,7 +53,7 @@ Redirects and environment HTTP proxies are disabled.
 
 func main() {
 	if err := run(os.Args[1:], os.Stdin, os.Stdout); err != nil {
-		fmt.Fprintln(os.Stderr, "mycal-cli:", err)
+		fmt.Fprintln(os.Stderr, "mycal-cli:", termsafe.String(err.Error()))
 		os.Exit(1)
 	}
 }
@@ -139,7 +140,7 @@ func run(args []string, stdin io.Reader, stdout io.Writer) error {
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		body, _ := io.ReadAll(io.LimitReader(response.Body, 4096))
 		var diagnostic strings.Builder
-		if err := clihttp.CopyResponse(&diagnostic, strings.NewReader(strings.TrimSpace(string(body))), true); err != nil {
+		if err := copyResponse(&diagnostic, strings.NewReader(strings.TrimSpace(string(body))), true); err != nil {
 			return err
 		}
 		return fmt.Errorf("HTTP %d: %s", response.StatusCode, diagnostic.String())
@@ -151,7 +152,7 @@ func run(args []string, stdin io.Reader, stdout io.Writer) error {
 	if file, ok := stdout.(*os.File); ok {
 		terminal = term.IsTerminal(int(file.Fd()))
 	}
-	return clihttp.CopyResponse(stdout, response.Body, terminal)
+	return copyResponse(stdout, response.Body, terminal)
 }
 
 func parseCommand(args []string) (string, string, url.Values, error) {
@@ -272,4 +273,13 @@ func parseDateTime(value string) (time.Time, error) {
 		}
 	}
 	return time.Time{}, fmt.Errorf("invalid date or timestamp %q", value)
+}
+
+// copyResponse preserves exported bytes and escapes text only for terminal output.
+func copyResponse(dst io.Writer, src io.Reader, terminal bool) error {
+	if terminal {
+		return termsafe.Copy(dst, src)
+	}
+	_, err := io.Copy(dst, src)
+	return err
 }

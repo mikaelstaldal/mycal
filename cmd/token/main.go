@@ -19,6 +19,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/mikaelstaldal/go-server-common/termsafe"
 	"github.com/mikaelstaldal/mycal/internal/clihttp"
 	"golang.org/x/term"
 )
@@ -59,7 +60,7 @@ func main() {
 
 // printError protects the final diagnostic, including errors from device login and the OS.
 func printError(stderr io.Writer, err error) {
-	_, _ = fmt.Fprintln(stderr, "mycal-token:", clihttp.EscapeTerminal(err.Error()))
+	_, _ = fmt.Fprintln(stderr, "mycal-token:", termsafe.String(err.Error()))
 }
 
 func run(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
@@ -176,7 +177,7 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 	if (method == http.MethodPost && response.StatusCode != http.StatusCreated) ||
 		(method == http.MethodDelete && response.StatusCode != http.StatusNoContent) {
 		message, _ := io.ReadAll(io.LimitReader(response.Body, 4096))
-		return fmt.Errorf("HTTP %d: %s", response.StatusCode, clihttp.EscapeTerminal(strings.TrimSpace(string(message))))
+		return fmt.Errorf("HTTP %d: %s", response.StatusCode, termsafe.String(strings.TrimSpace(string(message))))
 	}
 	if method == http.MethodDelete {
 		_, err = fmt.Fprintf(stderr, "Revoked token %s\n", command[1])
