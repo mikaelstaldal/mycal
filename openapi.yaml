@@ -31,7 +31,7 @@ paths:
               properties:
                 client_id: {type: string, enum: [mycal-token]}
                 name: {type: string, minLength: 1, maxLength: 200}
-                scope: {type: string, maxLength: 4096, description: Space-separated calendar:<id> scopes; optional}
+                scope: {type: string, maxLength: 4096, description: Space-separated calendar:<id> scopes; at most 100 scopes; optional}
                 lifetime: {type: string, maxLength: 20, default: 30d}
       responses:
         '400':
@@ -178,6 +178,7 @@ paths:
                 calendar_ids:
                   type: array
                   minItems: 1
+                  maxItems: 100
                   uniqueItems: true
                   items:
                     type: integer
@@ -545,7 +546,7 @@ paths:
             schema:
               type: string
               format: binary
-              description: Raw iCalendar (.ics) data
+              description: Raw iCalendar (.ics) data, at most 10 MiB (10485760 bytes)
           application/json:
             schema:
               type: object
@@ -589,7 +590,7 @@ paths:
             schema:
               type: string
               format: binary
-              description: Raw iCalendar (.ics) data with a single event
+              description: Raw iCalendar (.ics) data with a single event, at most 10 MiB (10485760 bytes)
           application/json:
             schema:
               type: object
@@ -869,6 +870,7 @@ components:
           type: array
           description: Required and nonempty when approving; selected resource scopes
           minItems: 1
+          maxItems: 100
           uniqueItems: true
           items: {type: string, maxLength: 40}
         lifetime: {type: string, maxLength: 20, description: Required when approving; positive duration in s/m/h/d up to ten years}
@@ -1203,6 +1205,7 @@ components:
           default: false
         color:
           type: string
+          maxLength: 100
         recurrence_freq:
           type: string
           enum: ["", DAILY, WEEKLY, MONTHLY, YEARLY]
@@ -1212,20 +1215,28 @@ components:
           maximum: 1000
         recurrence_until:
           type: string
+          maxLength: 100
         recurrence_interval:
           type: integer
+          maximum: 999
         recurrence_by_day:
           type: string
+          maxLength: 5000
         recurrence_by_monthday:
           type: string
+          maxLength: 5000
         recurrence_by_month:
           type: string
+          maxLength: 5000
         exdates:
           type: string
+          maxLength: 5000
         rdates:
           type: string
+          maxLength: 5000
         duration:
           type: string
+          maxLength: 100
           description: 'ISO 8601 duration (e.g. PT1H, PT30M, P1D). Alternative to end_time.'
         categories:
           type: string
@@ -1288,6 +1299,7 @@ components:
           type: boolean
         color:
           type: string
+          maxLength: 100
         recurrence_freq:
           type: string
           enum: ["", DAILY, WEEKLY, MONTHLY, YEARLY]
@@ -1297,20 +1309,28 @@ components:
           maximum: 1000
         recurrence_until:
           type: string
+          maxLength: 100
         recurrence_interval:
           type: integer
+          maximum: 999
         recurrence_by_day:
           type: string
+          maxLength: 5000
         recurrence_by_monthday:
           type: string
+          maxLength: 5000
         recurrence_by_month:
           type: string
+          maxLength: 5000
         exdates:
           type: string
+          maxLength: 5000
         rdates:
           type: string
+          maxLength: 5000
         duration:
           type: string
+          maxLength: 100
         categories:
           type: string
           maxLength: 500

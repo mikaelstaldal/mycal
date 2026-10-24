@@ -16,6 +16,9 @@ import (
 )
 
 func scopeIDs(scope []string) ([]int64, error) {
+	if len(scope) > maxTokenCalendars {
+		return nil, fmt.Errorf("%w: at most 100 calendar scopes are allowed", devicegrant.ErrInvalidGrant)
+	}
 	ids := make([]int64, 0, len(scope))
 	seen := map[int64]bool{}
 	for _, entry := range scope {

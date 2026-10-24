@@ -157,11 +157,21 @@ function validateNoteSlug(s: string): void {
 
 // ── Event requests ───────────────────────────────────────────────────────────
 
+// Mirrors the bounded string fields in the OpenAPI event request schemas.
+function validateEventStringLengths(req: RequestBody): void {
+    for (const field of ['color', 'recurrence_until', 'duration']) {
+        if (isSet(req, field) && stringField(req, field).length > 100) {
+            throw validationError(field + ' must be at most 100 characters');
+        }
+    }
+}
+
 /**
  * ValidateCreateEventRequest — validates a create request and returns the
  * normalised RFC 3339 start and end times.
  */
 function validateCreateEventRequest(req: RequestBody): { startTime: string; endTime: string } {
+    validateEventStringLengths(req);
     const title = stringOr(req, 'title');
     if (title === '') throw validationError('title is required');
     if (byteLength(title) > MAX_TITLE_LENGTH) {
@@ -280,6 +290,7 @@ function validateCreateEventRequest(req: RequestBody): { startTime: string; endT
 
 /** ValidateUpdateEventRequest — every field is optional, so each is checked alone. */
 function validateUpdateEventRequest(req: RequestBody): void {
+    validateEventStringLengths(req);
     if (isSet(req, 'title')) {
         const title = stringField(req, 'title');
         if (title === '') throw validationError('title cannot be empty');

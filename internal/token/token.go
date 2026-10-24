@@ -51,9 +51,14 @@ func (s Store) Create(name string, expiry time.Time, calendars []int64) (Record,
 	return record, value, nil
 }
 
+const maxTokenCalendars = 100
+
 // createTx is shared by interactive issuance and the atomic device grant exchange.
 func (s Store) createTx(tx *sql.Tx, name string, expiry time.Time, calendars []int64) (Record, string, error) {
 	var record Record
+	if len(calendars) > maxTokenCalendars {
+		return record, "", invalid("at most 100 calendars are allowed")
+	}
 	var err error
 	if strings.TrimSpace(name) == "" || len(name) > 200 || !expiry.Truncate(time.Second).After(time.Now()) || len(calendars) == 0 || strings.IndexFunc(name, unicode.IsControl) >= 0 {
 		return record, "", invalid("name, future expiry, and at least one calendar are required")
