@@ -641,6 +641,9 @@ function createOrUpdateOverride(
 /**
  * EventService.AddExDate — cancelling one occurrence: the instance start is
  * appended to the parent's EXDATE list, and any override for it is dropped.
+ * The Go service instead moves the start of a DAILY or WEEKLY series when the
+ * first remaining occurrence is cancelled (advanceSeriesStart); that needs the
+ * recurrence expansion, which the demo does not port yet.
  */
 function addExDate(state: DemoState, id: number, instanceStart: string): DemoEvent {
     if (canonicalRFC3339(instanceStart) === null) {

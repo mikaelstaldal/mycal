@@ -776,7 +776,8 @@ func (s *EventService) Import(events []model.Event, calendarName string) (int, e
 }
 
 func (s *EventService) AddExDate(id int64, instanceStart string) (*model.Event, error) {
-	if _, err := time.Parse(time.RFC3339, instanceStart); err != nil {
+	instStartTime, err := time.Parse(time.RFC3339, instanceStart)
+	if err != nil {
 		return nil, fmt.Errorf("%w: instance_start must be RFC 3339 format", ErrValidation)
 	}
 	existing, err := s.repo.GetByID(id)
@@ -790,11 +791,19 @@ func (s *EventService) AddExDate(id int64, instanceStart string) (*model.Event, 
 		return nil, fmt.Errorf("%w: event is not recurring", ErrValidation)
 	}
 
-	// Append to existing EXDATE list
-	if existing.ExDates == "" {
-		existing.ExDates = instanceStart
-	} else {
-		existing.ExDates = existing.ExDates + "," + instanceStart
+	overrides, err := s.repo.ListOverrides([]int64{id}, "0001-01-01T00:00:00Z", "9999-12-31T23:59:59Z")
+	if err != nil {
+		return nil, err
+	}
+
+	// Cancelling the first remaining occurrence moves the series start;
+	// any other occurrence is appended to the EXDATE list.
+	if !advanceSeriesStart(existing, instStartTime, overrides) {
+		if existing.ExDates == "" {
+			existing.ExDates = instanceStart
+		} else {
+			existing.ExDates = existing.ExDates + "," + instanceStart
+		}
 	}
 
 	if err := s.repo.Update(existing); err != nil {

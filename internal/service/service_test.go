@@ -1251,6 +1251,37 @@ func TestAddExDate_FirstExDate(t *testing.T) {
 	assert.Equal(t, "2026-02-08T09:00:00Z", updated.ExDates)
 }
 
+func TestAddExDate_FirstOccurrenceMovesStart(t *testing.T) {
+	var updated *model.Event
+	repo := &mockRepo{
+		getByIDFn: func(id int64) (*model.Event, error) {
+			return &model.Event{
+				ID:             id,
+				Title:          "Weekly",
+				StartTime:      "2026-02-01T09:00:00Z",
+				EndTime:        "2026-02-01T10:00:00Z",
+				RecurrenceFreq: "WEEKLY",
+				ExDates:        "2026-02-01T09:00:00Z,2026-02-08T09:00:00Z",
+			}, nil
+		},
+		updateFn: func(event *model.Event) error {
+			updated = event
+			return nil
+		},
+		getOverrideFn: func(parentID int64, originalStart string) (*model.Event, error) {
+			return nil, nil
+		},
+	}
+	svc := NewEventService(repo, &mockCalRepo{})
+	e, err := svc.AddExDate(1, "2026-02-15T09:00:00Z")
+	require.NoError(t, err)
+	require.NotNil(t, updated)
+	assert.Equal(t, "2026-02-22T09:00:00Z", updated.StartTime)
+	assert.Equal(t, "2026-02-22T10:00:00Z", updated.EndTime)
+	assert.Equal(t, "", updated.ExDates)
+	assert.Equal(t, updated, e)
+}
+
 func TestAddExDate_NotFound(t *testing.T) {
 	repo := &mockRepo{
 		getByIDFn: func(id int64) (*model.Event, error) {

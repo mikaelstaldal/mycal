@@ -131,35 +131,8 @@ func expandRecurring(event model.Event, from, to time.Time) []model.Event {
 		}
 	}
 
-	interval := event.RecurrenceInterval
-	if interval < 1 {
-		interval = 1
-	}
-
-	byDay := parseByDay(event.RecurrenceByDay)
-	byMonthDay := parseIntList(event.RecurrenceByMonthDay)
-	byMonth := parseIntList(event.RecurrenceByMonth)
-
-	// Parse EXDATE set for filtering
-	exdateSet := make(map[string]bool)
-	if event.ExDates != "" {
-		for _, exd := range strings.Split(event.ExDates, ",") {
-			exd = strings.TrimSpace(exd)
-			if exd != "" {
-				exdateSet[exd] = true
-			}
-		}
-	}
-
-	// Generate candidate start times
-	var candidates []time.Time
-	hasByParams := len(byDay) > 0 || len(byMonthDay) > 0 || len(byMonth) > 0
-
-	if hasByParams {
-		candidates = expandWithByParams(startTime, event.RecurrenceFreq, interval, byDay, byMonthDay, byMonth, untilTime, to, event.RecurrenceCount)
-	} else {
-		candidates = expandSimple(startTime, event.RecurrenceFreq, interval, untilTime, to, event.RecurrenceCount)
-	}
+	exdateSet := parseExDates(event.ExDates)
+	candidates := ruleCandidates(event, startTime, untilTime, to)
 
 	// Build instances from candidates, filtering by EXDATE and query window
 	var instances []model.Event
@@ -176,7 +149,7 @@ func expandRecurring(event model.Event, from, to time.Time) []model.Event {
 			inst := event
 			inst.StartTime = instStart.Format(time.RFC3339)
 			inst.EndTime = instEnd.Format(time.RFC3339)
-			inst.RecurrenceIndex = i
+			inst.RecurrenceIndex = i + 1
 			instances = append(instances, inst)
 		}
 	}
@@ -218,6 +191,38 @@ func expandRecurring(event model.Event, from, to time.Time) []model.Event {
 	}
 
 	return instances
+}
+
+// parseExDates returns the EXDATE list as a set of RFC 3339 strings.
+func parseExDates(exDates string) map[string]bool {
+	exdateSet := make(map[string]bool)
+	if exDates != "" {
+		for _, exd := range strings.Split(exDates, ",") {
+			exd = strings.TrimSpace(exd)
+			if exd != "" {
+				exdateSet[exd] = true
+			}
+		}
+	}
+	return exdateSet
+}
+
+// ruleCandidates generates the start times produced by the recurrence rule
+// (not RDATE, not filtered by EXDATE) that begin before to.
+func ruleCandidates(event model.Event, startTime, untilTime, to time.Time) []time.Time {
+	interval := event.RecurrenceInterval
+	if interval < 1 {
+		interval = 1
+	}
+
+	byDay := parseByDay(event.RecurrenceByDay)
+	byMonthDay := parseIntList(event.RecurrenceByMonthDay)
+	byMonth := parseIntList(event.RecurrenceByMonth)
+
+	if len(byDay) > 0 || len(byMonthDay) > 0 || len(byMonth) > 0 {
+		return expandWithByParams(startTime, event.RecurrenceFreq, interval, byDay, byMonthDay, byMonth, untilTime, to, event.RecurrenceCount)
+	}
+	return expandSimple(startTime, event.RecurrenceFreq, interval, untilTime, to, event.RecurrenceCount)
 }
 
 func expandSimple(startTime time.Time, freq string, interval int, untilTime, to time.Time, count int) []time.Time {
@@ -296,6 +301,12 @@ func expandWeeklyByDay(startTime time.Time, interval int, byDay []byDayEntry, un
 	var candidates []time.Time
 	generated := 0
 	attempts := 0
+
+	// Generate each week's occurrences in chronological order, whatever the BYDAY order
+	byDay = append([]byDayEntry(nil), byDay...)
+	sort.SliceStable(byDay, func(i, j int) bool {
+		return (byDay[i].Weekday+6)%7 < (byDay[j].Weekday+6)%7
+	})
 
 	// Find the start of the week containing startTime (use Monday as week start for RFC 5545)
 	weekStart := startTime
@@ -647,4 +658,102 @@ func mergeEvents(a, b []model.Event) []model.Event {
 		return result[i].CreatedAt < result[j].CreatedAt
 	})
 	return result
+}
+
+// advanceSeriesStart cancels the first remaining occurrence of a recurring
+// event by moving its start to the next remaining occurrence, instead of
+// adding an EXDATE. This keeps the EXDATE list of a series whose occurrences
+// are cancelled one by one from the front from growing without bound. EXDATEs
+// before the new start are pruned (unless they exclude an RDATE) and
+// RecurrenceCount is reduced by the number of rule occurrences passed over.
+//
+// It reports false, leaving the event unchanged, when instanceStart is not the
+// first remaining occurrence, when no occurrence would remain, or when moving
+// the start could change the series. A series is only listed for windows that
+// end after its start, so an RDATE, or an override of the series other than
+// the cancelled one, that starts before the new start would no longer be shown.
+// The cancelled occurrence may also itself be an RDATE, which a moved start
+// would not remove. Moving the start could also change the series for MONTHLY and
+// YEARLY, since month and year arithmetic overflows short months: a monthly
+// series from Jan 31 continues Mar 3, Mar 31, while one from Mar 3 continues
+// Apr 3. DAILY and WEEKLY step in whole days and weeks from the start, so
+// restarting from one of their own occurrences yields the same occurrences.
+func advanceSeriesStart(event *model.Event, instanceStart time.Time, overrides []model.Event) bool {
+	if event.RecurrenceFreq != "DAILY" && event.RecurrenceFreq != "WEEKLY" {
+		return false
+	}
+	startTime, err := time.Parse(time.RFC3339, event.StartTime)
+	if err != nil {
+		return false
+	}
+	endTime, err := time.Parse(time.RFC3339, event.EndTime)
+	if err != nil {
+		return false
+	}
+	var untilTime time.Time
+	if event.RecurrenceUntil != "" {
+		if t, err := time.Parse(time.RFC3339, event.RecurrenceUntil); err == nil {
+			untilTime = t
+		}
+	}
+
+	exdateSet := parseExDates(event.ExDates)
+	candidates := ruleCandidates(*event, startTime, untilTime, time.Date(9999, 12, 31, 0, 0, 0, 0, time.UTC))
+	first := -1
+	for i, c := range candidates {
+		if !exdateSet[c.Format(time.RFC3339)] {
+			first = i
+			break
+		}
+	}
+	if first < 0 || !candidates[first].Equal(instanceStart) {
+		return false
+	}
+	next := -1
+	for i := first + 1; i < len(candidates); i++ {
+		if !exdateSet[candidates[i].Format(time.RFC3339)] {
+			next = i
+			break
+		}
+	}
+	if next < 0 {
+		return false
+	}
+
+	newStart := candidates[next]
+	rdateSet := parseExDates(event.RDates)
+	for rd := range rdateSet {
+		t, err := time.Parse(time.RFC3339, rd)
+		if err != nil || t.Equal(instanceStart) || (t.Before(newStart) && !exdateSet[rd]) {
+			return false
+		}
+	}
+	for _, o := range overrides {
+		if o.RecurrenceOriginalStart == instanceStart.Format(time.RFC3339) {
+			continue
+		}
+		t, err := time.Parse(time.RFC3339, o.StartTime)
+		if err != nil || t.Before(newStart) {
+			return false
+		}
+	}
+	var remaining []string
+	for _, exd := range strings.Split(event.ExDates, ",") {
+		exd = strings.TrimSpace(exd)
+		if exd == "" {
+			continue
+		}
+		if t, err := time.Parse(time.RFC3339, exd); err == nil && t.Before(newStart) && !rdateSet[exd] {
+			continue
+		}
+		remaining = append(remaining, exd)
+	}
+
+	event.StartTime = newStart.Format(time.RFC3339)
+	event.EndTime = newStart.Add(endTime.Sub(startTime)).Format(time.RFC3339)
+	if event.RecurrenceCount > 0 {
+		event.RecurrenceCount -= next
+	}
+	event.ExDates = strings.Join(remaining, ",")
+	return true
 }

@@ -305,3 +305,232 @@ func TestExpansionLegacyRepetitiveInvalidRule(t *testing.T) {
 	// Preserve the existing simple-expansion fallback while bounding its work.
 	assert.Len(t, expandRecurring(e, parseTime("2026-01-01T00:00:00Z"), parseTime("2026-02-01T00:00:00Z")), 1)
 }
+
+// startTimes lists the start times of the instances of e in [from, to).
+func startTimes(e model.Event, from, to string) []string {
+	var starts []string
+	for _, inst := range expandRecurring(e, parseTime(from), parseTime(to)) {
+		starts = append(starts, inst.StartTime)
+	}
+	return starts
+}
+
+func TestAdvanceSeriesStart_PreservesRemainingOccurrences(t *testing.T) {
+	tests := []struct {
+		name    string
+		event   model.Event
+		cancel  string
+		newFrom string
+	}{
+		{
+			name:    "weekly forever",
+			event:   makeEvent("WEEKLY", "2026-02-01T09:00:00Z", "2026-02-01T10:00:00Z"),
+			cancel:  "2026-02-01T09:00:00Z",
+			newFrom: "2026-02-08T09:00:00Z",
+		},
+		{
+			name: "weekly with earlier occurrences already excluded",
+			event: makeEvent("WEEKLY", "2026-02-01T09:00:00Z", "2026-02-01T10:00:00Z", func(e *model.Event) {
+				e.ExDates = "2026-02-01T09:00:00Z,2026-02-08T09:00:00Z"
+			}),
+			cancel:  "2026-02-15T09:00:00Z",
+			newFrom: "2026-02-22T09:00:00Z",
+		},
+		{
+			name: "next occurrence already excluded",
+			event: makeEvent("WEEKLY", "2026-02-01T09:00:00Z", "2026-02-01T10:00:00Z", func(e *model.Event) {
+				e.ExDates = "2026-02-08T09:00:00Z,2026-03-01T09:00:00Z"
+			}),
+			cancel:  "2026-02-01T09:00:00Z",
+			newFrom: "2026-02-15T09:00:00Z",
+		},
+		{
+			name: "biweekly by day",
+			event: makeEvent("WEEKLY", "2026-02-02T09:00:00+01:00", "2026-02-02T10:00:00+01:00", func(e *model.Event) {
+				e.RecurrenceInterval = 2
+				e.RecurrenceByDay = "MO,WE"
+			}),
+			cancel:  "2026-02-02T09:00:00+01:00",
+			newFrom: "2026-02-04T09:00:00+01:00",
+		},
+		{
+			name: "by day not in chronological order",
+			event: makeEvent("WEEKLY", "2026-02-02T09:00:00Z", "2026-02-02T10:00:00Z", func(e *model.Event) {
+				e.RecurrenceByDay = "WE,MO"
+				e.RecurrenceCount = 6
+				e.ExDates = "2026-02-02T09:00:00Z"
+			}),
+			cancel:  "2026-02-04T09:00:00Z",
+			newFrom: "2026-02-09T09:00:00Z",
+		},
+		{
+			name: "start not matching by day",
+			event: makeEvent("WEEKLY", "2026-02-02T09:00:00Z", "2026-02-02T10:00:00Z", func(e *model.Event) {
+				e.RecurrenceByDay = "TU"
+			}),
+			cancel:  "2026-02-03T09:00:00Z",
+			newFrom: "2026-02-10T09:00:00Z",
+		},
+		{
+			name: "every third day",
+			event: makeEvent("DAILY", "2026-02-01T09:00:00Z", "2026-02-01T10:00:00Z", func(e *model.Event) {
+				e.RecurrenceInterval = 3
+			}),
+			cancel:  "2026-02-01T09:00:00Z",
+			newFrom: "2026-02-04T09:00:00Z",
+		},
+		{
+			name: "count",
+			event: makeEvent("WEEKLY", "2026-02-01T09:00:00Z", "2026-02-01T10:00:00Z", func(e *model.Event) {
+				e.RecurrenceCount = 5
+				e.ExDates = "2026-02-08T09:00:00Z"
+			}),
+			cancel:  "2026-02-01T09:00:00Z",
+			newFrom: "2026-02-15T09:00:00Z",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			before := tt.event
+			if before.ExDates == "" {
+				before.ExDates = tt.cancel
+			} else {
+				before.ExDates += "," + tt.cancel
+			}
+			expected := startTimes(before, "2026-01-01T00:00:00Z", "2028-01-01T00:00:00Z")
+
+			after := tt.event
+			require.True(t, advanceSeriesStart(&after, parseTime(tt.cancel), nil))
+			assert.Equal(t, tt.newFrom, after.StartTime)
+			assert.Equal(t, parseTime(tt.newFrom).Add(time.Hour), parseTime(after.EndTime))
+			for _, exd := range strings.Split(after.ExDates, ",") {
+				if exd != "" {
+					assert.False(t, parseTime(exd).Before(parseTime(after.StartTime)), "stale EXDATE %s kept", exd)
+				}
+			}
+			assert.Equal(t, expected, startTimes(after, "2026-01-01T00:00:00Z", "2028-01-01T00:00:00Z"))
+		})
+	}
+}
+
+func TestAdvanceSeriesStart_ReducesCount(t *testing.T) {
+	e := makeEvent("WEEKLY", "2026-02-01T09:00:00Z", "2026-02-01T10:00:00Z", func(e *model.Event) {
+		e.RecurrenceCount = 5
+		e.ExDates = "2026-02-08T09:00:00Z"
+	})
+	require.True(t, advanceSeriesStart(&e, parseTime("2026-02-01T09:00:00Z"), nil))
+	assert.Equal(t, 3, e.RecurrenceCount)
+	assert.Equal(t, "", e.ExDates)
+}
+
+func TestAdvanceSeriesStart_KeepsExDateOfEarlierRDate(t *testing.T) {
+	e := makeEvent("WEEKLY", "2026-02-01T09:00:00Z", "2026-02-01T10:00:00Z", func(e *model.Event) {
+		e.RDates = "2026-02-03T09:00:00Z"
+		e.ExDates = "2026-02-03T09:00:00Z"
+	})
+	require.True(t, advanceSeriesStart(&e, parseTime("2026-02-01T09:00:00Z"), nil))
+	assert.Equal(t, "2026-02-08T09:00:00Z", e.StartTime)
+	assert.Equal(t, "2026-02-03T09:00:00Z", e.ExDates)
+}
+
+func TestAdvanceSeriesStart_Declines(t *testing.T) {
+	tests := []struct {
+		name   string
+		event  model.Event
+		cancel string
+	}{
+		{
+			name:   "not the first occurrence",
+			event:  makeEvent("WEEKLY", "2026-02-01T09:00:00Z", "2026-02-01T10:00:00Z"),
+			cancel: "2026-02-08T09:00:00Z",
+		},
+		{
+			name: "last remaining occurrence",
+			event: makeEvent("WEEKLY", "2026-02-01T09:00:00Z", "2026-02-01T10:00:00Z", func(e *model.Event) {
+				e.RecurrenceCount = 2
+				e.ExDates = "2026-02-08T09:00:00Z"
+			}),
+			cancel: "2026-02-01T09:00:00Z",
+		},
+		{
+			name: "occurrence after until",
+			event: makeEvent("DAILY", "2026-02-01T09:00:00Z", "2026-02-01T10:00:00Z", func(e *model.Event) {
+				e.RecurrenceUntil = "2026-02-01T09:00:00Z"
+			}),
+			cancel: "2026-02-01T09:00:00Z",
+		},
+		{
+			name: "cancelled occurrence is also an RDATE",
+			event: makeEvent("WEEKLY", "2026-02-01T09:00:00Z", "2026-02-01T10:00:00Z", func(e *model.Event) {
+				e.RDates = "2026-02-01T09:00:00Z"
+			}),
+			cancel: "2026-02-01T09:00:00Z",
+		},
+		{
+			name: "RDATE before the new start",
+			event: makeEvent("WEEKLY", "2026-02-01T09:00:00Z", "2026-02-01T10:00:00Z", func(e *model.Event) {
+				e.RDates = "2026-02-03T09:00:00Z"
+			}),
+			cancel: "2026-02-01T09:00:00Z",
+		},
+		{
+			name:   "monthly",
+			event:  makeEvent("MONTHLY", "2026-01-31T09:00:00Z", "2026-01-31T10:00:00Z"),
+			cancel: "2026-01-31T09:00:00Z",
+		},
+		{
+			name:   "yearly",
+			event:  makeEvent("YEARLY", "2028-02-29T09:00:00Z", "2028-02-29T10:00:00Z"),
+			cancel: "2028-02-29T09:00:00Z",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			e := tt.event
+			assert.False(t, advanceSeriesStart(&e, parseTime(tt.cancel), nil))
+			assert.Equal(t, tt.event, e)
+		})
+	}
+}
+
+func TestExpandRecurring_FirstInstanceIsAnInstance(t *testing.T) {
+	e := makeEvent("WEEKLY", "2026-02-01T09:00:00Z", "2026-02-01T10:00:00Z")
+	instances := expandRecurring(e, parseTime("2026-02-01T00:00:00Z"), parseTime("2026-02-09T00:00:00Z"))
+	require.Len(t, instances, 2)
+	for _, inst := range instances {
+		inst.SetStringID()
+		assert.Equal(t, "1_"+inst.StartTime, inst.StringID)
+		assert.Equal(t, "1", inst.ParentID)
+	}
+}
+
+func TestAdvanceSeriesStart_Overrides(t *testing.T) {
+	parentID := int64(1)
+	override := func(originalStart, start string) model.Event {
+		return model.Event{ID: 2, RecurrenceParentID: &parentID, RecurrenceOriginalStart: originalStart, StartTime: start}
+	}
+	tests := []struct {
+		name      string
+		overrides []model.Event
+		advanced  bool
+	}{
+		{"override of the cancelled occurrence", []model.Event{override("2026-02-01T09:00:00Z", "2026-02-02T09:00:00Z")}, true},
+		{"override at or after the new start", []model.Event{override("2026-02-15T09:00:00Z", "2026-02-08T09:00:00Z")}, true},
+		{"override moved before the new start", []model.Event{override("2026-02-15T09:00:00Z", "2026-02-03T09:00:00Z")}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			e := makeEvent("WEEKLY", "2026-02-01T09:00:00Z", "2026-02-01T10:00:00Z")
+			assert.Equal(t, tt.advanced, advanceSeriesStart(&e, parseTime("2026-02-01T09:00:00Z"), tt.overrides))
+		})
+	}
+}
+
+func TestExpandWeeklyByDay_ChronologicalWithinWeek(t *testing.T) {
+	e := makeEvent("WEEKLY", "2026-02-02T09:00:00Z", "2026-02-02T10:00:00Z", func(e *model.Event) {
+		e.RecurrenceByDay = "WE,MO"
+		e.RecurrenceCount = 3
+	})
+	assert.Equal(t, []string{"2026-02-02T09:00:00Z", "2026-02-04T09:00:00Z", "2026-02-09T09:00:00Z"},
+		startTimes(e, "2026-01-01T00:00:00Z", "2027-01-01T00:00:00Z"))
+}

@@ -476,6 +476,17 @@ paths:
                 $ref: "#/components/schemas/Event"
         default:
           $ref: "#/components/responses/Error"
+    # Deleting a recurrence instance (composite ID) does not always add an EXDATE.
+    # When the instance is the first remaining occurrence of a DAILY or WEEKLY
+    # series, the series start (start_time/end_time) is moved to the next remaining
+    # occurrence instead, recurrence_count is reduced by the occurrences passed
+    # over, and exdates before the new start are dropped (except those excluding an
+    # RDATE). The remaining occurrences, and their composite IDs, are unchanged.
+    # An EXDATE is still added for MONTHLY and YEARLY series, for any other
+    # occurrence, when the deleted occurrence is itself an RDATE, and when an RDATE
+    # or an override of the series starts before the would-be new start. Clients
+    # should take the returned Event as the new state of the series rather than
+    # assume the instance was appended to exdates.
     delete:
       summary: Delete an event
       description: >
@@ -1038,6 +1049,11 @@ components:
     Event:
       type: object
       properties:
+        # Every expanded instance of a recurring event, including the first one, has a
+        # composite id ("<series id>_<instance start>") and parent_id set. Before
+        # 2026-10, the first expanded instance was reported under the bare series id
+        # without parent_id, so a client deleting it deleted the whole series. The
+        # series itself (GET /api/v1/events/{series id}) still has the bare id.
         id:
           type: string
           readOnly: true

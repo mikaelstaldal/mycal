@@ -28,7 +28,7 @@ type Event struct {
 	RecurrenceByMonth       string
 	ExDates                 string
 	RDates                  string
-	RecurrenceIndex         int
+	RecurrenceIndex         int // 1-based position of an expanded instance, -1 for an RDATE instance, 0 if not expanded
 	RecurrenceParentID      *int64
 	RecurrenceOriginalStart string
 	Duration                string
