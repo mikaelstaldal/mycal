@@ -382,6 +382,25 @@ export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSa
         onClose();
     }
 
+    async function exportEvent() {
+        if (!event?.id) return;
+        setError('');
+        try {
+            const icsText = await api.events.getICS(event.id);
+            const url = URL.createObjectURL(new Blob([icsText], { type: 'text/calendar;charset=utf-8' }));
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${event.title.replace(/[^\p{L}\p{N}\s-]/gu, '').trim() || 'event'}.ics`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            // Give the browser time to start consuming the download before releasing it.
+            window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+        } catch (err: any) {
+            setError(err.message || 'Failed to export event');
+        }
+    }
+
     async function shareViaEmail(e: Event) {
         e.preventDefault();
         const recipient = shareRecipient.trim();
@@ -395,7 +414,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSa
         try {
             const icsText = await api.events.getICS(event.id);
 
-            const safeTitle = event.title.replace(/[^\w\s-]/g, '').trim() || 'event';
+            const safeTitle = event.title.replace(/[^\p{L}\p{N}\s-]/gu, '').trim() || 'event';
             const formData = new FormData();
             formData.append('message', JSON.stringify({
                 to_addr: recipient,
@@ -544,6 +563,7 @@ export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSa
                             <Fragment>
                                 <button type="button" onClick={() => setEditing(true)}>Edit</button>
                                 {onCopy && <button type="button" onClick={onCopy}>Copy</button>}
+                                {!demo && <button type="button" onClick={exportEvent}>Export</button>}
                                 {mymailUrl && <button type="button" onClick={() => { setShowShare(s => !s); setShareError(''); setShareSuccess(false); }}>Share</button>}
                                 <button type="button" class="danger" onClick={handleDelete}>Delete</button>
                             </Fragment>
