@@ -2,7 +2,6 @@
 package main
 
 import (
-	"bufio"
 	"errors"
 	"flag"
 	"fmt"
@@ -13,7 +12,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"unicode"
 
 	"golang.org/x/term"
 
@@ -141,7 +139,7 @@ func run(args []string, stdin io.Reader, stdout io.Writer) error {
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		body, _ := io.ReadAll(io.LimitReader(response.Body, 4096))
 		var diagnostic strings.Builder
-		if err := copyResponse(&diagnostic, strings.NewReader(strings.TrimSpace(string(body))), true); err != nil {
+		if err := clihttp.CopyResponse(&diagnostic, strings.NewReader(strings.TrimSpace(string(body))), true); err != nil {
 			return err
 		}
 		return fmt.Errorf("HTTP %d: %s", response.StatusCode, diagnostic.String())
@@ -153,47 +151,7 @@ func run(args []string, stdin io.Reader, stdout io.Writer) error {
 	if file, ok := stdout.(*os.File); ok {
 		terminal = term.IsTerminal(int(file.Fd()))
 	}
-	return copyResponse(stdout, response.Body, terminal)
-}
-
-// copyResponse protects terminal displays without changing exported files or pipes.
-func copyResponse(dst io.Writer, src io.Reader, terminal bool) (err error) {
-	if !terminal {
-		_, err := io.Copy(dst, src)
-		return err
-	}
-	buffered := bufio.NewWriter(dst)
-	defer func() { err = errors.Join(err, buffered.Flush()) }()
-	reader := bufio.NewReader(src)
-	for {
-		r, size, err := reader.ReadRune()
-		if errors.Is(err, io.EOF) {
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-		var text string
-		if r == unicode.ReplacementChar && size == 1 {
-			// Invalid UTF-8 may include a terminal's single-byte C1 controls.
-			if err := reader.UnreadRune(); err != nil {
-				return err
-			}
-			b, err := reader.ReadByte()
-			if err != nil {
-				return err
-			}
-			text = fmt.Sprintf("\\x%02x", b)
-		} else if unicode.IsControl(r) && r != '\t' && r != '\n' {
-			quoted := strconv.QuoteRune(r)
-			text = quoted[1 : len(quoted)-1]
-		} else {
-			text = string(r)
-		}
-		if _, err := io.WriteString(buffered, text); err != nil {
-			return err
-		}
-	}
+	return clihttp.CopyResponse(stdout, response.Body, terminal)
 }
 
 func parseCommand(args []string) (string, string, url.Values, error) {

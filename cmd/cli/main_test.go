@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"github.com/mikaelstaldal/mycal/internal/clihttp"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -142,13 +143,13 @@ func TestCopyResponse(t *testing.T) {
 		"DESCRIPTION:å日本語\t\x00\x07\x7f\u009b31m\u009dtitle\xff\x9b\n"
 	t.Run("terminal", func(t *testing.T) {
 		var out bytes.Buffer
-		require.NoError(t, copyResponse(&out, strings.NewReader(payload), true))
+		require.NoError(t, clihttp.CopyResponse(&out, strings.NewReader(payload), true))
 		assert.Equal(t, "SUMMARY:Meeting\\x1b[2J\\x1b[H\\x1b[31mFAKE\\r\n"+
 			"DESCRIPTION:å日本語\t\\x00\\a\\x7f\\u009b31m\\u009dtitle\\xff\\x9b\n", out.String())
 	})
 	t.Run("redirected", func(t *testing.T) {
 		var out bytes.Buffer
-		require.NoError(t, copyResponse(&out, strings.NewReader(payload), false))
+		require.NoError(t, clihttp.CopyResponse(&out, strings.NewReader(payload), false))
 		assert.Equal(t, payload, out.String())
 	})
 }

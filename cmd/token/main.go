@@ -52,9 +52,14 @@ var tokenPattern = regexp.MustCompile(`^mycal_[A-Za-z0-9_-]{43}$`)
 
 func main() {
 	if err := run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr); err != nil {
-		fmt.Fprintln(os.Stderr, "mycal-token:", err)
+		printError(os.Stderr, err)
 		os.Exit(1)
 	}
+}
+
+// printError protects the final diagnostic, including errors from device login and the OS.
+func printError(stderr io.Writer, err error) {
+	_, _ = fmt.Fprintln(stderr, "mycal-token:", clihttp.EscapeTerminal(err.Error()))
 }
 
 func run(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
@@ -171,7 +176,7 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 	if (method == http.MethodPost && response.StatusCode != http.StatusCreated) ||
 		(method == http.MethodDelete && response.StatusCode != http.StatusNoContent) {
 		message, _ := io.ReadAll(io.LimitReader(response.Body, 4096))
-		return fmt.Errorf("HTTP %d: %s", response.StatusCode, strings.TrimSpace(string(message)))
+		return fmt.Errorf("HTTP %d: %s", response.StatusCode, clihttp.EscapeTerminal(strings.TrimSpace(string(message))))
 	}
 	if method == http.MethodDelete {
 		_, err = fmt.Fprintf(stderr, "Revoked token %s\n", command[1])
