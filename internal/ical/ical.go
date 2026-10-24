@@ -400,6 +400,8 @@ const maxLineBytes = 1 << 20 // 1 MB — well above any reasonable unfolded iCal
 
 func unfoldLines(r io.Reader) ([]string, error) {
 	var lines []string
+	var current strings.Builder
+	haveLine := false
 	scanner := bufio.NewScanner(r)
 	scanner.Buffer(make([]byte, 64*1024), maxLineBytes)
 	for scanner.Scan() {
@@ -408,12 +410,23 @@ func unfoldLines(r io.Reader) ([]string, error) {
 		line = strings.TrimRight(line, "\r")
 		if len(line) > 0 && (line[0] == ' ' || line[0] == '\t') {
 			// Continuation line: append to previous
-			if len(lines) > 0 {
-				lines[len(lines)-1] += line[1:]
+			if haveLine {
+				if len(line)-1 > maxLineBytes-current.Len() {
+					return nil, fmt.Errorf("unfolded iCal line exceeds %d bytes", maxLineBytes)
+				}
+				current.WriteString(line[1:])
 			}
 		} else {
-			lines = append(lines, line)
+			if haveLine {
+				lines = append(lines, current.String())
+				current.Reset()
+			}
+			current.WriteString(line)
+			haveLine = true
 		}
+	}
+	if haveLine {
+		lines = append(lines, current.String())
 	}
 	return lines, scanner.Err()
 }

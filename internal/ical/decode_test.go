@@ -1,12 +1,51 @@
 package ical
 
 import (
+	"errors"
+	"io"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestUnfoldLinesLogicalLineLimit(t *testing.T) {
+	for _, extra := range []string{"", "x"} {
+		t.Run("extra="+extra, func(t *testing.T) {
+			input := "DESCRIPTION:" + strings.Repeat("x", maxLineBytes/2-len("DESCRIPTION:")) +
+				"\r\n\t" + strings.Repeat("x", maxLineBytes/2) + extra + "\r\nEND:VEVENT\r\n"
+			lines, err := unfoldLines(strings.NewReader(input))
+			if extra != "" {
+				require.ErrorContains(t, err, "unfolded iCal line exceeds")
+				_, err = Decode(strings.NewReader("BEGIN:VCALENDAR\r\n" + input))
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Len(t, lines, 2)
+			assert.Len(t, lines[0], maxLineBytes)
+			assert.Equal(t, "END:VEVENT", lines[1])
+		})
+	}
+}
+
+func TestUnfoldLinesManyContinuations(t *testing.T) {
+	input := " ignored\r\nDESCRIPTION:x\r\n" + strings.Repeat(" xxxxxxxx\r\n", 100000) + "\r\nEND\r\n"
+	lines, err := unfoldLines(strings.NewReader(input))
+	require.NoError(t, err)
+	assert.Equal(t, []string{"DESCRIPTION:x" + strings.Repeat("xxxxxxxx", 100000), "", "END"}, lines)
+}
+
+func TestUnfoldLinesReaderError(t *testing.T) {
+	want := errors.New("read failed")
+	_, err := unfoldLines(io.MultiReader(strings.NewReader("DESCRIPTION:x\r\n x\r\n"), failingReader{want}))
+	require.ErrorIs(t, err, want)
+}
+
+type failingReader struct{ err error }
+
+func (r failingReader) Read([]byte) (int, error) { return 0, r.err }
 
 func TestDecodeBasicEvent(t *testing.T) {
 	input := "BEGIN:VCALENDAR\r\n" +
