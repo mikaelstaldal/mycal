@@ -257,6 +257,14 @@ function normalizeParamTime(raw: string): string {
  */
 function parseCalendarIDsFromParams(params: URLSearchParams): number[] | null {
     const raw = params.getAll('calendar_id');
+    const names = params.getAll('calendar');
+    // Mirror the OpenAPI query constraints before resolving any filters.
+    if (raw.length > 100 || names.length > 100) {
+        throw new ApiError(400, 'too many calendar filters');
+    }
+    if (names.some(name => Array.from(name).length > MAX_CALENDAR_NAME_LENGTH)) {
+        throw new ApiError(400, 'calendar name too long');
+    }
     if (raw.length === 0) return null;
     const ids: number[] = [];
     for (const value of raw) {

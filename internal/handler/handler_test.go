@@ -927,3 +927,42 @@ func TestSearchPagingPreservesNewestFirst(t *testing.T) {
 		assert.Equal(t, "meeting 11", events[1].Title)
 	}
 }
+
+// Bounds must be enforced by the HTTP decoder, before name lookups or SQL construction.
+func TestCalendarFilterQueryBounds(t *testing.T) {
+	ts := setupTestServer(t)
+	for _, path := range []string{"/api/v1/events", "/api/v1/events.ics", "/calendar.ics"} {
+		for _, tc := range []struct {
+			name, key, value string
+			count, status    int
+		}{
+			{"ids at limit", "calendar_id", "1", 100, 200},
+			{"too many ids", "calendar_id", "1", 101, 400},
+			{"names at limit", "calendar", strings.Repeat("a", 100), 100, 200},
+			{"too many names", "calendar", "a", 101, 400},
+			{"long name", "calendar", strings.Repeat("a", 101), 1, 400},
+			{"unicode name at limit", "calendar", strings.Repeat("日", 100), 1, 200},
+		} {
+			t.Run(path+"/"+tc.name, func(t *testing.T) {
+				query := url.Values{"from": {"2026-01-01T00:00:00Z"}, "to": {"2026-02-01T00:00:00Z"}}
+				for range tc.count {
+					query.Add(tc.key, tc.value)
+				}
+				resp, err := http.Get(ts.URL + path + "?" + query.Encode())
+				require.NoError(t, err)
+				defer resp.Body.Close()
+				assert.Equal(t, tc.status, resp.StatusCode)
+			})
+		}
+	}
+	for _, length := range []int{200, 201} {
+		resp, err := http.Get(ts.URL + "/api/v1/events?q=" + strings.Repeat("a", length))
+		require.NoError(t, err)
+		resp.Body.Close()
+		if length == 200 {
+			assert.Equal(t, 200, resp.StatusCode)
+		} else {
+			assert.Equal(t, 400, resp.StatusCode)
+		}
+	}
+}
