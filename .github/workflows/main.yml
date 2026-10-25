@@ -1,5 +1,5 @@
 # Builds the project, publishes the browser-only demo to GitHub Pages, and
-# publishes the binary as a rolling `latest` release.
+# publishes the server and desktop clients as a rolling `latest` release.
 #
 # The demo needs no backend (see USER_MANUAL.md § Demo mode), so the whole site is the
 # static bundle `-demo-bundle` writes. Both are published only from main, and
@@ -26,7 +26,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     # Overrides the workflow default only to add contents: write, which the
-    # release step needs to move the `latest` tag and upload the binary.
+    # release step needs to move the `latest` tag and upload the binaries.
     permissions:
       contents: write
       pages: write
@@ -67,6 +67,9 @@ jobs:
       # non-zero, which fails the job before anything is published.
       - name: Build
         run: ./build.sh
+
+      - name: Build desktop clients
+        run: ./build-desktop.sh
 
       # Ahead of the release step, so a build with a known vulnerability reachable
       # from this code is never published. In the default source mode only
@@ -140,7 +143,7 @@ jobs:
         with:
           path: site
 
-      # Publishes the binary ./build.sh produced as a rolling release, so
+      # Publishes the server and all six desktop client binaries as a rolling release, so
       # https://github.com/<owner>/<repo>/releases/latest always serves the
       # newest green build of main. `gh` is preinstalled on the runner, so this
       # pulls in no third-party action.
@@ -149,18 +152,18 @@ jobs:
       # release and its tag, then recreate both at this commit. The delete is
       # tolerant of there being nothing to delete (the first run), but the
       # create is not — if that fails, the job fails.
-      - name: Release the binary
+      - name: Release the binaries
         env:
           GH_TOKEN: ${{ github.token }}
           # Via the environment rather than spliced into the command line, so
           # the value can never be read as shell syntax.
           SHA: ${{ github.sha }}
         run: |
-          # The asset name says what it is: the static linux/amd64 binary,
-          # which is the only platform ./build.sh targets here.
+          # Keep the existing server asset and include the desktop helpers for
+          # Linux, Windows and macOS on AMD64 and ARM64.
           cp mycal mycal-linux-amd64
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest mycal-linux-amd64 \
+          gh release create latest mycal-linux-amd64 dist/desktop/mycal-open-* \
             --target "$SHA" \
             --title "Latest build from main" \
             --notes "Automated build of \`main\` at commit $SHA."

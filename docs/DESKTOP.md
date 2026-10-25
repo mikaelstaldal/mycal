@@ -28,6 +28,10 @@ app before reinstalling, as described below.
 
 ## Build the helper
 
+Prebuilt helpers for all six targets are published in the
+[latest GitHub release](https://github.com/mikaelstaldal/mycal/releases/latest)
+after the workflow's build and test checks pass on pushes to `main`.
+
 Build just the helper on any supported client with Go installed:
 
 ```bash
