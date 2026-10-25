@@ -16,7 +16,7 @@ func desktopQuote(value string) string {
 	return strings.ReplaceAll(quoted, `\`, `\\`)
 }
 
-func installLinux(base string, setDefault bool) error {
+func installDesktop(base string, setDefault bool) error {
 	executable, err := os.Executable()
 	if err != nil {
 		return err
@@ -47,4 +47,8 @@ func installLinux(base string, setDefault bool) error {
 		return exec.Command("xdg-mime", "default", "mycal-open.desktop", "text/calendar").Run()
 	}
 	return nil
+}
+
+func browserCommand(address string) *exec.Cmd {
+	return exec.Command("xdg-open", address)
 }

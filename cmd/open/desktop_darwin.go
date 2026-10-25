@@ -36,7 +36,7 @@ end open
 
 const macDocumentTypes = `[{"CFBundleTypeName":"iCalendar File","CFBundleTypeRole":"Viewer","LSHandlerRank":"Alternate","LSItemContentTypes":["com.apple.ical.ics"],"CFBundleTypeExtensions":["ics","ical"],"CFBundleTypeMIMETypes":["text/calendar"]}]`
 
-func installMac(base string, setDefault bool) error {
+func installDesktop(base string, setDefault bool) error {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return err
@@ -101,4 +101,8 @@ func installMac(base string, setDefault bool) error {
 		_, _ = fmt.Fprintln(os.Stdout, "Select an .ics file in Finder, then Get Info > Open with > MyCal > Change All to choose the default.")
 	}
 	return nil
+}
+
+func browserCommand(address string) *exec.Cmd {
+	return exec.Command("/usr/bin/open", address)
 }

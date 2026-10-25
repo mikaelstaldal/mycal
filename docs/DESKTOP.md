@@ -23,9 +23,11 @@ or its frontend is not required to compile this helper. From a development
 checkout, `./build-desktop.sh` cross-builds helpers for Linux, Windows, and macOS,
 for both Intel/AMD (`amd64`) and ARM (`arm64`), under `dist/desktop/`.
 
-The Windows and macOS helpers can be cross-compiled and their generated
-registration data tested on Linux, but their native installation and file
-opening must also be verified on those operating systems. These helpers are not
+Platform implementations and their tests use Go's operating-system filename
+suffixes, so each build includes only its matching platform code. The Windows
+and macOS helpers and test executables can be cross-compiled on Linux, but their
+tests, native installation, and file opening must run on those operating
+systems. These helpers are not
 distributed with a publisher certificate or Apple notarization. The macOS
 installer signs the app it generates locally with an ad hoc signature.
 

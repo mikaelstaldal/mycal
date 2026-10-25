@@ -64,7 +64,7 @@ func windowsRegistration(executable, base string) [][]string {
 	return commands
 }
 
-func installWindows(base string, setDefault bool) error {
+func installDesktop(base string, setDefault bool) error {
 	executable, err := os.Executable()
 	if err != nil {
 		return err
@@ -79,4 +79,8 @@ func installWindows(base string, setDefault bool) error {
 		return browserCommand("ms-settings:defaultapps").Run()
 	}
 	return nil
+}
+
+func browserCommand(address string) *exec.Cmd {
+	return exec.Command("rundll32.exe", "url.dll,FileProtocolHandler", address)
 }

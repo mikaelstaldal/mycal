@@ -34,9 +34,3 @@ func TestBridgeEscapesFileContents(t *testing.T) {
 	assert.NotContains(t, output.String(), "</textarea>")
 	assert.Contains(t, output.String(), `"https://example.com/mycal/"`)
 }
-
-func TestDesktopQuote(t *testing.T) {
-	assert.Equal(t, `"/home/test/My Cal/mycal-open"`, desktopQuote("/home/test/My Cal/mycal-open"))
-	assert.Equal(t, `"https://example.com/a%%20b/"`, desktopQuote("https://example.com/a%20b/"))
-	assert.Equal(t, `"a\\$b\\`+"`"+`c\\"d\\\\e"`, desktopQuote("a$b`c\"d\\e"))
-}
