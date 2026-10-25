@@ -652,7 +652,11 @@ function addExDate(state: DemoState, id: number, instanceStart: string): DemoEve
     const existing = getByID(state, id);
     if (!isRecurring(existing)) throw validationError('event is not recurring');
 
-    existing.exdates = existing.exdates === '' ? instanceStart : existing.exdates + ',' + instanceStart;
+    if (existing.exdates.split(',').some((date) => date.trim() === instanceStart)) return existing;
+
+    const exdates = existing.exdates === '' ? instanceStart : existing.exdates + ',' + instanceStart;
+    validateDateList(exdates, 'exdates');
+    existing.exdates = exdates;
     existing.updated_at = nowRFC3339();
 
     const override = getOverride(state, id, instanceStart);

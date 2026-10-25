@@ -1535,3 +1535,43 @@ func TestImportOverrideValidation(t *testing.T) {
 		})
 	}
 }
+
+func TestAddExDate_ListLimits(t *testing.T) {
+	const instance = "2026-02-15T09:00:00Z"
+	for _, tc := range []struct {
+		name       string
+		exdates    string
+		wantError  bool
+		wantUpdate bool
+	}{
+		{"duplicate", "  " + instance + "  ", false, false},
+		{"duplicate in oversized legacy list", strings.Repeat(instance+",", 250) + instance, false, false},
+		{"at limit", strings.Repeat("2026-02-08T09:00:00Z,", 236) + "2026-02-08T09:00:00.00Z", false, true},
+		{"over limit", strings.Repeat("2026-02-08T09:00:00Z,", 236) + "2026-02-08T09:00:00.000Z", true, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			event := &model.Event{ID: 1, StartTime: "2026-02-01T09:00:00Z",
+				EndTime: "2026-02-01T10:00:00Z", RecurrenceFreq: "WEEKLY", ExDates: tc.exdates}
+			updated := false
+			repo := &mockRepo{
+				getByIDFn:     func(int64) (*model.Event, error) { return event, nil },
+				updateFn:      func(*model.Event) error { updated = true; return nil },
+				getOverrideFn: func(int64, string) (*model.Event, error) { return nil, nil },
+			}
+			result, err := NewEventService(repo, &mockCalRepo{}).AddExDate(1, instance)
+			if tc.wantError {
+				require.ErrorIs(t, err, ErrValidation)
+				assert.Equal(t, tc.exdates, event.ExDates)
+			} else {
+				require.NoError(t, err)
+				require.Same(t, event, result)
+				if tc.wantUpdate {
+					assert.Len(t, result.ExDates, maxRecurrenceListLen)
+				} else {
+					assert.Equal(t, tc.exdates, result.ExDates)
+				}
+			}
+			assert.Equal(t, tc.wantUpdate, updated)
+		})
+	}
+}

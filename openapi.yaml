@@ -486,7 +486,9 @@ paths:
     # occurrence, when the deleted occurrence is itself an RDATE, and when an RDATE
     # or an override of the series starts before the would-be new start. Clients
     # should take the returned Event as the new state of the series rather than
-    # assume the instance was appended to exdates.
+    # assume the instance was appended to exdates. A timestamp already present in
+    # exdates (after trimming whitespace) returns the unchanged event. Appending
+    # a timestamp that would exceed the 5000-character exdates limit returns 400.
     delete:
       summary: Delete an event
       description: >

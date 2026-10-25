@@ -791,6 +791,12 @@ func (s *EventService) AddExDate(id int64, instanceStart string) (*model.Event, 
 		return nil, fmt.Errorf("%w: event is not recurring", ErrValidation)
 	}
 
+	for _, exdate := range strings.Split(existing.ExDates, ",") {
+		if strings.TrimSpace(exdate) == instanceStart {
+			return existing, nil
+		}
+	}
+
 	overrides, err := s.repo.ListOverrides([]int64{id}, "0001-01-01T00:00:00Z", "9999-12-31T23:59:59Z")
 	if err != nil {
 		return nil, err
@@ -799,11 +805,14 @@ func (s *EventService) AddExDate(id int64, instanceStart string) (*model.Event, 
 	// Cancelling the first remaining occurrence moves the series start;
 	// any other occurrence is appended to the EXDATE list.
 	if !advanceSeriesStart(existing, instStartTime, overrides) {
-		if existing.ExDates == "" {
-			existing.ExDates = instanceStart
-		} else {
-			existing.ExDates = existing.ExDates + "," + instanceStart
+		exdates := instanceStart
+		if existing.ExDates != "" {
+			exdates = existing.ExDates + "," + instanceStart
 		}
+		if err := validateDateList(exdates, "exdates"); err != nil {
+			return nil, fmt.Errorf("%w: %v", ErrValidation, err)
+		}
+		existing.ExDates = exdates
 	}
 
 	if err := s.repo.Update(existing); err != nil {
