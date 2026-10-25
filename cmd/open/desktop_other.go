@@ -7,6 +7,8 @@ import (
 	"os/exec"
 )
 
+const maxBrowserURLLength = 16 << 10
+
 func browserCommand(address string) *exec.Cmd {
 	return exec.Command("xdg-open", address)
 }

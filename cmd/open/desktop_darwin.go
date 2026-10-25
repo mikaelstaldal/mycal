@@ -9,6 +9,8 @@ import (
 	"strings"
 )
 
+const maxBrowserURLLength = 16 << 10
+
 func appleScriptQuote(value string) string {
 	return `"` + strings.NewReplacer(`\`, `\\`, `"`, `\"`, "\n", `\n`, "\r", `\r`).Replace(value) + `"`
 }

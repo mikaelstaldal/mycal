@@ -7,6 +7,9 @@ import (
 	"strings"
 )
 
+// Leave room below the shell URL launcher's legacy ~2 KiB limit.
+const maxBrowserURLLength = 2000
+
 // windowsQuote follows CommandLineToArgvW escaping; no command shell is used.
 func windowsQuote(value string) string {
 	var quoted strings.Builder

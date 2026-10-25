@@ -1,5 +1,4 @@
 import { test, expect } from '@playwright/test';
-import type { Page } from '@playwright/test';
 import { clearAllEvents } from './helpers';
 
 const calendar = `BEGIN:VCALENDAR\r
@@ -26,57 +25,67 @@ async function events(request: Parameters<typeof clearAllEvents>[0]) {
   return response.json();
 }
 
-async function openDesktop(page: Page, baseURL: string) {
-  // A different loopback origin models the native helper's short-lived page.
-  await page.route('http://127.0.0.1:54321/**', route => route.fulfill({
-    contentType: 'text/html',
-    body: `<button>Continue to MyCal</button><script>
-      const nonce = 'abcdefghijklmnopqrstuvwx';
-      let receiver;
-      document.querySelector('button').onclick = () => {
-        receiver = window.open(${JSON.stringify(baseURL + '/#desktop-import=http%3A%2F%2F127.0.0.1%3A54321%2Fabcdefghijklmnopqrstuvwx')}, '_blank');
-      };
-      addEventListener('message', event => {
-        if (event.origin === ${JSON.stringify(new URL(baseURL).origin)} && event.source === receiver && event.data?.type === 'mycal-desktop-ready') {
-          receiver.postMessage({type: 'mycal-desktop-file', nonce, content: ${JSON.stringify(calendar).replaceAll('<', '\\u003c')}}, event.origin);
-        }
-      });
-    </script>`,
-  }));
-  await page.goto('http://127.0.0.1:54321/secret');
-  const opened = page.waitForEvent('popup');
-  await page.getByRole('button', { name: 'Continue to MyCal' }).click();
-  return opened;
+function fragment(content = calendar): string {
+  return '#import=' + btoa(Array.from(new TextEncoder().encode(content), byte => String.fromCharCode(byte)).join(''))
+    .replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
 }
 
-test('desktop handoff opens confirmation and imports only when confirmed', async ({ page, request, baseURL, context }) => {
-  // A normal top-level GET includes existing Lax login cookies across sites.
-  await context.addCookies([{ name: 'desktop-login', value: 'present', url: baseURL!, sameSite: 'Lax' }]);
-  const navigation = context.waitForEvent('request', req => req.isNavigationRequest() && req.url().startsWith(baseURL!));
-  const mycal = await openDesktop(page, baseURL!);
-  expect((await (await navigation).allHeaders()).cookie).toContain('desktop-login=present');
+test('desktop handoff opens confirmation and imports only when confirmed', async ({ page, request, context }) => {
+  const requested: string[] = [];
+  page.on('request', req => requested.push(req.url()));
+  await page.goto('/' + fragment());
+  const mycal = page;
+  expect(context.pages()).toHaveLength(1);
 
   const dialog = mycal.getByRole('dialog');
-  await expect(dialog.getByRole('heading', { name: 'Open iCalendar File' })).toBeVisible();
+  await expect(dialog.getByRole('heading', { name: 'Import Event' })).toBeVisible();
   await expect(dialog.locator('textarea')).toHaveValue(calendar.replaceAll('\r\n', '\n'));
   expect(await mycal.evaluate(() => 'desktopInjection' in window)).toBeFalsy();
   expect(await events(request)).toHaveLength(0);
   expect(new URL(mycal.url()).hash).toBe('');
-  await dialog.getByRole('button', { name: 'Import All', exact: true }).click();
+  expect(requested.every(url => !url.includes('import='))).toBeTruthy();
+  await dialog.getByRole('button', { name: 'Import Event', exact: true }).click();
   await expect(dialog).not.toBeVisible();
   await expect(mycal.locator('.toast-item:not(.toast-error)')).toBeVisible();
   const imported = await events(request);
   expect(imported).toHaveLength(1);
   expect(imported[0].title).toBe('Desktop file event');
   await mycal.reload();
-  await expect(mycal.getByRole('heading', { name: 'Open iCalendar File' })).not.toBeVisible();
+  await expect(mycal.getByRole('heading', { name: 'Import Event' })).not.toBeVisible();
 });
 
-test('cancelling a desktop import leaves the calendar unchanged', async ({ page, request, baseURL }) => {
-  const mycal = await openDesktop(page, baseURL!);
+test('cancelling a desktop import leaves the calendar unchanged', async ({ page, request }) => {
+  await page.goto('/' + fragment());
+  const mycal = page;
   const dialog = mycal.getByRole('dialog');
-  await expect(dialog.getByRole('heading', { name: 'Open iCalendar File' })).toBeVisible();
+  await expect(dialog.getByRole('heading', { name: 'Import Event' })).toBeVisible();
   await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(dialog).not.toBeVisible();
   expect(await events(request)).toHaveLength(0);
+});
+
+test('multiple events are rejected by the single-event importer without writes', async ({ page, request }) => {
+  const second = calendar.slice(calendar.indexOf('BEGIN:VEVENT')).replace('desktop-test', 'second-test');
+  await page.goto('/' + fragment(calendar.replace('END:VCALENDAR', second)));
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: 'Import Event', exact: true }).click();
+  await expect(page.locator('.toast-error')).toBeVisible();
+  await expect(dialog).toBeVisible();
+  expect(await events(request)).toHaveLength(0);
+});
+
+test('malformed fragment is cleared and shows an error without importing', async ({ page, request }) => {
+  await page.goto('/#import=bad!');
+  await expect(page.locator('.toast-error')).toBeVisible();
+  expect(new URL(page.url()).hash).toBe('');
+  await expect(page.getByRole('dialog')).not.toBeVisible();
+  expect(await events(request)).toHaveLength(0);
+});
+
+test('an existing tab can receive a new import fragment', async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate(hash => { location.hash = hash; }, fragment());
+  await expect(page.getByRole('dialog').getByRole('heading', { name: 'Import Event' })).toBeVisible();
+  expect(new URL(page.url()).hash).toBe('');
 });

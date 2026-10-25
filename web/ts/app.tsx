@@ -23,7 +23,7 @@ import { getConfig, hasUserDefaultView } from './util/config.js';
 import { isDemo, mymailUrl, mynotesUrl } from './util/serverconfig.js';
 import { checkAndNotify, requestPermission } from './util/notifications.js';
 import { showChoice, showConfirm } from './util/confirm.js';
-import { receiveDesktopImport } from './util/desktop-import.js';
+import { takeDesktopImport } from './util/desktop-import.js';
 import type { components } from './api/types.js';
 import type { AppConfig } from './util/config.js';
 type CalendarEvent = components['schemas']['Event'];
@@ -58,9 +58,17 @@ function comparableFeedURI(raw: string): string {
 }
 
 function App() {
-    const [desktopImport, setDesktopImport] = useState<string | null>(null);
+    const [desktopImport, setDesktopImport] = useState<string | null>(() => {
+        const content = takeDesktopImport();
+        return demo ? null : content;
+    });
     useEffect(() => {
-        if (!demo) return receiveDesktopImport(setDesktopImport);
+        const onHashChange = () => {
+            const content = takeDesktopImport();
+            if (!demo && content !== null) setDesktopImport(content);
+        };
+        window.addEventListener('hashchange', onHashChange);
+        return () => window.removeEventListener('hashchange', onHashChange);
     }, []);
     const [darkMode, setDarkMode] = useState(() => localStorage.getItem('darkMode') === 'true');
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -674,14 +682,14 @@ function App() {
                            mynotesUrl={demo ? '' : (config.mynotesUrl || mynotesUrl())}
                            darkMode={darkMode} />
             )}
-            {!demo && showImportSingle && (
-                <ImportSingleForm onImported={() => { setShowImportSingle(false); loadEvents(); }}
-                                  onClose={() => setShowImportSingle(false)} />
+            {!demo && (showImportSingle || desktopImport !== null) && (
+                <ImportSingleForm initialContent={desktopImport ?? undefined}
+                                  onImported={() => { setShowImportSingle(false); setDesktopImport(null); loadEvents(); }}
+                                  onClose={() => { setShowImportSingle(false); setDesktopImport(null); }} />
             )}
-            {!demo && (showImportBulk || desktopImport !== null) && (
-                <ImportBulkForm initialContent={desktopImport ?? undefined}
-                                onImported={() => { setShowImportBulk(false); setDesktopImport(null); loadEvents(); }}
-                                onClose={() => { setShowImportBulk(false); setDesktopImport(null); }} />
+            {!demo && showImportBulk && (
+                <ImportBulkForm onImported={() => { setShowImportBulk(false); loadEvents(); }}
+                                onClose={() => setShowImportBulk(false)} />
             )}
             {!demo && showFeeds && (
                 <FeedsDialog onClose={() => setShowFeeds(false)}

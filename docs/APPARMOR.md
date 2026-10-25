@@ -11,18 +11,17 @@ under home directories, `/tmp`, `/var/tmp`, `/run/user`, `/media`, and `/mnt`.
 The allowed suffixes are `.ics`, `.ical`, `.ICS`, and `.ICAL`. Symlinks are
 checked against their resolved target paths. Files without those suffixes,
 files owned by another account, or files elsewhere require a local rule.
-The helper gets the Go runtime metadata, entropy, terminal access, and IPv4 TCP
-permissions it needs, but no regular-file writes or installer commands.
+The helper gets Go runtime metadata, entropy fallback, and terminal access, but
+no regular-file writes, networking permissions, or installer commands.
 Runtime metadata paths were derived from the Go 1.26 source, without a system
 call trace. Other Go releases or cgroup mount layouts may require additional
 read-only rules; repeat the enforced smoke test after upgrading the helper.
 
-The profile uses the AppArmor 3.0 policy ABI and coarse IPv4 TCP mediation for
-compatibility. It does **not** enforce a loopback-only network restriction:
-`network inet stream` permits IPv4 TCP generally. The application's listener
-still binds only to `127.0.0.1`; the browser makes the connection to the MyCal
-server. No IPv6, UDP, DNS configuration access, or Linux capabilities are granted
-to the helper.
+The profile uses the AppArmor 3.0 policy ABI. The helper reads the selected file
+and passes a bounded, encoded URL to the system browser launcher. It no longer
+opens a local HTTP listener or connects to the MyCal server. All network access
+is denied in the helper's profile; the browser performs the authenticated server
+requests under its own permissions. No Linux capabilities are granted.
 
 `xdg-open` is a deliberate trust boundary. Its `rPUx` execution rule transitions
 to a launcher profile if one exists, otherwise launches it unconfined while
@@ -79,19 +78,18 @@ enforced desktop smoke test could not be performed there. The installed AppArmor
 Python policy reader accepted the source; that is not a substitute for policy
 compilation or kernel enforcement. Validate both on the target client before
 relying on it. No AppArmor policy is installed or loaded by `mycal-open -install`.
+After updating the helper or policy, replace and reload any installed copy of
+this profile using the commands above.
 
-Open a real `.ics` file using **Open With > MyCal**. Confirm that the helper page
-and MyCal's import dialog open, then cancel and confirm the calendar is unchanged.
+Open a real, small `.ics` file using **Open With > MyCal**. Confirm that MyCal's
+single-event import dialog opens directly, then cancel and confirm the calendar
+is unchanged.
 Open it again and confirm an import. Also try an invalid calendar file and
 inspect kernel audit messages for unexpected denials:
 
 ```bash
 sudo journalctl -k --since '5 minutes ago' | grep 'profile="mycal-open"'
 ```
-
-Depending on the Go version and startup path, optional IPv6 capability probes
-may generate `inet6` denials. These probes can fail gracefully while the IPv4
-listener works; they do not require enabling IPv6 in this profile.
 
 To check enforcement, try a readable calendar copied to a home-directory
 filename without a permitted extension. Running the helper directly on that

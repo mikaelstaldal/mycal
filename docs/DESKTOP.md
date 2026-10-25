@@ -2,9 +2,9 @@
 
 MyCal can appear in **Open With** for `.ics` files, including calendar attachments
 opened from a desktop mail client. It works with a local or remotely hosted MyCal
-server and uses your normal browser login. Opening a file shows a **Continue to
-MyCal** button. Click it to open the web interface, review the file contents,
-choose a calendar, and confirm before importing any events.
+server and uses your normal browser login. Opening a file opens MyCal directly
+in one browser tab. Review the file contents, choose a calendar, and confirm
+before importing the event.
 
 The server can run on Linux regardless of the client operating system. The
 optional Go helper supports Linux, Windows, and macOS clients. All three use the
@@ -150,33 +150,53 @@ default application and move the MyCal app to Trash.
 
 ## Browser handoff
 
+The helper reads one UTF-8 iCalendar file, removes an optional UTF-8 byte-order
+mark, and opens the configured server URL with a base64url-encoded fragment:
+
+```text
+https://example.com/mycal/#import=<base64url-encoded-ics>
+```
+
+MyCal decodes and removes the fragment before rendering, then opens the single
+**Import Event** confirmation dialog. It also accepts import fragments in an
+already open tab. No event is created until you confirm; the existing single-event
+API rejects files containing multiple events. Cancelling or reloading discards
+the pending import. Bulk imports remain available through the normal file picker.
+
+The helper starts the browser directly. The browser makes a normal top-level
+GET and uses its existing login. The helper and web frontend must
+both include this fragment protocol; update the embedded helper in an existing
+macOS app by reinstalling it. If an authentication proxy drops fragments during
+login, sign in first and reopen the file. Opener relationships and popup
+permissions are no longer needed.
+
+Fragments are not sent in HTTP requests or Referer headers. However, the initial
+URL contains the event data and can be visible to local process inspection,
+browser extensions, browser history/synchronization, or authentication pages
+before MyCal removes it. Removing the fragment from the current history entry
+does not guarantee erasure from those other places. Do not share the import URL.
+
+To bound browser launch arguments, the complete URL is limited to **16 KiB on
+Linux/macOS** and **2,000 bytes on Windows**, whose shell launcher has a tighter
+URL limit. Encoding increases the file size by about one third; the server URL
+also takes space. The helper reads at most 12 KiB before encoding, and rejects
+an oversized URL with instructions to use MyCal's **Import Event** file picker.
+The URL cap is the actual limit, not a guaranteed file-size allowance: Windows
+typically fits about 1.4 KiB of event data, and Linux/macOS fit slightly less
+than 12 KiB. A longer server URL reduces those allowances further.
+Long descriptions or embedded attachments can exceed the limit even for one
+event. No file is uploaded automatically as a fallback.
+
 Remote servers require HTTPS. Plain HTTP is supported for loopback addresses.
-Both the server and helper must include desktop integration support. MyCal opens
-with a normal top-level GET, so existing browser login cookies work normally.
-If your authentication proxy replaces URL fragments or severs popup opener
-relationships during login, sign in to MyCal first and then reopen the file.
-The MyCal page must retain its opener relationship; a proxy setting
-`Cross-Origin-Opener-Policy: same-origin` on MyCal prevents this integration.
-
-The helper briefly serves a random, loopback-only URL to your browser. Clicking
-**Continue to MyCal** opens MyCal in another tab, then transfers the file through
-`postMessage`. Both pages check the other page's origin and window identity, and
-the handoff also requires a matching random nonce. Only the helper address and
-nonce appear in the navigation fragment; file contents never appear in a URL.
-The import waits in memory until you confirm. The final import uses the existing
-authenticated, CSRF-protected import API. No API token or local copy of your
-server password is needed, and no server authentication or CSRF exception is
-required. Once the file is sent, you can close the helper tab.
-
-Desktop opening supports UTF-8 iCalendar files up to 10 MiB, including files with
-a UTF-8 byte-order mark. Cancelling the dialog or reloading the MyCal tab discards
-the file; reopen it from the desktop to start again. On Linux, the helper is
-listed in **Open With**, rather than the application launcher, because it needs
-a file.
+On Linux, the helper is listed in **Open With**, rather than the application
+launcher, because it needs a file.
 
 Platform references: [Windows file registration](https://learn.microsoft.com/en-us/windows/win32/shell/fa-file-types),
 [Windows Default apps settings](https://learn.microsoft.com/en-us/windows/apps/develop/launch/launch-settings),
+[Windows launcher limits][windows-url-limits],
 [Apple application bundles][apple-bundles],
 and [choosing a default application in Finder](https://support.apple.com/en-ie/guide/mac-help/mh35597/27/mac/27).
 
 [apple-bundles]: https://developer.apple.com/library/archive/documentation/CoreFoundation/Conceptual/CFBundles/BundleTypes/BundleTypes.html
+
+[windows-url-limits]: https://devblogs.microsoft.com/oldnewthing/20031210-00/?p=41553

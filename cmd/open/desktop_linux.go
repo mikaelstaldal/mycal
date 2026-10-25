@@ -9,6 +9,8 @@ import (
 	"strings"
 )
 
+const maxBrowserURLLength = 16 << 10
+
 // Desktop Exec uses its own quoting rules, independently of shell quoting.
 func desktopQuote(value string) string {
 	quoted := `"` + strings.NewReplacer(`\`, `\\`, `"`, `\"`, "`", "\\`", "$", `\$`, "%", "%%").Replace(value) + `"`

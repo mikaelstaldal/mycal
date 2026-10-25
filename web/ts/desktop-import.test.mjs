@@ -1,64 +1,45 @@
-// Tests the compiled desktop handoff's origin, source-window and nonce checks.
-// These checks keep unrelated pages from placing files in an import dialog.
+// Tests the compiled URL-fragment decoder: UTF-8, bounds, malformed input,
+// and removal of the payload before any UI/API work.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-const { receiveDesktopImport } = await import('../static/util/desktop-import.js');
-const nonce = 'abcdefghijklmnopqrstuvwx';
-const content = 'BEGIN:VCALENDAR\r\nEND:VCALENDAR';
+const { decodeDesktopImport, takeDesktopImport } = await import('../static/util/desktop-import.js');
+const content = 'BEGIN:VCALENDAR\r\nSUMMARY:Möte 🗓️ </textarea><script>alert(1)</script>\r\nEND:VCALENDAR';
+const encode = text => Buffer.from(text).toString('base64url');
 
-function setup(raw = `http://127.0.0.1:54321/${nonce}`) {
-    const listeners = new Map();
-    const sent = [];
-    const files = [];
-    const opener = { postMessage: (...args) => sent.push(args) };
-    globalThis.location = { hash: '#desktop-import=' + encodeURIComponent(raw), pathname: '/', search: '' };
-    globalThis.history = { state: null, replaceState() {} };
-    globalThis.window = {
-        opener, setTimeout,
-        addEventListener: (type, fn) => listeners.set(type, fn),
-        removeEventListener: type => listeners.delete(type),
-    };
-    const cleanup = receiveDesktopImport(file => files.push(file));
-    const deliver = (overrides = {}) => listeners.get('message')?.({
-        origin: 'http://127.0.0.1:54321', source: opener,
-        data: { type: 'mycal-desktop-file', nonce, content }, ...overrides,
-    });
-    return { cleanup, sent, files, deliver, listeners };
+function setup(fragment) {
+    let replaced;
+    globalThis.location = { hash: fragment, pathname: '/mycal/', search: '?view=week' };
+    globalThis.history = { state: { keep: true }, replaceState: (...args) => { replaced = args; } };
+    return () => replaced;
 }
 
-test('only the matching helper window, origin and nonce can deliver a file', () => {
-    const handoff = setup();
-    try {
-        assert.deepEqual(handoff.sent, [[{ type: 'mycal-desktop-ready', nonce }, 'http://127.0.0.1:54321']]);
-        handoff.deliver({ origin: 'https://unrelated.example' });
-        handoff.deliver({ source: {} });
-        handoff.deliver({ data: { type: 'mycal-desktop-file', nonce: 'wrong', content } });
-        handoff.deliver({ data: { type: 'mycal-desktop-file', nonce, content: 'https://example.com/file.ics' } });
-        handoff.deliver({ data: { type: 'mycal-desktop-file', nonce, content: 'BEGIN:VCALENDAR' + 'x'.repeat(10 * 1024 * 1024) } });
-        assert.deepEqual(handoff.files, []);
-        handoff.deliver();
-        assert.deepEqual(handoff.files, [content]);
-        assert.equal(handoff.listeners.size, 0);
-        handoff.deliver();
-        assert.deepEqual(handoff.files, [content]);
-    } finally {
-        handoff.cleanup();
+test('base64url preserves Unicode and untrusted markup as plain text', () => {
+    assert.equal(decodeDesktopImport(encode(content)), content);
+});
+
+test('malformed, non-UTF8, non-calendar and oversized payloads are rejected', () => {
+    for (const raw of ['', 'a', '!bad', 'YWJj=', 'x'.repeat(16385), encode('https://example.com/file.ics'),
+        Buffer.from([0xff]).toString('base64url'), encode('BEGIN:VCALENDAR' + 'x'.repeat(12 * 1024))]) {
+        assert.throws(() => decodeDesktopImport(raw), undefined, raw.slice(0, 30));
     }
 });
 
-test('a navigation fragment cannot nominate a non-loopback or malformed helper', () => {
-    for (const raw of [
-        `https://example.com/${nonce}`, `http://127.0.0.1.example.com:54321/${nonce}`,
-        `http://127.0.0.1/${nonce}`, 'http://127.0.0.1:54321/short',
-        `http://user@127.0.0.1:54321/${nonce}`, `http://127.0.0.1:54321/${nonce}?extra=1`,
-    ]) {
-        const handoff = setup(raw);
-        try {
-            assert.deepEqual(handoff.sent, [], raw);
-            assert.equal(handoff.listeners.size, 0, raw);
-        } finally {
-            handoff.cleanup();
-        }
-    }
+test('payload is consumed and removed from the current history entry', () => {
+    const replacement = setup('#import=' + encode(content));
+    assert.equal(takeDesktopImport(), content);
+    assert.deepEqual(replacement(), [{ keep: true }, '', '/mycal/?view=week']);
+});
+
+test('malformed imports are also removed before showing an error', t => {
+    t.mock.method(globalThis, 'setTimeout', () => 0);
+    const replacement = setup('#import=bad!');
+    assert.equal(takeDesktopImport(), null);
+    assert.deepEqual(replacement(), [{ keep: true }, '', '/mycal/?view=week']);
+});
+
+test('unrelated navigation fragments are left alone', () => {
+    const replacement = setup('#subscribe=https://example.com/feed');
+    assert.equal(takeDesktopImport(), null);
+    assert.equal(replacement(), undefined);
 });

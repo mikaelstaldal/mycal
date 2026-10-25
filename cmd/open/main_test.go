@@ -1,9 +1,11 @@
 package main
 
 import (
-	"bytes"
+	"encoding/base64"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -52,15 +54,48 @@ func TestTargetURL(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestBridgeEscapesFileContents(t *testing.T) {
-	var output bytes.Buffer
-	err := bridgePage.Execute(&output, bridgeData{
-		"https://example.com/mycal/",
-		"BEGIN:VCALENDAR\r\nSUMMARY:</textarea><script>alert(1)</script>&\r\nEND:VCALENDAR",
-		"test-nonce",
-	})
+func TestImportURLPreservesUTF8AndUsesOnlyFragment(t *testing.T) {
+	content := "BEGIN:VCALENDAR\r\nSUMMARY:Möte 🗓️ </textarea><script>alert(1)</script>&\r\nEND:VCALENDAR"
+	address, err := importURL("https://example.com/mycal/", []byte("\xef\xbb\xbf"+content))
 	require.NoError(t, err)
-	assert.NotContains(t, output.String(), "<script>alert(1)</script>")
-	assert.NotContains(t, output.String(), "</textarea>")
-	assert.Contains(t, output.String(), `"https://example.com/mycal/"`)
+	u, err := url.Parse(address)
+	require.NoError(t, err)
+	assert.Equal(t, "/mycal/", u.Path)
+	assert.Empty(t, u.RawQuery)
+	decoded, err := base64.RawURLEncoding.DecodeString(strings.TrimPrefix(u.Fragment, "import="))
+	require.NoError(t, err)
+	assert.Equal(t, content, string(decoded))
+	assert.NotContains(t, address, "<script>")
+}
+
+func TestImportURLRejectsInvalidOrOversizedContent(t *testing.T) {
+	for _, data := range []string{"", "https://example.com/event.ics", "BEGIN:VCALENDAR\xff", "BEGIN:VCALENDAR" + strings.Repeat("x", maxFileSize)} {
+		_, err := importURL("https://example.com/", []byte(data))
+		assert.Error(t, err)
+	}
+	_, err := importURL("https://example.com/"+strings.Repeat("x", maxBrowserURLLength), []byte("BEGIN:VCALENDAR\nEND:VCALENDAR"))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "file picker")
+}
+
+func TestImportURLBudgetIncludesServerURLAndBase64Expansion(t *testing.T) {
+	target := "https://example.com/mycal/"
+	size := (maxBrowserURLLength - len(target) - len("#import=")) * 3 / 4
+	prefix := "BEGIN:VCALENDAR\n"
+	data := []byte(prefix + strings.Repeat("x", size-len(prefix)))
+	address, err := importURL(target, data)
+	require.NoError(t, err)
+	assert.LessOrEqual(t, len(address), maxBrowserURLLength)
+	_, err = importURL(target, append(data, 'x'))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "file picker")
+}
+
+func TestOversizedFileDoesNotLaunchBrowser(t *testing.T) {
+	t.Setenv("MYCAL_URL", "https://example.com/")
+	file := filepath.Join(t.TempDir(), "large.ics")
+	require.NoError(t, os.WriteFile(file, []byte("BEGIN:VCALENDAR"+strings.Repeat("x", maxFileSize)), 0600))
+	err := run([]string{file})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "file picker")
 }
