@@ -1,0 +1,52 @@
+# AppArmor runtime profile for the statically linked Linux desktop helper.
+# Register the desktop association with -install BEFORE loading this profile.
+# See docs/APPARMOR.md for the launcher trust boundary and local overrides.
+
+abi <abi/3.0>,
+include <tunables/global>
+
+@{mycal_open} = /usr{,/local}/bin/mycal-open @{HOME}/.local/bin/mycal-open
+
+profile mycal-open @{mycal_open} {
+  # Executable mapping; no execution of arbitrary programs or shared libraries.
+  @{mycal_open} mr,
+
+  # Go runtime metadata, CPU quota detection and entropy fallback.
+  owner @{PROC}/{self,@{pid}}/{auxv,cgroup,mountinfo} r,
+  /sys/kernel/mm/transparent_hugepage/hpage_pmd_size r,
+  /sys/devices/system/cpu/{online,possible} r,
+  /sys/fs/cgroup/{,**/}cpu.{max,cfs_period_us,cfs_quota_us} r,
+  @{PROC}/sys/net/core/somaxconn r,
+  /dev/urandom r,
+
+  # HTTP error timestamps and inherited standard input/output.
+  /etc/localtime r,
+  /usr/share/zoneinfo/** r,
+  /dev/null rw,
+  /dev/tty rw,
+  owner /dev/pts/[0-9]* rw,
+
+  # Calendar documents only. AppArmor checks the resolved target of symlinks.
+  owner @{HOME}/**.{ics,ical,ICS,ICAL} r,
+  owner /{tmp,var/tmp}/**.{ics,ical,ICS,ICAL} r,
+  owner /run/user/@{uid}/**.{ics,ical,ICS,ICAL} r,
+  owner /{media,mnt}/**.{ics,ical,ICS,ICAL} r,
+
+  # Portable AppArmor network mediation grants IPv4 TCP as a whole, not just
+  # loopback. The helper itself binds only to 127.0.0.1 on an ephemeral port.
+  network inet stream,
+
+  # Go runtime signals within the process and normal external termination.
+  signal (send) peer=mycal-open,
+  signal (receive),
+
+  # Trust the system launcher to start the user's browser outside this narrow
+  # profile. Use its own profile if installed, otherwise fall back to an
+  # unconfined transition, with loader-sensitive environment variables scrubbed.
+  # This is an intentional escape boundary, not containment of a compromised
+  # helper. Do not replace this with ix: a browser needs its own permissions.
+  /{,usr/}bin/xdg-open rPUx,
+
+  # No regular-file writes, installer commands, DNS, IPv6 or capabilities.
+  include if exists <local/mycal-open>
+}

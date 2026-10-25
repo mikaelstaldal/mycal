@@ -67,6 +67,9 @@ your desktop settings, remove `mycal-open.desktop` from the applications
 directory, and run `update-desktop-database` on that directory. You can then remove
 the helper executable.
 
+An optional [AppArmor runtime profile](APPARMOR.md) restricts the Linux helper's
+direct resource access. Complete desktop registration before loading it.
+
 ## Windows
 
 Keep `mycal-open.exe` in a permanent location, for example
