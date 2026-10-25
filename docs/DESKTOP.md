@@ -10,6 +10,22 @@ The server can run on Linux regardless of the client operating system. The
 optional Go helper supports Linux, Windows, and macOS clients. All three use the
 same browser confirmation flow and your normal browser login.
 
+The server URL follows the same precedence as `mycal-cli` and `mycal-token`:
+an explicit `-url` flag, then a nonempty `MYCAL_URL` environment variable, then
+`http://127.0.0.1:8080`. For example:
+
+```bash
+export MYCAL_URL=https://example.com/mycal/
+mycal-open meeting.ics
+mycal-open -install
+```
+
+Installation records the resolved URL in the desktop registration, so it works
+even when the desktop session does not inherit your shell environment. Changing
+`MYCAL_URL` affects direct invocations; re-run installation to change the URL
+used by a registered desktop handler. On macOS, remove the existing generated
+app before reinstalling, as described below.
+
 ## Build the helper
 
 Build just the helper on any supported client with Go installed:

@@ -19,6 +19,8 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"github.com/mikaelstaldal/mycal/internal/clihttp"
 )
 
 const maxFileSize = 10 << 20
@@ -72,7 +74,7 @@ func targetURL(raw string) (string, error) {
 
 func run(args []string) error {
 	flags := flag.NewFlagSet("mycal-open", flag.ContinueOnError)
-	base := flags.String("url", "", "MyCal base URL, e.g. https://example.com/mycal/")
+	base := flags.String("url", clihttp.URLDefault(), "MyCal base URL (default MYCAL_URL or http://127.0.0.1:8080)")
 	install := flags.Bool("install", false, "register MyCal as an iCalendar application")
 	setDefault := flags.Bool("set-default", false, "with -install, make MyCal the default iCalendar application")
 	if err := flags.Parse(args); err != nil {
@@ -89,7 +91,7 @@ func run(args []string) error {
 		return installDesktop(target, *setDefault)
 	}
 	if *setDefault || flags.NArg() != 1 {
-		return errors.New("usage: mycal-open -url URL FILE.ics; or mycal-open -url URL -install [-set-default]")
+		return errors.New("usage: mycal-open [-url URL] FILE.ics; or mycal-open [-url URL] -install [-set-default]")
 	}
 	f, err := os.Open(flags.Arg(0))
 	if err != nil {
