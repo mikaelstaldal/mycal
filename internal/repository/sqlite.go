@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"strings"
 
@@ -246,19 +247,19 @@ func (r *SQLiteRepository) ListOverrides(parentIDs []int64, from, to string) ([]
 	if len(parentIDs) == 0 {
 		return nil, nil
 	}
-	placeholders := make([]string, len(parentIDs))
-	args := make([]any, len(parentIDs))
-	for i, id := range parentIDs {
-		placeholders[i] = "?"
-		args[i] = id
+	// A single JSON parameter keeps arbitrarily large parent sets below SQLite's
+	// bind-variable limit without splitting the globally ordered result.
+	parents, err := json.Marshal(parentIDs)
+	if err != nil {
+		return nil, err
 	}
 	// Include overrides whose new time overlaps the window, or whose original
 	// occurrence falls within the window (so we can suppress the generated instance).
 	query := `SELECT ` + selectColumnsBase + fromEventsJoin +
-		` WHERE e.recurrence_parent_id IN (` + strings.Join(placeholders, ",") + `)` +
+		` WHERE e.recurrence_parent_id IN (SELECT value FROM json_each(?))` +
 		` AND ((e.start_time < ? AND e.end_time > ?) OR (e.recurrence_original_start >= ? AND e.recurrence_original_start < ?))` +
 		` ORDER BY e.start_time, e.created_at`
-	args = append(args, to, from, from, to)
+	args := []any{string(parents), to, from, from, to}
 	rows, err := r.db.Query(query, args...)
 	if err != nil {
 		return nil, err

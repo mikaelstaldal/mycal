@@ -191,3 +191,43 @@ func TestCreateWithoutCoordinates(t *testing.T) {
 	assert.Nil(t, got.Latitude)
 	assert.Nil(t, got.Longitude)
 }
+
+func TestListOverridesManyParents(t *testing.T) {
+	repo := newTestRepo(t)
+	// Exceed SQLite's 32766-variable limit with real recurring parents.
+	_, err := repo.db.Exec(`WITH RECURSIVE ids(id) AS (
+		VALUES(1) UNION ALL SELECT id+1 FROM ids WHERE id < 33000
+	) INSERT INTO events (id, title, start_time, end_time, recurrence_freq)
+	SELECT id, 'Parent', '2026-01-01T10:00:00Z', '2026-01-01T11:00:00Z', 'DAILY' FROM ids`)
+	require.NoError(t, err)
+	parents, err := repo.ListRecurring("2026-02-01T00:00:00Z", nil)
+	require.NoError(t, err)
+	require.Len(t, parents, 33000)
+	ids := make([]int64, len(parents))
+	for i, parent := range parents {
+		ids[i] = parent.ID
+	}
+	first, last := ids[0], ids[len(ids)-1]
+	for _, event := range []model.Event{
+		{Title: "Overlapping", StartTime: "2026-01-15T10:00:00Z", EndTime: "2026-01-15T11:00:00Z", RecurrenceParentID: &first, RecurrenceOriginalStart: "2025-12-01T10:00:00Z"},
+		{Title: "Moved out", StartTime: "2025-12-01T10:00:00Z", EndTime: "2025-12-01T11:00:00Z", RecurrenceParentID: &last, RecurrenceOriginalStart: "2026-01-15T10:00:00Z"},
+		{Title: "Outside", StartTime: "2026-03-01T10:00:00Z", EndTime: "2026-03-01T11:00:00Z", RecurrenceParentID: &first, RecurrenceOriginalStart: "2026-03-01T10:00:00Z"},
+	} {
+		require.NoError(t, repo.Create(&event))
+	}
+	// Duplicate IDs must not duplicate results.
+	ids = append(ids, first)
+	got, err := repo.ListOverrides(ids, "2026-01-01T00:00:00Z", "2026-02-01T00:00:00Z")
+	require.NoError(t, err)
+	require.Len(t, got, 2)
+	assert.Equal(t, "Moved out", got[0].Title)
+	assert.Equal(t, "Overlapping", got[1].Title)
+
+	got, err = repo.ListOverrides([]int64{first}, "2026-01-01T00:00:00Z", "2026-02-01T00:00:00Z")
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	assert.Equal(t, "Overlapping", got[0].Title)
+	got, err = repo.ListOverrides(nil, "2026-01-01T00:00:00Z", "2026-02-01T00:00:00Z")
+	require.NoError(t, err)
+	assert.Empty(t, got)
+}
