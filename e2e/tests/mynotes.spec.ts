@@ -67,6 +67,7 @@ test.describe('MyNotes integration', () => {
     await expect(dialog.locator('.note-picker-selected')).toContainText(NOTE.slug);
 
     await dialog.getByRole('button', { name: 'Save' }).click();
+    await expect(dialog).not.toBeVisible();
 
     const events = await (await request.get('/api/v1/events', {
       params: { from: '1900-01-01T00:00:00Z', to: '2200-01-01T00:00:00Z' },
@@ -113,7 +114,14 @@ test.describe('MyNotes integration', () => {
     const dialog = page.locator('dialog.event-dialog');
     await dialog.getByRole('button', { name: 'Edit' }).click();
     await dialog.getByRole('button', { name: 'Unlink' }).click();
+    // Delay the update request so clicking Save cannot stand in for a completed save.
+    await page.route('**/api/v1/events/*', async route => {
+      if (route.request().method() !== 'PATCH') return route.continue();
+      await new Promise(resolve => setTimeout(resolve, 300));
+      await route.continue();
+    });
     await dialog.getByRole('button', { name: 'Save' }).click();
+    await expect(dialog).not.toBeVisible();
 
     const events = await (await request.get('/api/v1/events', {
       params: { from: '1900-01-01T00:00:00Z', to: '2200-01-01T00:00:00Z' },
