@@ -1,4 +1,4 @@
-// mycal-open is the Linux desktop bridge for opening local iCalendar files.
+// mycal-open is the desktop bridge for opening local iCalendar files.
 package main
 
 import (
@@ -16,8 +16,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -75,7 +73,7 @@ func targetURL(raw string) (string, error) {
 func run(args []string) error {
 	flags := flag.NewFlagSet("mycal-open", flag.ContinueOnError)
 	base := flags.String("url", "", "MyCal base URL, e.g. https://example.com/mycal/")
-	install := flags.Bool("install", false, "register this executable as a Linux iCalendar application")
+	install := flags.Bool("install", false, "register MyCal as an iCalendar application")
 	setDefault := flags.Bool("set-default", false, "with -install, make MyCal the default iCalendar application")
 	if err := flags.Parse(args); err != nil {
 		return err
@@ -88,7 +86,7 @@ func run(args []string) error {
 		if flags.NArg() != 0 {
 			return errors.New("-install does not accept files")
 		}
-		return installDesktop(*base, *setDefault)
+		return installDesktop(target, *setDefault)
 	}
 	if *setDefault || flags.NArg() != 1 {
 		return errors.New("usage: mycal-open -url URL FILE.ics; or mycal-open -url URL -install [-set-default]")
@@ -162,7 +160,7 @@ func openBrowser(target, data string) error {
 	defer func() { _ = server.Close() }()
 	errorsCh := make(chan error, 1)
 	go func() { errorsCh <- server.Serve(listener) }()
-	opener := exec.Command("xdg-open", "http://"+address+"/"+secret)
+	opener := browserCommand("http://" + address + "/" + secret)
 	if err := opener.Start(); err != nil {
 		return fmt.Errorf("open browser: %w", err)
 	}
@@ -187,44 +185,4 @@ func openBrowser(target, data string) error {
 			return errors.New("timed out waiting for the browser")
 		}
 	}
-}
-
-// Desktop Exec uses its own quoting rules, independently of shell quoting.
-func desktopQuote(value string) string {
-	quoted := `"` + strings.NewReplacer(`\`, `\\`, `"`, `\"`, "`", "\\`", "$", `\$`, "%", "%%").Replace(value) + `"`
-	// Desktop-entry string escaping is applied before Exec command parsing.
-	return strings.ReplaceAll(quoted, `\`, `\\`)
-}
-
-func installDesktop(base string, setDefault bool) error {
-	executable, err := os.Executable()
-	if err != nil {
-		return err
-	}
-	dataHome := os.Getenv("XDG_DATA_HOME")
-	if !filepath.IsAbs(dataHome) {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return err
-		}
-		dataHome = filepath.Join(home, ".local", "share")
-	}
-	applications := filepath.Join(dataHome, "applications")
-	if err := os.MkdirAll(applications, 0755); err != nil {
-		return err
-	}
-	entry := "[Desktop Entry]\nType=Application\nName=MyCal\nComment=Open iCalendar files in MyCal\nNoDisplay=true\nTerminal=false\nCategories=Office;Calendar;\nMimeType=text/calendar;\nExec=" + desktopQuote(executable) + " -url " + desktopQuote(base) + " %f\n"
-	if strings.ContainsAny(executable+base, "\r\n") {
-		return errors.New("desktop entry values cannot contain line breaks")
-	}
-	if err := os.WriteFile(filepath.Join(applications, "mycal-open.desktop"), []byte(entry), 0644); err != nil {
-		return err
-	}
-	if err := exec.Command("update-desktop-database", applications).Run(); err != nil {
-		return fmt.Errorf("desktop entry written, but updating MIME associations failed: %w", err)
-	}
-	if setDefault {
-		return exec.Command("xdg-mime", "default", "mycal-open.desktop", "text/calendar").Run()
-	}
-	return nil
 }

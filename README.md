@@ -11,7 +11,7 @@ Go backend, SQLite storage, a REST API, and an embedded web interface, shipped a
 - [User manual](docs/USER_MANUAL.md) — getting started, configuration, and usage.
 - [Operations guide](docs/OPERATIONS.md) — production deployment and authentication.
 - [Development guide](docs/DEVELOPMENT.md) — building and working on the application.
-- [Linux desktop integration](docs/LINUX_DESKTOP.md) — opening `.ics` files in the web interface.
+- [Desktop integration](docs/DESKTOP.md) — opening `.ics` files from Linux, Windows, and macOS in the web interface.
 - [API reference](openapi.yaml).
 - [Credits](CREDITS.md).
 
