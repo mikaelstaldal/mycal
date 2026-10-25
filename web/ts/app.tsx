@@ -23,6 +23,7 @@ import { getConfig, hasUserDefaultView } from './util/config.js';
 import { isDemo, mymailUrl, mynotesUrl } from './util/serverconfig.js';
 import { checkAndNotify, requestPermission } from './util/notifications.js';
 import { showChoice, showConfirm } from './util/confirm.js';
+import { receiveDesktopImport } from './util/desktop-import.js';
 import type { components } from './api/types.js';
 import type { AppConfig } from './util/config.js';
 type CalendarEvent = components['schemas']['Event'];
@@ -57,6 +58,10 @@ function comparableFeedURI(raw: string): string {
 }
 
 function App() {
+    const [desktopImport, setDesktopImport] = useState<string | null>(null);
+    useEffect(() => {
+        if (!demo) return receiveDesktopImport(setDesktopImport);
+    }, []);
     const [darkMode, setDarkMode] = useState(() => localStorage.getItem('darkMode') === 'true');
     const [currentDate, setCurrentDate] = useState(new Date());
     const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -673,9 +678,10 @@ function App() {
                 <ImportSingleForm onImported={() => { setShowImportSingle(false); loadEvents(); }}
                                   onClose={() => setShowImportSingle(false)} />
             )}
-            {!demo && showImportBulk && (
-                <ImportBulkForm onImported={() => { setShowImportBulk(false); loadEvents(); }}
-                                onClose={() => setShowImportBulk(false)} />
+            {!demo && (showImportBulk || desktopImport !== null) && (
+                <ImportBulkForm initialContent={desktopImport ?? undefined}
+                                onImported={() => { setShowImportBulk(false); setDesktopImport(null); loadEvents(); }}
+                                onClose={() => { setShowImportBulk(false); setDesktopImport(null); }} />
             )}
             {!demo && showFeeds && (
                 <FeedsDialog onClose={() => setShowFeeds(false)}

@@ -92,9 +92,10 @@ export function ImportSingleForm({ onImported, onClose }: ImportSingleFormProps)
 interface ImportBulkFormProps {
     onImported: () => void;
     onClose: () => void;
+    initialContent?: string;
 }
 
-export function ImportBulkForm({ onImported, onClose }: ImportBulkFormProps): VNode | null {
+export function ImportBulkForm({ onImported, onClose, initialContent }: ImportBulkFormProps): VNode | null {
     const [sourceMode, setSourceMode] = useState('file');
     const [url, setUrl] = useState('');
     const [calendarName, setCalendarName] = useState('');
@@ -110,7 +111,9 @@ export function ImportBulkForm({ onImported, onClose }: ImportBulkFormProps): VN
 
     async function handleImport() {
         let input: string;
-        if (sourceMode === 'file') {
+        if (initialContent !== undefined) {
+            input = initialContent;
+        } else if (sourceMode === 'file') {
             const file = fileRef.current?.files?.[0];
             if (!file) { showToast('Please select a file.', { error: true }); return; }
             input = await file.text();
@@ -133,10 +136,16 @@ export function ImportBulkForm({ onImported, onClose }: ImportBulkFormProps): VN
     return (
         <dialog ref={dialogRef} class="event-dialog import-dialog" onClose={onClose}>
             <div class="dialog-header">
-                <h2>Bulk Import</h2>
+                <h2>{initialContent !== undefined ? 'Open iCalendar File' : 'Bulk Import'}</h2>
                 <button class="close-btn" onClick={onClose} title="Close" aria-label="Close"><Icon name="x" /></button>
             </div>
-            <div class="import-tabs">
+            {initialContent !== undefined ? (
+                <label>
+                    iCalendar contents
+                    <textarea value={initialContent} readOnly rows={8} />
+                    <span class="import-hint">Choose a calendar and confirm to import the events in this file.</span>
+                </label>
+            ) : <><div class="import-tabs">
                 <button class={`import-tab ${sourceMode === 'file' ? 'active' : ''}`}
                         onClick={() => setSourceMode('file')}>File</button>
                 <button class={`import-tab ${sourceMode === 'url' ? 'active' : ''}`}
@@ -155,6 +164,7 @@ export function ImportBulkForm({ onImported, onClose }: ImportBulkFormProps): VN
                            placeholder="https://calendar.google.com/..." />
                 </label>
             )}
+            </>}
             <label>
                 Calendar name (optional)
                 <input type="text" value={calendarName} onInput={(e: Event) => setCalendarName((e.target as HTMLInputElement).value)}
