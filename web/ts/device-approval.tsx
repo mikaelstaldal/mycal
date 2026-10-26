@@ -1,9 +1,10 @@
+import { getTheme, applyTheme } from './util/theme.js';
 import { render } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { api } from './api/client.js';
 import { DeviceApproval } from './components/DeviceApproval.js';
 import { Toast } from './components/Toast.js';
-document.documentElement.setAttribute('data-theme', localStorage.getItem('darkMode') === 'true' ? 'dark' : 'light');
+applyTheme(getTheme());
 
 // A separate entry point loads only device consent, without the normal app shell.
 function DeviceApprovalPage() {

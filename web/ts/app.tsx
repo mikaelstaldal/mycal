@@ -1,3 +1,4 @@
+import { getTheme, applyTheme, onThemeChange } from './util/theme.js';
 import { render, Fragment } from 'preact';
 import { useState, useEffect, useCallback, useRef } from 'preact/hooks';
 import { Nav } from './layout/Nav.js';
@@ -70,7 +71,7 @@ function App() {
         window.addEventListener('hashchange', onHashChange);
         return () => window.removeEventListener('hashchange', onHashChange);
     }, []);
-    const [darkMode, setDarkMode] = useState(() => localStorage.getItem('darkMode') === 'true');
+    const [darkMode, setDarkMode] = useState(() => getTheme() === 'dark');
     const [currentDate, setCurrentDate] = useState(new Date());
     const [events, setEvents] = useState<CalendarEvent[]>([]);
     const [showForm, setShowForm] = useState(false);
@@ -149,9 +150,9 @@ function App() {
     }, []);
 
     useEffect(() => {
-        document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
-        localStorage.setItem('darkMode', String(darkMode));
-    }, [darkMode]);
+        applyTheme(getTheme());
+        return onThemeChange(theme => setDarkMode(theme === 'dark'));
+    }, []);
 
     const loadCalendars = useCallback(async () => {
         try {
@@ -595,31 +596,9 @@ function App() {
                         ) : null}
                     </div>
                     {/* Pinned to the bottom of the left column, the same place
-                        MyNotes puts its light/dark toggle and Settings. */}
+                        MyMail and MyNotes put Settings. */}
                     <div class="sidebar-footer">
                         <div class="sidebar-footer-actions">
-                            <button class="sidebar-footer-btn" onClick={() => setDarkMode(d => !d)}
-                                    title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-                                    aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-                                    aria-pressed={darkMode}>
-                                <Icon name={darkMode ? 'sun' : 'moon'} size={16} />
-                                {/* Just "Light"/"Dark" — the full "…mode" is on the
-                                    title and aria-label; the short label is what
-                                    fits beside Settings in the sidebar. Both
-                                    words stay in the DOM and are stacked by
-                                    .sidebar-theme-label so the button keeps its
-                                    width and Settings does not shift on toggle.
-
-                                    Keep each visible word a substring of the
-                                    matching aria-label — "Light" in "Switch to
-                                    light mode" — or the button breaks WCAG 2.5.3
-                                    Label in Name. The span is aria-hidden, so
-                                    nothing here would catch it. */}
-                                <span class="sidebar-theme-label" aria-hidden="true">
-                                    <span class={darkMode ? 'is-shown' : undefined}>Light</span>
-                                    <span class={darkMode ? undefined : 'is-shown'}>Dark</span>
-                                </span>
-                            </button>
                             <Settings config={config} onConfigChange={setConfig} />
                         </div>
                     </div>

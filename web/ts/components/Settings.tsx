@@ -1,3 +1,4 @@
+import { getThemePreference, setTheme, type ThemePreference } from '../util/theme.js';
 import { ApiTokens } from './ApiTokens.js';
 import { Fragment } from 'preact';
 import type { VNode } from 'preact';
@@ -19,6 +20,7 @@ interface SettingsProps {
 }
 
 export function Settings({ config, onConfigChange }: SettingsProps): VNode | null {
+    const [themePreference, setThemePreference] = useState(getThemePreference);
     const [open, setOpen] = useState(!isDemo() && new URLSearchParams(window.location.search).get('settings') === 'api-tokens');
     const [tab, setTab] = useState<'general' | 'api-tokens'>(!isDemo() && new URLSearchParams(window.location.search).get('settings') === 'api-tokens' ? 'api-tokens' : 'general');
     // Load token management on demand, then retain its consent state across tab switches.
@@ -117,6 +119,18 @@ export function Settings({ config, onConfigChange }: SettingsProps): VNode | nul
                         {(['general', 'api-tokens'] as const).map(value => <button key={value} type="button" class="small-btn" role="tab" id={`settings-tab-${value}`} aria-selected={tab === value} aria-controls={`settings-panel-${value}`} tabIndex={tab === value ? 0 : -1} onClick={() => { setTab(value); if (value === 'api-tokens') setTokensOpened(true); }}>{value === 'general' ? 'General' : 'API Tokens'}</button>)}
                     </div>}
                     <div hidden={tab !== 'general'} role={isDemo() ? undefined : 'tabpanel'} id="settings-panel-general" aria-labelledby={isDemo() ? undefined : 'settings-tab-general'} tabIndex={isDemo() ? undefined : 0}>
+                    <label>
+                        Theme
+                        <select aria-label="Theme" value={themePreference} onChange={e => {
+                            const value = (e.target as HTMLSelectElement).value as ThemePreference;
+                            setTheme(value);
+                            setThemePreference(value);
+                        }}>
+                            <option value="auto">Auto</option>
+                            <option value="light">Light</option>
+                            <option value="dark">Dark</option>
+                        </select>
+                    </label>
                     <label>
                         Default view
                         <select value={config.defaultView}

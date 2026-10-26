@@ -2726,30 +2726,6 @@ body {
     outline-offset: 2px;
 }
 
-/* Both words stay in the DOM, stacked in one grid cell, so the button keeps the
-   width of the longer of the two and Settings never shifts sideways when the
-   theme is toggled. The visible word is aria-hidden — the button's accessible
-   name is its aria-label, which spells out the full "Switch to … mode".
-
-   Because both stay mounted, the button's textContent is "LightDark" and always
-   will be. `visibility: hidden` keeps the inactive one out of the accessibility
-   tree and off the screen, but not out of the DOM — so find-in-page and
-   select-all see both, and a test written against textContent rather than
-   innerText will read the concatenation. That is the cost of the width
-   stability, not a bug to fix. */
-.sidebar-theme-label {
-    display: grid;
-}
-
-.sidebar-theme-label > span {
-    grid-area: 1 / 1;
-    visibility: hidden;
-}
-
-.sidebar-theme-label > .is-shown {
-    visibility: visible;
-}
-
 /* Mini month calendar */
 .mini-month {
     background: var(--surface);

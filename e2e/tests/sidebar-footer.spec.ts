@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 
-// The sidebar footer's two controls — the light/dark toggle and Settings — are a
-// three-repo contract: they are specified to look and sit identically in MyCal,
+// The sidebar footer's Settings control is a
+// three-repo contract: it must look and sit identically in MyCal,
 // MyMail and MyNotes. There is no shared stylesheet, so these assertions are this
 // repo's whole rendered half of it. The other half is static and lives outside
 // this repo: ../mysuite/tools/check-contract.py reads all three stylesheets and
@@ -12,6 +12,7 @@ import { test, expect, type Page } from '@playwright/test';
 // "AGENTS.md", which now resolves to this directory's own file.
 test.describe('Sidebar footer contract', () => {
   test.beforeEach(async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'light' });
     await page.goto('/');
   });
 
@@ -30,18 +31,8 @@ test.describe('Sidebar footer contract', () => {
       return needed > el.clientWidth + 0.5;
     });
 
-  // By attribute rather than `.first()`: the spec mandates toggle-then-Settings,
-  // but a positional locator would silently repoint if a third control ever
-  // joined the row, and every assertion here would keep passing about the wrong
-  // element. This matches in *both* theme states because Preact renders
-  // aria-pressed={false} as the string "false" rather than dropping the
-  // attribute — true of hyphenated attribute names, not of every prop. If that
-  // ever changes this selector starts missing half the time rather than
-  // failing outright, so it is worth knowing why it works.
-  const THEME = '.sidebar-footer-btn[aria-pressed]';
-
+  // Locate Settings explicitly; positional locators could silently measure another control.
   const boxes = async (page: Page) => ({
-    theme: (await page.locator(THEME).boundingBox())!,
     settings: (await page.locator(SETTINGS).boundingBox())!,
     column: (await page.locator('.left-sidebar').boundingBox())!,
     viewportHeight: page.viewportSize()!.height,
@@ -56,17 +47,13 @@ test.describe('Sidebar footer contract', () => {
   // ---------------------------------------------------------------------------
 
   test('controls sit 8px from the window left and bottom edges', async ({ page }) => {
-    const { theme, settings, viewportHeight } = await boxes(page);
+    const { settings, viewportHeight } = await boxes(page);
 
     // The two numbers that are the MySuite claim. Both font-independent.
-    expect(theme.x).toBeCloseTo(8, 0);
-    expect(viewportHeight - (theme.y + theme.height)).toBeCloseTo(8, 0);
+    expect(settings.x).toBeCloseTo(8, 0);
+    expect(viewportHeight - (settings.y + settings.height)).toBeCloseTo(8, 0);
     expect(viewportHeight - (settings.y + settings.height)).toBeCloseTo(8, 0);
 
-    // Settings follows the toggle by the 6px gap. Derived from the measured
-    // width rather than hardcoded: a literal would pin this machine's system-ui
-    // metrics, which the CSS comment warns are not portable.
-    expect(settings.x).toBeCloseTo(theme.x + theme.width + 6, 0);
 
     // The footer's own left edge, not just the buttons'. The CSS warns that
     // giving .app a border-left would clip the footer while the buttons' 8px
@@ -91,9 +78,9 @@ test.describe('Sidebar footer contract', () => {
       await page.getByRole('button', { name: view, exact: true }).click();
       await expect(page.locator(selector)).toBeVisible();
 
-      const { theme, viewportHeight } = await boxes(page);
-      expect(theme.x).toBeCloseTo(8, 0);
-      expect(viewportHeight - (theme.y + theme.height)).toBeCloseTo(8, 0);
+      const { settings, viewportHeight } = await boxes(page);
+      expect(settings.x).toBeCloseTo(8, 0);
+      expect(viewportHeight - (settings.y + settings.height)).toBeCloseTo(8, 0);
     });
   }
 
@@ -142,7 +129,7 @@ test.describe('Sidebar footer contract', () => {
   // measured. It is also the only assertion here that would survive the labels
   // changing.
   test('the pinned declarations resolve to the contract values', async ({ page }) => {
-    for (const selector of [THEME, SETTINGS]) {
+    for (const selector of [SETTINGS]) {
       const cs = await page.locator(selector).evaluate(el => {
         const s = getComputedStyle(el);
         return {
@@ -230,43 +217,16 @@ test.describe('Sidebar footer contract', () => {
   // Size and stability
   // ---------------------------------------------------------------------------
 
-  test('controls hold one row and do not move when the theme is toggled', async ({ page }) => {
-    const theme = page.getByRole('button', { name: 'Switch to dark mode' });
-    await expect(theme).toBeVisible();
-
-    const before = await page.locator(SETTINGS).boundingBox();
-    const themeBefore = await theme.boundingBox();
-
-    await theme.click();
-    await expect(page.getByRole('button', { name: 'Switch to light mode' })).toBeVisible();
-
-    const after = await page.locator(SETTINGS).boundingBox();
-    const themeAfter = await page.getByRole('button', { name: 'Switch to light mode' }).boundingBox();
-
-    // toBeCloseTo's second argument is decimal places, so 0 is a 0.5px window —
-    // loose enough to survive fractional layout, tight enough to catch the 2px
-    // "Light" vs "Dark" shift the grid stacking exists to prevent.
-    expect(themeAfter!.width).toBeCloseTo(themeBefore!.width, 0);
-    expect(after!.x).toBeCloseTo(before!.x, 0);
-
-    // 29.2px at a 16px root font is the height the three apps share; the comment
-    // on .sidebar-footer-btn calls it the acceptance measurement, so pin it.
-    expect(themeAfter!.height).toBeCloseTo(29.2, 0);
-    expect(after!.height).toBeCloseTo(29.2, 0);
-
-    // Side by side, inside the FOOTER's content box — not the column's: the
-    // footer deliberately reaches further left than the column.
-    const inner = await page.locator('.sidebar-footer').evaluate(el => {
-      const r = el.getBoundingClientRect();
-      const cs = getComputedStyle(el);
-      return {
-        left: r.left + el.clientLeft + parseFloat(cs.paddingLeft),
-        right: r.left + el.clientLeft + el.clientWidth - parseFloat(cs.paddingRight),
-      };
-    });
-    expect(after!.y).toBeCloseTo(themeAfter!.y, 0);
-    expect(themeAfter!.x).toBeGreaterThanOrEqual(inner.left);
-    expect(after!.x + after!.width).toBeLessThanOrEqual(inner.right);
+  test('Settings stays in place when the browser theme changes', async ({ page }) => {
+    const before = (await page.locator(SETTINGS).boundingBox())!;
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+    const after = (await page.locator(SETTINGS).boundingBox())!;
+    expect(after.x).toBeCloseTo(before.x, 0);
+    expect(after.y).toBeCloseTo(before.y, 0);
+    expect(after.width).toBeCloseTo(before.width, 0);
+    expect(after.height).toBeCloseTo(29.2, 0); // At the default 16px root font size.
+    await expect(page.getByRole('button', { name: /Switch to .* mode/ })).toHaveCount(0);
   });
 
   // The row is nowrap and the buttons do not shrink, so a wider font overflows
@@ -291,7 +251,7 @@ test.describe('Sidebar footer contract', () => {
       });
 
     const before = await measure();
-    expect(before.needed, `pair ${before.needed} in ${before.available}`).toBeLessThanOrEqual(before.available);
+    expect(before.needed, `control ${before.needed} in ${before.available}`).toBeLessThanOrEqual(before.available);
 
     await page.locator('.sidebar-footer-btn').evaluateAll(els => {
       for (const el of els) {
@@ -301,7 +261,7 @@ test.describe('Sidebar footer contract', () => {
 
     const after = await measure();
     // Reported either way, so a failure says how far over rather than just "red".
-    expect(after.needed, `at 1.1x font: pair ${after.needed} in ${after.available}`)
+    expect(after.needed, `at 1.1x font: control ${after.needed} in ${after.available}`)
       .toBeLessThanOrEqual(after.available);
   });
 
@@ -339,12 +299,12 @@ test.describe('Sidebar footer contract', () => {
     await page.setViewportSize({ width: 375, height: 700 });
 
     await expect(page.locator('.sidebar-footer')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Switch to dark mode' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Switch to .* mode/ })).toHaveCount(0);
     await expect(page.locator(SETTINGS)).toBeVisible();
     await expect(page.locator('.mini-month')).toBeHidden();
 
-    const { theme, settings, column } = await boxes(page);
-    expect(theme.x).toBeCloseTo(8, 0);
+    const { settings, column } = await boxes(page);
+    expect(settings.x).toBeCloseTo(8, 0);
     expect(settings.x + settings.width).toBeLessThanOrEqual(column.x + column.width);
     expect(await footerOverflows(page)).toBe(false);
 
@@ -404,16 +364,9 @@ test.describe('Sidebar footer contract', () => {
     }, name);
 
   const useDarkTheme = async (page: Page) => {
-    await page.getByRole('button', { name: 'Switch to dark mode' }).click();
-    await expect(page.getByRole('button', { name: 'Switch to light mode' })).toBeVisible();
-    // The click leaves the pointer sitting on the toggle, so any colour read from
-    // a .sidebar-footer-btn afterwards is read in its HOVER state. Every resting
-    // figure below would then be measured against the wrong thing while looking
-    // entirely reasonable. Move the pointer off before measuring anything.
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
     await page.mouse.move(0, 0);
-    // Then let the colour transition finish. Swapping the theme re-resolves the
-    // tokens under a 0.12s transition, so the buttons spend that long reporting a
-    // blend of the two palettes. See settledStyle.
     await settledStyle(page, SETTINGS, 'color');
   };
 
@@ -667,7 +620,7 @@ test.describe('Sidebar footer contract', () => {
   // patch. The base rule carries it, so there is nothing theme-specific here.
   test('controls keep a focus indicator under forced colors', async ({ page }) => {
     await page.emulateMedia({ forcedColors: 'active' });
-    const s = await focusAndRead(page, THEME);
+    const s = await focusAndRead(page, SETTINGS);
     expect(s.focusVisible).toBe(true);
     expect(s.outlineStyle).not.toBe('none');
     expect(parseFloat(s.outlineWidth)).toBeGreaterThan(0);
