@@ -89,3 +89,12 @@ func TestHTML(t *testing.T) {
 		})
 	}
 }
+
+func TestText(t *testing.T) {
+	for _, input := range []string{"A & B", "3 < 5 > 2", `A "quote" and 'apostrophe'`} {
+		assert.Equal(t, input, Text(input))
+		assert.Equal(t, input, Text(Text(input)))
+	}
+	assert.Equal(t, "A & B", Text("A &amp; B"))
+	assert.Equal(t, "safe & sound", Text("safe & sound<script>bad()</script>"))
+}

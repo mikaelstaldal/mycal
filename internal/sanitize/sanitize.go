@@ -1,6 +1,10 @@
 package sanitize
 
-import "github.com/microcosm-cc/bluemonday"
+import (
+	"html"
+
+	"github.com/microcosm-cc/bluemonday"
+)
 
 var policy *bluemonday.Policy
 
@@ -35,4 +39,11 @@ func init() {
 // are removed. For <a> tags, javascript: URLs are stripped.
 func HTML(s string) string {
 	return policy.Sanitize(s)
+}
+
+// Text sanitizes input for fields rendered as text, rather than HTML.
+// Decode the sanitizer's escaping so text renderers do not display entities.
+// The result must never be inserted as HTML.
+func Text(s string) string {
+	return html.UnescapeString(HTML(s))
 }

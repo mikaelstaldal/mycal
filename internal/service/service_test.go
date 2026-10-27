@@ -450,7 +450,7 @@ func TestCreate_HTMLSanitization(t *testing.T) {
 	}
 	svc := NewEventService(repo, &mockCalRepo{})
 	req := &api.CreateEventRequest{
-		Title:       "Test",
+		Title:       "A & B: 3 < 5 > 2",
 		Description: optString(`<b>bold</b><script>alert('xss')</script>`),
 		StartTime:   optDateTime("2026-02-15T10:00:00Z"),
 		EndTime:     optDateTime("2026-02-15T11:00:00Z"),
@@ -458,6 +458,7 @@ func TestCreate_HTMLSanitization(t *testing.T) {
 	_, err := svc.Create(req)
 	require.NoError(t, err)
 	assert.Equal(t, "<b>bold</b>", created.Description)
+	assert.Equal(t, "A & B: 3 < 5 > 2", created.Title)
 }
 
 func TestCreate_NoteSlug(t *testing.T) {
@@ -723,11 +724,13 @@ func TestUpdate_HTMLSanitization(t *testing.T) {
 	}
 	svc := NewEventService(repo, &mockCalRepo{})
 	req := &api.UpdateEventRequest{
+		Title:       optString("A & B: 3 < 5 > 2"),
 		Description: optString(`<em>hi</em><script>bad</script>`),
 	}
 	e, err := svc.Update(1, req)
 	require.NoError(t, err)
 	assert.Equal(t, "<em>hi</em>", e.Description)
+	assert.Equal(t, "A & B: 3 < 5 > 2", e.Title)
 }
 
 func TestUpdate_RepoError(t *testing.T) {
@@ -899,7 +902,7 @@ func TestCreateOrUpdateOverride_NewOverrideWithAllFields(t *testing.T) {
 	}
 	svc := NewEventService(repo, &mockCalRepo{})
 	req := &api.UpdateEventRequest{
-		Title:           optString("New Title"),
+		Title:           optString("New Title & 3 < 5 > 2"),
 		Description:     optString("<b>bold</b><script>bad</script>"),
 		StartTime:       optDateTime("2026-02-08T10:00:00Z"),
 		EndTime:         optDateTime("2026-02-08T12:00:00Z"),
@@ -915,7 +918,7 @@ func TestCreateOrUpdateOverride_NewOverrideWithAllFields(t *testing.T) {
 	}
 	e, err := svc.CreateOrUpdateOverride(parentID, "2026-02-08T09:00:00Z", req)
 	require.NoError(t, err)
-	assert.Equal(t, "New Title", e.Title)
+	assert.Equal(t, "New Title & 3 < 5 > 2", e.Title)
 	assert.Equal(t, "<b>bold</b>", e.Description)
 	assert.Equal(t, "red", e.Color)
 	assert.Equal(t, "meeting", e.Categories)

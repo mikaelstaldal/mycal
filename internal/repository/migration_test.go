@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"database/sql"
 	"flag"
 	"fmt"
@@ -318,4 +319,27 @@ func TestSchemaTooNewIsRefused(t *testing.T) {
 	_, err = OpenDB(dbPath, 5000)
 	require.Error(t, err)
 	assert.ErrorIs(t, err, sqlite.ErrSchemaTooNew)
+}
+
+func TestTitleEscapingMigration(t *testing.T) {
+	db, err := sqlite.Open(MemoryDSN(t.Name()), 0, nil)
+	require.NoError(t, err)
+	defer db.Close()
+	require.NoError(t, sqlite.MigrateStrict(context.Background(), db, migrations[:6]))
+	_, err = db.Exec(`INSERT INTO events (title, start_time, end_time) VALUES
+ ('A &amp; B: 3 &lt; 5 &gt; 2 &#34;quoted&#34; &#39;single&#39; &amp;lt;',
+ '2026-01-01T10:00:00Z', '2026-01-01T11:00:00Z')`)
+	require.NoError(t, err)
+	require.NoError(t, initSchema(db))
+	want := `A & B: 3 < 5 > 2 "quoted" 'single' &lt;`
+	var title string
+	require.NoError(t, db.QueryRow("SELECT title FROM events").Scan(&title))
+	assert.Equal(t, want, title)
+	// A second startup must not decode a literal entity a second time.
+	require.NoError(t, initSchema(db))
+	require.NoError(t, db.QueryRow("SELECT title FROM events").Scan(&title))
+	assert.Equal(t, want, title)
+	var count int
+	require.NoError(t, db.QueryRow(`SELECT count(*) FROM events_fts WHERE events_fts MATCH 'quoted'`).Scan(&count))
+	assert.Equal(t, 1, count)
 }

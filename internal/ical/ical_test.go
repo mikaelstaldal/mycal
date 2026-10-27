@@ -262,7 +262,7 @@ func TestDecodeInvalidColor(t *testing.T) {
 }
 
 func TestEncodeLongLineFolding(t *testing.T) {
-	longTitle := strings.Repeat("A", 200)
+	longTitle := strings.Repeat("A", 200) + " & 3 < 5 > 2"
 	events := []model.Event{
 		{
 			ID:          1,

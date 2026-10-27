@@ -352,7 +352,7 @@ async function apiV1EventsPost(ctx: { request: Request }): Promise<Response> {
     return withStore('write', (state) => {
         const e = newEvent();
         e.id = nextEventID(state);
-        e.title = sanitizeHTML(stringOr(req, 'title'));
+        e.title = sanitizeText(stringOr(req, 'title'));
         e.description = sanitizeHTML(stringOr(req, 'description'));
         e.start_time = startTime;
         e.end_time = endTime;
@@ -495,7 +495,7 @@ function updateEvent(state: DemoState, id: number, req: RequestBody): DemoEvent 
 
     // Sanitising on update as well as create is not optional: an event edited
     // to carry a script must be stripped just like one created with it.
-    if (isSet(req, 'title')) existing.title = sanitizeHTML(stringField(req, 'title'));
+    if (isSet(req, 'title')) existing.title = sanitizeText(stringField(req, 'title'));
     if (isSet(req, 'description')) existing.description = sanitizeHTML(stringField(req, 'description'));
     if (isSet(req, 'all_day')) existing.all_day = boolField(req, 'all_day');
     if (isSet(req, 'color')) existing.color = stringField(req, 'color');
@@ -608,7 +608,7 @@ function createOrUpdateOverride(
     override.recurrence_original_start = instanceStart;
     override.end_time = endFromStart(instanceStart, eventDuration(parent));
 
-    if (isSet(req, 'title')) override.title = sanitizeHTML(stringField(req, 'title'));
+    if (isSet(req, 'title')) override.title = sanitizeText(stringField(req, 'title'));
     if (isSet(req, 'description')) override.description = sanitizeHTML(stringField(req, 'description'));
     if (isSet(req, 'start_time')) override.start_time = formatRFC3339(dateTimeField(req, 'start_time').date);
     if (isSet(req, 'start_date')) override.start_time = formatRFC3339(dateField(req, 'start_date'));

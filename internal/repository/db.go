@@ -125,6 +125,11 @@ var migrations = [][]string{
  AND EXISTS (SELECT 1 FROM events p WHERE p.id = events.recurrence_parent_id)`},
 	{`ALTER TABLE events ADD COLUMN feed_id INTEGER REFERENCES feeds(id) ON DELETE SET NULL`,
 		`CREATE INDEX idx_events_feed_id ON events(feed_id)`},
+	// Titles used to contain HTML-escaped sanitizer output. Decode exactly the
+	// escapes emitted by Go's HTML tokenizer, with ampersands last so an escaped
+	// entity literal is decoded only once. The update trigger keeps FTS in sync.
+	{`UPDATE events SET title = replace(replace(replace(replace(replace(title,
+ '&#34;', '"'), '&#39;', ''''), '&lt;', '<'), '&gt;', '>'), '&amp;', '&')`},
 }
 
 // initSchema refuses a pre-user_version database and hands everything else to

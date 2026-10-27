@@ -452,7 +452,7 @@ func parseEvent(props []string, alarmProps []string, tzMap map[string]*time.Loca
 		case "UID":
 			uid = value
 		case "SUMMARY":
-			summary = sanitize.HTML(unescapeText(value))
+			summary = sanitize.Text(unescapeText(value))
 		case "DESCRIPTION":
 			description = sanitize.HTML(unescapeText(value))
 		case "LOCATION":

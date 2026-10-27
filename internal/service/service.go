@@ -241,7 +241,7 @@ func (s *EventService) Create(req *api.CreateEventRequest) (*model.Event, error)
 		return nil, fmt.Errorf("%w: %s", ErrValidation, err.Error())
 	}
 	e := &model.Event{
-		Title:                sanitize.HTML(req.Title),
+		Title:                sanitize.Text(req.Title),
 		Description:          sanitize.HTML(req.Description.Or("")),
 		StartTime:            startTime,
 		EndTime:              endTime,
@@ -294,7 +294,7 @@ func (s *EventService) Update(id int64, req *api.UpdateEventRequest) (*model.Eve
 	}
 
 	if req.Title.Set {
-		existing.Title = sanitize.HTML(req.Title.Value)
+		existing.Title = sanitize.Text(req.Title.Value)
 	}
 	if req.Description.Set {
 		existing.Description = sanitize.HTML(req.Description.Value)
@@ -476,7 +476,7 @@ func (s *EventService) CreateOrUpdateOverride(parentID int64, instanceStart stri
 
 	// Apply updates
 	if req.Title.Set {
-		override.Title = sanitize.HTML(req.Title.Value)
+		override.Title = sanitize.Text(req.Title.Value)
 	}
 	if req.Description.Set {
 		override.Description = sanitize.HTML(req.Description.Value)
@@ -761,7 +761,7 @@ func (s *EventService) Import(events []model.Event, calendarName string) (int, e
 		if err != nil {
 			continue
 		}
-		ev.Title = sanitize.HTML(ev.Title)
+		ev.Title = sanitize.Text(ev.Title)
 		ev.Description = sanitize.HTML(ev.Description)
 		ev.CalendarID = calendarID
 		ev.RecurrenceParentID = &parentID

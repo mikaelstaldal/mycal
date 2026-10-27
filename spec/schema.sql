@@ -129,4 +129,4 @@ END;
 
 CREATE INDEX idx_events_feed_id ON events(feed_id);
 
-PRAGMA user_version = 6;
+PRAGMA user_version = 7;

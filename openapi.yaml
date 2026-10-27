@@ -1068,6 +1068,7 @@ components:
         title:
           type: string
           maxLength: 500
+          description: Plain text event title. Render as text, never as HTML.
         description:
           type: string
           maxLength: 10000
@@ -1199,6 +1200,7 @@ components:
         title:
           type: string
           maxLength: 500
+          description: Plain text event title. Render as text, never as HTML.
         description:
           type: string
           maxLength: 10000
@@ -1294,6 +1296,7 @@ components:
         title:
           type: string
           maxLength: 500
+          description: Plain text event title. Render as text, never as HTML.
         description:
           type: string
           maxLength: 10000
