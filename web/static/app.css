@@ -1052,7 +1052,6 @@ body {
 }
 
 .week-event.dragging {
-    opacity: 0.6;
     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     cursor: grabbing;
     z-index: 10;
@@ -1179,7 +1178,6 @@ body {
 }
 
 .allday-event.dragging {
-    opacity: 0.6;
     box-shadow: 0 2px 8px rgba(0,0,0,0.3);
     cursor: grabbing;
     z-index: 10;
@@ -3208,7 +3206,9 @@ body {
     pointer-events: none;
 }
 
-.drag-preview {
+.week-event.drag-preview,
+.allday-event.drag-preview {
+    opacity: 1;
     position: absolute;
     pointer-events: none;
     z-index: 10;
