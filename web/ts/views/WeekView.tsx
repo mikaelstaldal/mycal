@@ -19,7 +19,7 @@ interface WeekViewProps {
     onDayClick: (date: Date) => void;
     onEventClick: (event: CalendarEvent) => void;
     onAllDayClick: (date: Date) => void;
-    onEventDrag: (eventId: string, startTime: string, endTime: string) => void;
+    onEventDrag: (eventId: string, startTime: string, endTime: string) => Promise<void>;
     config: AppConfig;
     highlightEventId: string | null;
 }

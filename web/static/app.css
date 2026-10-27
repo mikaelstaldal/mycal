@@ -1185,7 +1185,7 @@ body {
     z-index: 10;
 }
 
-.allday-cell:has(.dragging) {
+.allday-cell:has(.drag-preview) {
     overflow: visible;
 }
 
@@ -3199,4 +3199,21 @@ body {
 }
 .api-token-list p {
     margin: 4px 0 8px;
+}
+
+/* Keep the source as a muted marker until the saved position is rendered. */
+.week-event.drag-source,
+.allday-event.drag-source {
+    opacity: 0.3;
+    pointer-events: none;
+}
+
+.drag-preview {
+    position: absolute;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.drag-pending {
+    cursor: progress;
 }

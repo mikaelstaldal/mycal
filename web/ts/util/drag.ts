@@ -37,7 +37,7 @@ function isTouch(e: MouseEvent | TouchEvent): e is TouchEvent {
 
 interface DragOptions {
     mode: 'move' | 'resize' | 'move-horizontal';
-    onDragEnd: (newStartTime: string, newEndTime: string) => void;
+    onDragEnd: (newStartTime: string, newEndTime: string) => Promise<void>;
     dayColumns?: Date[];
     columnsContainer?: HTMLElement | null;
     columnSelector?: string;
@@ -52,8 +52,8 @@ interface DragOptions {
  * @param options
  */
 export function startDrag(event: CalendarEvent, el: HTMLElement, startEvent: MouseEvent | TouchEvent, options: DragOptions): void {
-    // Skip recurring instances
-    if (event.parent_id) return;
+    // A pending save owns its preview until the refreshed events have rendered.
+    if (event.parent_id || el.classList.contains('drag-source')) return;
 
     const { mode, onDragEnd, dayColumns, columnsContainer } = options;
     const columnSelector = options.columnSelector || '.week-day-events';
@@ -68,6 +68,7 @@ export function startDrag(event: CalendarEvent, el: HTMLElement, startEvent: Mou
     const origTop = parseFloat(el.style.top) || 0;
     const origHeight = parseFloat(el.style.height) || 0;
     let isDragging = false;
+    let preview: HTMLElement;
     let totalDeltaMinutes = 0;
     let dayDelta = 0;
 
@@ -97,7 +98,17 @@ export function startDrag(event: CalendarEvent, el: HTMLElement, startEvent: Mou
         if (!isDragging) {
             if (Math.abs(deltaX) < CLICK_THRESHOLD && Math.abs(deltaY) < CLICK_THRESHOLD) return;
             isDragging = true;
-            el.classList.add('dragging');
+            preview = el.cloneNode(true) as HTMLElement;
+            preview.classList.remove('highlight-event');
+            preview.classList.add('drag-preview', 'dragging');
+            preview.setAttribute('aria-hidden', 'true');
+            // All-day events normally participate in flow; the preview must not.
+            preview.style.top = `${el.offsetTop}px`;
+            preview.style.left = `${el.offsetLeft}px`;
+            preview.style.width = `${el.offsetWidth}px`;
+            preview.style.height = `${el.offsetHeight}px`;
+            el.parentElement!.appendChild(preview);
+            el.classList.add('drag-source');
             document.body.style.userSelect = 'none';
             if (isTouchEvent) (e as TouchEvent).preventDefault();
         }
@@ -125,21 +136,21 @@ export function startDrag(event: CalendarEvent, el: HTMLElement, startEvent: Mou
             dayDelta = newColIndex - startColIndex;
             if (dayDelta !== 0) {
                 const offsetX = colRects[newColIndex].left - colRects[startColIndex].left;
-                el.style.transform = `translateX(${offsetX}px)`;
+                preview.style.transform = `translateX(${offsetX}px)`;
             } else {
-                el.style.transform = '';
+                preview.style.transform = '';
             }
         }
 
         if (mode === 'move') {
-            el.style.top = `${origTop + (totalDeltaMinutes / 60) * PIXELS_PER_HOUR}px`;
+            preview.style.top = `${origTop + (totalDeltaMinutes / 60) * PIXELS_PER_HOUR}px`;
             detectColumn(pos.x);
         } else if (mode === 'move-horizontal') {
             detectColumn(pos.x);
         } else if (mode === 'resize') {
             const newHeight = origHeight + (totalDeltaMinutes / 60) * PIXELS_PER_HOUR;
             const minHeight = (MIN_DURATION_MINUTES / 60) * PIXELS_PER_HOUR;
-            el.style.height = `${Math.max(newHeight, minHeight)}px`;
+            preview.style.height = `${Math.max(newHeight, minHeight)}px`;
             // Clamp totalDeltaMinutes for resize
             const origDuration = (new Date(eventEndStr(event)).getTime() - new Date(eventStartStr(event)).getTime()) / 60000;
             if (origDuration + totalDeltaMinutes < MIN_DURATION_MINUTES) {
@@ -148,23 +159,26 @@ export function startDrag(event: CalendarEvent, el: HTMLElement, startEvent: Mou
         }
     }
 
-    function onEnd(e: Event): void {
+    async function onEnd(e: Event): Promise<void> {
         document.removeEventListener('mousemove', onMove);
         document.removeEventListener('mouseup', onEnd);
         document.removeEventListener('touchmove', onMove);
         document.removeEventListener('touchend', onEnd);
+        document.removeEventListener('touchcancel', onEnd);
 
-        el.classList.remove('dragging');
         document.body.style.userSelect = '';
 
         if (!isDragging) return; // was just a click
 
         // Suppress the click event that follows mouseup
         function suppressClick(e: Event): void {
-            e.stopPropagation();
+            e.stopImmediatePropagation();
             e.preventDefault();
         }
-        el.addEventListener('click', suppressClick, { capture: true, once: true });
+        // The source stays in place, so the release click can target an ancestor.
+        // Scope suppression to this release rather than swallowing a later click.
+        document.addEventListener('click', suppressClick, { capture: true, once: true });
+        setTimeout(() => document.removeEventListener('click', suppressClick, true), 0);
 
         let newStart: string, newEnd: string;
         if (mode === 'move') {
@@ -182,13 +196,18 @@ export function startDrag(event: CalendarEvent, el: HTMLElement, startEvent: Mou
             newEnd = addMinutes(eventEndStr(event), totalDeltaMinutes);
         }
 
-        // Reset inline styles so re-render takes over
-        el.style.top = `${origTop}px`;
-        el.style.height = `${origHeight}px`;
-        el.style.transform = '';
-
-        if (totalDeltaMinutes !== 0 || dayDelta !== 0) {
-            onDragEnd(newStart, newEnd);
+        preview.classList.remove('dragging');
+        preview.classList.add('drag-pending');
+        try {
+            if (e.type !== 'touchcancel' && (totalDeltaMinutes !== 0 || dayDelta !== 0)) {
+                await onDragEnd(newStart, newEnd);
+            }
+        } finally {
+            // Let Preact commit the reloaded events before removing the preview.
+            requestAnimationFrame(() => {
+                preview.remove();
+                el.classList.remove('drag-source');
+            });
         }
     }
 
@@ -196,4 +215,5 @@ export function startDrag(event: CalendarEvent, el: HTMLElement, startEvent: Mou
     document.addEventListener('mouseup', onEnd);
     document.addEventListener('touchmove', onMove, { passive: false });
     document.addEventListener('touchend', onEnd);
+    document.addEventListener('touchcancel', onEnd);
 }
