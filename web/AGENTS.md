@@ -6,6 +6,11 @@ commands, the Go tests, how to run the `e2e/` Playwright suite and the security 
 suite's own instructions are in `e2e/AGENTS.md`. Paths below are relative to the repository root,
 as they are there.
 
+## Coding guides
+
+- Prefer HTML+CSS to JavaScript for interactive UI.
+- Prefer CSS to images, prefer SVG to bitmap images.
+
 ## Frontend tests
 
 Frontend unit tests are `*.test.mjs` files directly under `web/ts/`, written
