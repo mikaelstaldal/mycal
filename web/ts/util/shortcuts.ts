@@ -1,4 +1,4 @@
-const SHORTCUT_KEYS = ['t', 'y', 'm', 'w', 'd', 's', 'e', 'c', 'x'];
+const SHORTCUT_KEYS = ['n', 't', 'y', 'm', 'w', 'd', 's', 'e', 'c', 'x'];
 
 /**
  * Activate the same visible, enabled buttons used by pointer users, like MyMail.

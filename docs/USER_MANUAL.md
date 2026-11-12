@@ -91,7 +91,7 @@ The htpasswd file is parsed strictly at startup: every non-blank line must be a 
 
 ## Keyboard shortcuts
 
-In the web interface, press **T** to go to today, and **Y**, **M**, **W**, **D** or **S** to switch to the
+In the web interface, press **N** to create a new event on today, **T** to go to today, and **Y**, **M**, **W**, **D** or **S** to switch to the
 Year, Month, Week, Day or Schedule view. While an event is open, press **E** to edit it, **C** to copy it,
 **X** to export it, **S** to share it, or **D** to delete it; Delete keeps the same confirmation as clicking
 the button. The shortcut letter is underlined in each button.

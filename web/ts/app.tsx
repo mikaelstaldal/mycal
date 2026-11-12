@@ -323,6 +323,12 @@ function App() {
 
     function handleViewChange(mode: string) { setViewMode(mode); }
 
+    // Like clicking today's month cell: midnight lets the form pick its default hour.
+    function handleNewEvent() {
+        const now = new Date();
+        handleDayClick(new Date(now.getFullYear(), now.getMonth(), now.getDate()));
+    }
+
     function handleDayClick(date: Date) {
         setSelectedEvent(null);
         setDefaultDate(date);
@@ -587,6 +593,10 @@ function App() {
                         sibling rather than the last child, so a scrollbar here
                         never narrows it — same shape as MyNotes' sidebar. */}
                     <div class="sidebar-content">
+                        {/* Here rather than in the top bar, which has no width to spare. */}
+                        <button class="new-event-btn" data-shortcut="n" aria-keyshortcuts="n" onClick={handleNewEvent}>
+                            <span><u>N</u>ew event</span>
+                        </button>
                         <MiniMonth currentDate={currentDate}
                                    onDayClick={handleYearDayClick}
                                    onMonthClick={handleYearMonthClick}

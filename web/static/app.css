@@ -2487,6 +2487,23 @@ body {
        its own content and spill over the footer. */
 }
 
+/* Action at the top of the left column, coloured like the nav buttons. */
+.new-event-btn {
+    padding: 6px 14px;
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.new-event-btn:hover {
+    background: var(--hover-bg);
+}
+
 /* Light/dark toggle and Settings, pinned to the bottom of the left column — the
    same footer MyNotes puts them in (see its .sidebar-footer), and a sibling of
    the scrolling content there as it is here. `margin-top: auto` pushes it down

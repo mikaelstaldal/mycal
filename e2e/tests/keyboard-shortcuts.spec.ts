@@ -44,6 +44,19 @@ test.describe('Keyboard shortcuts', () => {
     await expect(page.getByRole('button', { name: 'Month', exact: true })).toHaveClass(/active/);
   });
 
+  test('N opens a new event on today', async ({ page }) => {
+    await expect(page.locator('.new-event-btn u')).toHaveText('N');
+    await pressOnBody(page, 'n');
+    const dialog = page.locator('dialog.event-dialog');
+    await expect(dialog).toBeVisible();
+    await expect(dialog.locator('h2')).toHaveText('New Event');
+    await expect(dialog.getByRole('textbox', { name: 'Title' })).toBeFocused();
+    await page.keyboard.type('Typed');
+    await expect(dialog.getByRole('textbox', { name: 'Title' })).toHaveValue('Typed');
+    await dialog.getByRole('button', { name: 'Save' }).click();
+    await expect(page.locator('.day.today .event-chip', { hasText: 'Typed' })).toBeVisible();
+  });
+
   test('event dialog letters act on the event, D deletes with confirmation', async ({ page, request }) => {
     const today = todayDate();
     await createEventViaAPI(request, {

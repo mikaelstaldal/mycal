@@ -35,7 +35,8 @@ the newly explicit 100-character and 100-item bounds are rejected; clients shoul
 
 ## Keyboard shortcuts
 
-Plain-letter shortcuts activate visible, enabled buttons, consistent with MyMail: T for Today, and
+Plain-letter shortcuts activate visible, enabled buttons, consistent with MyMail: N for the New event button at the top of
+the left sidebar (a new event on today, like clicking today's cell), T for Today, and
 Y/M/W/D/S for the Year/Month/Week/Day/Schedule views; in the event dialog, E for Edit, C for Copy,
 X for Export, S for Share and D for Delete. Each button underlines its shortcut letter.
 While a modal dialog is open, only buttons inside the front dialog respond, so a letter can mean one thing
