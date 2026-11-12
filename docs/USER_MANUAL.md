@@ -89,6 +89,15 @@ for a username and password automatically.
 
 The htpasswd file is parsed strictly at startup: every non-blank line must be a `username:bcrypt-hash` pair with no duplicate usernames, and the file must not be empty. Anything else aborts startup — a bad entry named by file and line number, an entryless file by name — rather than silently leaving out a login you believe exists.
 
+## Keyboard shortcuts
+
+In the web interface, press **T** to go to today, and **Y**, **M**, **W**, **D** or **S** to switch to the
+Year, Month, Week, Day or Schedule view. While an event is open, press **E** to edit it, **C** to copy it,
+**X** to export it, **S** to share it, or **D** to delete it; Delete keeps the same confirmation as clicking
+the button. The shortcut letter is underlined in each button.
+A shortcut is available only when its button is visible and enabled, and while a dialog is open only that
+dialog's buttons respond. Shortcuts use no modifier keys and do not run while typing in a field or editor.
+
 ## Demo mode
 
 Demo mode runs the full web UI with no backend at all. A service worker

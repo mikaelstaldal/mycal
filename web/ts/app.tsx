@@ -25,6 +25,7 @@ import { isDemo, mymailUrl, mynotesUrl } from './util/serverconfig.js';
 import { checkAndNotify, requestPermission } from './util/notifications.js';
 import { showChoice, showConfirm } from './util/confirm.js';
 import { takeDesktopImport } from './util/desktop-import.js';
+import { handleActionShortcut } from './util/shortcuts.js';
 import type { components } from './api/types.js';
 import type { AppConfig } from './util/config.js';
 type CalendarEvent = components['schemas']['Event'];
@@ -70,6 +71,10 @@ function App() {
         };
         window.addEventListener('hashchange', onHashChange);
         return () => window.removeEventListener('hashchange', onHashChange);
+    }, []);
+    useEffect(() => {
+        document.addEventListener('keydown', handleActionShortcut);
+        return () => document.removeEventListener('keydown', handleActionShortcut);
     }, []);
     const [darkMode, setDarkMode] = useState(() => getTheme() === 'dark');
     const [currentDate, setCurrentDate] = useState(new Date());

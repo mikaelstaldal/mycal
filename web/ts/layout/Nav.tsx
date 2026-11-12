@@ -25,15 +25,15 @@ export function Nav({ currentDate, onPrev, onNext, onToday, viewMode, onViewChan
 
     return (
         <nav class="nav">
-            <button onClick={onToday}>Today</button>
+            <button data-shortcut="t" aria-keyshortcuts="t" onClick={onToday}><span><u>T</u>oday</span></button>
             <button onClick={onPrev} aria-label="Previous" title="Previous"><Icon name="chevron-left" /></button>
             <button onClick={onNext} aria-label="Next" title="Next"><Icon name="chevron-right" /></button>
             <div class="view-toggle">
-                <button class={viewMode === 'year' ? 'active' : ''} onClick={() => onViewChange('year')}>Year</button>
-                <button class={viewMode === 'month' ? 'active' : ''} onClick={() => onViewChange('month')}>Month</button>
-                <button class={viewMode === 'week' ? 'active' : ''} onClick={() => onViewChange('week')}>Week</button>
-                <button class={viewMode === 'day' ? 'active' : ''} onClick={() => onViewChange('day')}>Day</button>
-                <button class={viewMode === 'schedule' ? 'active' : ''} onClick={() => onViewChange('schedule')}>Schedule</button>
+                <button data-shortcut="y" aria-keyshortcuts="y" class={viewMode === 'year' ? 'active' : ''} onClick={() => onViewChange('year')}><span><u>Y</u>ear</span></button>
+                <button data-shortcut="m" aria-keyshortcuts="m" class={viewMode === 'month' ? 'active' : ''} onClick={() => onViewChange('month')}><span><u>M</u>onth</span></button>
+                <button data-shortcut="w" aria-keyshortcuts="w" class={viewMode === 'week' ? 'active' : ''} onClick={() => onViewChange('week')}><span><u>W</u>eek</span></button>
+                <button data-shortcut="d" aria-keyshortcuts="d" class={viewMode === 'day' ? 'active' : ''} onClick={() => onViewChange('day')}><span><u>D</u>ay</span></button>
+                <button data-shortcut="s" aria-keyshortcuts="s" class={viewMode === 'schedule' ? 'active' : ''} onClick={() => onViewChange('schedule')}><span><u>S</u>chedule</span></button>
             </div>
             <h1>{heading}</h1>
         </nav>

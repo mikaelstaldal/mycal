@@ -32,3 +32,12 @@ single-event imports, accept at most 10 MiB (10485760 bytes).
 
 These bounds are published in OpenAPI for API consumers, including the Android client. Requests above
 the newly explicit 100-character and 100-item bounds are rejected; clients should stay within them.
+
+## Keyboard shortcuts
+
+Plain-letter shortcuts activate visible, enabled buttons, consistent with MyMail: T for Today, and
+Y/M/W/D/S for the Year/Month/Week/Day/Schedule views; in the event dialog, E for Edit, C for Copy,
+X for Export, S for Share and D for Delete. Each button underlines its shortcut letter.
+While a modal dialog is open, only buttons inside the front dialog respond, so a letter can mean one thing
+on the calendar and another in the event dialog. Shortcuts preserve button confirmations and are ignored
+in editable controls, with modifier keys, on key repeat and during IME composition.

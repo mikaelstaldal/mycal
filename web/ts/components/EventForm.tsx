@@ -561,18 +561,19 @@ export function EventForm({ event, defaultDate, defaultAllDay, copiedEvent, onSa
                     <div class="dialog-actions">
                         {event && !editing && (
                             <Fragment>
-                                <button type="button" onClick={() => setEditing(true)}>Edit</button>
-                                {onCopy && <button type="button" onClick={onCopy}>Copy</button>}
-                                {!demo && <button type="button" onClick={exportEvent}>Export</button>}
-                                {mymailUrl && <button type="button" onClick={() => { setShowShare(s => !s); setShareError(''); setShareSuccess(false); }}>Share</button>}
-                                <button type="button" class="danger" onClick={handleDelete}>Delete</button>
+                                <button type="button" data-shortcut="e" aria-keyshortcuts="e" onClick={() => setEditing(true)}><span><u>E</u>dit</span></button>
+                                {onCopy && <button type="button" data-shortcut="c" aria-keyshortcuts="c" onClick={onCopy}><span><u>C</u>opy</span></button>}
+                                {!demo && <button type="button" data-shortcut="x" aria-keyshortcuts="x" onClick={exportEvent}><span>E<u>x</u>port</span></button>}
+                                {mymailUrl && <button type="button" onClick={() => { setShowShare(s => !s); setShareError(''); setShareSuccess(false); }}
+                                                        data-shortcut="s" aria-keyshortcuts="s"><span><u>S</u>hare</span></button>}
+                                <button type="button" class="danger" data-shortcut="d" aria-keyshortcuts="d" onClick={handleDelete}><span><u>D</u>elete</span></button>
                             </Fragment>
                         )}
                         {editing && (
                             <Fragment>
                                 <button type="submit">Save</button>
                                 {event && (
-                                    <button type="button" class="danger" onClick={handleDelete}>Delete</button>
+                                    <button type="button" class="danger" data-shortcut="d" aria-keyshortcuts="d" onClick={handleDelete}><span><u>D</u>elete</span></button>
                                 )}
                             </Fragment>
                         )}
